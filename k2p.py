@@ -7,14 +7,14 @@ Usage:
 
 What it does (MVP):
   • Recursively discovers KNIME workflows by locating files named 'workflow.knime'.
-  • Parses each workflow's XML to extract nodes and connections (edges) for 
+  • Parses each workflow's XML to extract nodes and connections (edges) for
     KNIME 5.x: nodes/connections are under <config key="nodes"> / <config key="connections">.
   • Augments node metadata from each node's 'settings.xml' when available (e.g., factory/type).
   • Emits a graph JSON and Graphviz .dot per discovered workflow.
 
 Outputs (per workflow):
   • <workflow_id>.json   – nodes, edges, and basic metadata
-  • <workflow_id>.dot    – Graphviz representation (left‑to‑right)
+  • <workflow_id>.dot    – Graphviz representation (left-to-right)
 """
 from __future__ import annotations
 
@@ -23,12 +23,14 @@ import json
 import os
 import sys
 import uuid
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from lxml import etree as ET 
+
+from lxml import etree as ET
 from xml_utils import XML_PARSER, parse_settings_xml
 from emitters import write_graph_json, write_graph_dot, write_workbook_py, write_workbook_ipynb
+
 
 # ----------------------------
 # Data structures
@@ -55,16 +57,21 @@ class WorkflowGraph:
     nodes: Dict[str, Node]
     edges: List[Edge]
 
+
 # ----------------------------
 # KNIME discovery & parsing
 # ----------------------------
 
 def discover_workflows(root: Path) -> List[Path]:
-    """Return all paths to 'workflow.knime' under root (recursive)."""
-    return [p for p in root.rglob("workflow.knime") if p.is_file()]
+    """Return all paths to 'workflow.knime' under root (recursive), sorted for determinism."""
+    return sorted((p for p in root.rglob("workflow.knime") if p.is_file()), key=lambda p: str(p))
+
 
 def _parse_knime5_structure(root, workflow_file: Path) -> Tuple[Dict[str, Node], List[Edge]]:
-    """Parse KNIME 5.x style workflow.knime where nodes/connections live under <config key="nodes"> / <config key="connections">."""
+    """
+    Parse KNIME 5.x style workflow.knime where nodes/connections live under
+    <config key="nodes"> / <config key="connections">.
+    """
     nodes: Dict[str, Node] = {}
     edges: List[Edge] = []
 
@@ -74,13 +81,27 @@ def _parse_knime5_structure(root, workflow_file: Path) -> Tuple[Dict[str, Node],
     nodes_cont = nodes_cont[0] if nodes_cont else None
     conns_cont = conns_cont[0] if conns_cont else None
 
-    # Nodes
+    # Nodes (sorted by integer id when present, else by @key to keep stable order)
     if nodes_cont is not None:
         node_cfgs = nodes_cont.xpath("./*[local-name()='config' and starts-with(@key,'node_')]")
-        for ncfg in node_cfgs:
-            nid = (ncfg.xpath("string(.//*[local-name()='entry' and @key='id']/@value)") or "").strip()
-            nid_str = nid if nid else str(uuid.uuid4())
 
+        def node_sort_key(ncfg):
+            raw_id = (ncfg.xpath("string(.//*[local-name()='entry' and @key='id']/@value)") or "").strip()
+            try:
+                n = int(raw_id)
+            except Exception:
+                n = float("inf")
+            key_attr = (ncfg.get("key") or "")
+            return (n, key_attr)
+
+        for ncfg in sorted(node_cfgs, key=node_sort_key):
+            # id
+            raw_id = (ncfg.xpath("string(.//*[local-name()='entry' and @key='id']/@value)") or "").strip()
+            nid_str = raw_id if raw_id else str(uuid.uuid4())
+            if nid_str in nodes:
+                nid_str = f"{nid_str}-{uuid.uuid4()}"  # ensure uniqueness
+
+            # base fields
             settings_file = (ncfg.xpath("string(.//*[local-name()='entry' and @key='node_settings_file']/@value)") or "").strip()
             node_type = (ncfg.xpath("string(.//*[local-name()='entry' and @key='node_type']/@value)") or "").strip() or None
 
@@ -98,10 +119,23 @@ def _parse_knime5_structure(root, workflow_file: Path) -> Tuple[Dict[str, Node],
 
             nodes[nid_str] = Node(id=nid_str, name=name, type=node_type, path=node_path)
 
-    # Connections
+    # Connections (sorted by numeric sourceID, then destID, then ports)
     if conns_cont is not None:
         conn_cfgs = conns_cont.xpath("./*[local-name()='config' and starts-with(@key,'connection_')]")
-        for ccfg in conn_cfgs:
+
+        def conn_sort_key(ccfg):
+            def to_int(s):
+                try:
+                    return int(s)
+                except Exception:
+                    return float("inf")
+            src = (ccfg.xpath("string(.//*[local-name()='entry' and @key='sourceID']/@value)") or "").strip()
+            dst = (ccfg.xpath("string(.//*[local-name()='entry' and @key='destID']/@value)") or "").strip()
+            sp = (ccfg.xpath("string(.//*[local-name()='entry' and @key='sourcePort']/@value)") or "").strip()
+            dp = (ccfg.xpath("string(.//*[local-name()='entry' and @key='destPort']/@value)") or "").strip()
+            return (to_int(src), to_int(dst), sp, dp)
+
+        for ccfg in sorted(conn_cfgs, key=conn_sort_key):
             src = (ccfg.xpath("string(.//*[local-name()='entry' and @key='sourceID']/@value)") or "").strip()
             dst = (ccfg.xpath("string(.//*[local-name()='entry' and @key='destID']/@value)") or "").strip()
             s_port = (ccfg.xpath("string(.//*[local-name()='entry' and @key='sourcePort']/@value)") or "").strip() or None
@@ -113,19 +147,21 @@ def _parse_knime5_structure(root, workflow_file: Path) -> Tuple[Dict[str, Node],
 
 
 # ---- Legacy <node>/<connection> parsing (older exports) ----
-def _parse_legacy_structure(root: ET.Element, workflow_file: Path) -> Tuple[Dict[str, Node], List[Edge]]:
+def _parse_legacy_structure(root: ET._Element, workflow_file: Path) -> Tuple[Dict[str, Node], List[Edge]]:
     # TODO: add legacy support if needed.
     raise ValueError(f"Unsupported/legacy workflow format. File: {workflow_file}")
 
 
 def parse_workflow(workflow_file: Path) -> WorkflowGraph:
-    """Parse a single workflow.knime into a WorkflowGraph. Supports KNIME 5.x (config tree)
-    and older structures with <node>/<connection> elements."""
+    """
+    Parse a single workflow.knime into a WorkflowGraph. Supports KNIME 5.x (config tree).
+    Legacy (<node>/<connection>) is currently unsupported.
+    """
     root = ET.parse(str(workflow_file), parser=XML_PARSER).getroot()
 
     nodes, edges = _parse_knime5_structure(root, workflow_file)
 
-    # Fallback to legacy if nothing found
+    # Report legacy/unsupported if nothing found
     if not nodes and not edges:
         nodes, edges = _parse_legacy_structure(root, workflow_file)
 
@@ -139,32 +175,6 @@ def parse_workflow(workflow_file: Path) -> WorkflowGraph:
         edges=edges,
     )
 
-# ----------------------------
-# Graph utilities
-# ----------------------------
-from collections import defaultdict, deque
-
-def topo_order(nodes: Dict[str, Node], edges: List[Edge]) -> List[str]:
-    indeg = {nid: 0 for nid in nodes}
-    adj = defaultdict(list)
-    for e in edges:
-        if e.source in nodes and e.target in nodes:
-            adj[e.source].append(e.target)
-            indeg[e.target] += 1
-    q = deque([n for n, d in indeg.items() if d == 0])
-    order = []
-    while q:
-        u = q.popleft()
-        order.append(u)
-        for v in adj[u]:
-            indeg[v] -= 1
-            if indeg[v] == 0:
-                q.append(v)
-    # If cycle: fall back to arbitrary stable order of remaining
-    if len(order) != len(nodes):
-        remaining = [n for n in nodes if n not in order]
-        order.extend(sorted(remaining))
-    return order
 
 # ----------------------------
 # CLI
@@ -174,10 +184,9 @@ def run_cli(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description="Parse KNIME project(s) and extract workflow graphs.")
     p.add_argument("root", type=Path, help="Path to KNIME project root directory")
     p.add_argument("--out", type=Path, default=Path("out_graphs"), help="Output directory for JSON/DOT")
-    p.add_argument("--toponly", action="store_true", help="Emit only the shallowest (top‑level) workflows by path depth")
+    p.add_argument("--toponly", action="store_true", help="Emit only the shallowest (top-level) workflows by path depth")
     p.add_argument("--workbook", choices=["py", "ipynb", "both"], default="ipynb", help="Which workbook format(s) to generate.")
 
-  
     args = p.parse_args(argv)
     if not args.root.exists():
         p.error(f"Root path does not exist: {args.root}")
@@ -187,7 +196,7 @@ def run_cli(argv: Optional[List[str]] = None) -> int:
         print("No workflow.knime files found under", args.root, file=sys.stderr)
         return 2
 
-    # Optionally filter to top‑level workflows (smallest depth per branch)
+    # Optionally filter to top-level workflows (smallest depth per branch)
     if args.toponly:
         by_parent: Dict[str, Path] = {}
         for wf in workflows:
@@ -206,6 +215,7 @@ def run_cli(argv: Optional[List[str]] = None) -> int:
         except Exception as e:
             print(f"ERROR parsing {wf}: {e}", file=sys.stderr)
             continue
+
         j = write_graph_json(g, out_dir)
         d = write_graph_dot(g, out_dir)
 
@@ -224,7 +234,6 @@ def run_cli(argv: Optional[List[str]] = None) -> int:
             "nodes": len(g.nodes),
             "edges": len(g.edges),
         })
-
 
     print(json.dumps({"workflows": summaries}, indent=2))
     return 0
