@@ -27,74 +27,51 @@ import uuid
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-import xml.etree.ElementTree as ET
+from lxml import etree as ET
+XML_PARSER = ET.XMLParser(remove_comments=True, resolve_entities=False, no_network=True, ns_clean=True, recover=True)
+
 
 # ----------------------------
 # XML helpers
 # ----------------------------
 
-def _local(tag: str) -> str:
-    """Strip XML namespace: '{ns}tag' -> 'tag'."""
-    if tag.startswith('{'):
-        return tag.split('}', 1)[1]
-    return tag
+def _findall_any(parent, names: Tuple[str, ...]):
+    """
+    Namespace-agnostic search using XPath local-name().
+    Returns a list of elements whose local-name is in `names`.
+    """
+    expr = " | ".join([f".//*[local-name()='{n}']" for n in names])
+    return parent.xpath(expr)
 
-
-def _findall_any(parent: ET.Element, names: Tuple[str, ...]) -> List[ET.Element]:
-    """Find all children whose localname is in names (namespace‑agnostic)."""
-    out = []
-    for el in parent.iter():
-        if _local(el.tag) in names:
-            out.append(el)
-    return out
-
-
-def _get_attr_any(el: ET.Element, *keys: str, default: Optional[str] = None) -> Optional[str]:
-    for k in keys:
-        if k in el.attrib:
-            return el.attrib[k]
-    return default
-
-
-def _get_entry_value_by_key(config_el: ET.Element, key_name: str) -> Optional[str]:
-    """KNIME settings.xml stores entries like: <entry key="factory" value="..."/>"""
-    for ent in _findall_any(config_el, ("entry",)):
-        if ent.attrib.get("key") == key_name:
-            return ent.attrib.get("value")
-    return None
+def _get_entry_value_by_key(config_el, key_name: str) -> Optional[str]:
+    vals = config_el.xpath(".//*[local-name()='entry' and @key=$k]/@value", k=key_name)
+    return vals[0] if vals else None
 
 def parse_settings_xml(node_dir: Path) -> Tuple[Optional[str], Optional[str]]:
-    """Extract (node_name, factory_type) from a node's settings.xml if present.
-
-    Accepts a node *directory* that contains 'settings.xml' or, defensively, a direct
-    path to a 'settings.xml' file. Returns: (name, factory) with graceful fallbacks.
+    """
+    Returns: (name, factory) from settings.xml when present.
+    Accepts a node directory or a direct settings.xml path.
     """
     settings = node_dir / "settings.xml"
     if not settings.exists():
-        # Allow direct settings.xml path
         if node_dir.name.endswith(".xml") and node_dir.exists():
             settings = node_dir
         else:
             return (None, None)
-    try:
-        tree = ET.parse(settings)
-        root = tree.getroot()
-        # First pass: look for a <config> carrying entries for 'name'/'label' and 'factory'
-        for cfg in _findall_any(root, ("config",)):
-            nm = (_get_entry_value_by_key(cfg, "name")
-                  or _get_entry_value_by_key(cfg, "label")
-                  or _get_entry_value_by_key(cfg, "node_name"))
-            fac = (_get_entry_value_by_key(cfg, "factory")
-                   or _get_entry_value_by_key(cfg, "node_factory"))
-            if nm or fac:
-                return (nm, fac)
-        # Fallback: scan any <entry>
-        for ent in _findall_any(root, ("entry",)):
-            if ent.attrib.get("key") in {"name", "label", "node_name"}:
-                return (ent.attrib.get("value"), None)
-    except Exception:
-        pass
-    return (None, None)
+
+    root = ET.parse(str(settings), parser=XML_PARSER).getroot()
+
+    # name candidates
+    name_vals = root.xpath(
+        ".//*[local-name()='entry' and (@key='name' or @key='label' or @key='node_name')]/@value"
+    )
+    # factory candidates
+    fac_vals = root.xpath(
+        ".//*[local-name()='entry' and (@key='factory' or @key='node_factory')]/@value"
+    )
+
+    return (name_vals[0] if name_vals else None, fac_vals[0] if fac_vals else None)
+
 
 # ----------------------------
 # Data structures
@@ -129,87 +106,49 @@ def discover_workflows(root: Path) -> List[Path]:
     """Return all paths to 'workflow.knime' under root (recursive)."""
     return [p for p in root.rglob("workflow.knime") if p.is_file()]
 
-
-# ---- KNIME 5.x 'config' tree helpers ----
-
-def _is_config_with_key(el: ET.Element, key: str) -> bool:
-    return _local(el.tag) == "config" and el.attrib.get("key") == key
-
-
-def _iter_child_configs(parent: ET.Element, prefix: Optional[str] = None) -> List[ET.Element]:
-    """Return immediate children with localname 'config'. If prefix is given, only those whose
-    key starts with prefix (e.g., 'node_' or 'connection_')."""
-    out = []
-    for el in list(parent):
-        if _local(el.tag) != "config":
-            continue
-        k = el.attrib.get("key", "")
-        if prefix is None or k.startswith(prefix):
-            out.append(el)
-    return out
-
-
-def _entry_value(cfg: ET.Element, key: str) -> Optional[str]:
-    for ent in cfg:
-        if _local(ent.tag) == "entry" and ent.attrib.get("key") == key:
-            return ent.attrib.get("value")
-    return None
-
-
-def _entry_int(cfg: ET.Element, key: str) -> Optional[int]:
-    v = _entry_value(cfg, key)
-    try:
-        return int(v) if v is not None else None
-    except Exception:
-        return None
-
-
-def _parse_knime5_structure(root: ET.Element, workflow_file: Path) -> Tuple[Dict[str, Node], List[Edge]]:
-    """Parse KNIME 5.x style workflow.knime where nodes/connections live under <config key="nodes">."""
+def _parse_knime5_structure(root, workflow_file: Path) -> Tuple[Dict[str, Node], List[Edge]]:
+    """Parse KNIME 5.x style workflow.knime where nodes/connections live under <config key="nodes"> / <config key="connections">."""
     nodes: Dict[str, Node] = {}
     edges: List[Edge] = []
 
-    # Locate containers
-    nodes_container = None
-    conns_container = None
-    for cfg in _findall_any(root, ("config",)):
-        k = cfg.attrib.get("key")
-        if k == "nodes":
-            nodes_container = cfg
-        elif k == "connections":
-            conns_container = cfg
+    # Containers
+    nodes_cont = root.xpath(".//*[local-name()='config' and @key='nodes']")
+    conns_cont = root.xpath(".//*[local-name()='config' and @key='connections']")
+    nodes_cont = nodes_cont[0] if nodes_cont else None
+    conns_cont = conns_cont[0] if conns_cont else None
 
     # Nodes
-    if nodes_container is not None:
-        for ncfg in _iter_child_configs(nodes_container, prefix="node_"):
-            nid = _entry_int(ncfg, "id")
-            nid_str = str(nid) if nid is not None else str(uuid.uuid4())
-            settings_file = _entry_value(ncfg, "node_settings_file")  # e.g., 'CSV Reader (#1)/settings.xml'
-            name = None
-            ntype = _entry_value(ncfg, "node_type")  # 'NativeNode' etc. (not the factory)
-            node_path = None
+    if nodes_cont is not None:
+        node_cfgs = nodes_cont.xpath("./*[local-name()='config' and starts-with(@key,'node_')]")
+        for ncfg in node_cfgs:
+            nid = (ncfg.xpath("string(.//*[local-name()='entry' and @key='id']/@value)") or "").strip()
+            nid_str = nid if nid else str(uuid.uuid4())
 
+            settings_file = (ncfg.xpath("string(.//*[local-name()='entry' and @key='node_settings_file']/@value)") or "").strip()
+            node_type = (ncfg.xpath("string(.//*[local-name()='entry' and @key='node_type']/@value)") or "").strip() or None
+
+            name = None
+            node_path = None
             if settings_file:
-                # Infer a human-friendly name from directory before settings.xml
                 rel = Path(settings_file)
                 name = rel.parent.name or name
-                abs_settings = workflow_file.parent / rel
+                abs_settings = (workflow_file.parent / rel)
                 if abs_settings.exists():
                     node_path = str(abs_settings.parent)
                     nm2, fac2 = parse_settings_xml(abs_settings.parent)
                     name = nm2 or name
-                    # fac2 is typically the factory class; store that as type if present
-                    ntype = fac2 or ntype
+                    node_type = fac2 or node_type
 
-            nodes[nid_str] = Node(id=nid_str, name=name, type=ntype, path=node_path)
+            nodes[nid_str] = Node(id=nid_str, name=name, type=node_type, path=node_path)
 
     # Connections
-    if conns_container is not None:
-        for ccfg in _iter_child_configs(conns_container, prefix="connection_"):
-            src = _entry_value(ccfg, "sourceID")
-            dst = _entry_value(ccfg, "destID")
-            s_port = _entry_value(ccfg, "sourcePort")
-            d_port = _entry_value(ccfg, "destPort")
+    if conns_cont is not None:
+        conn_cfgs = conns_cont.xpath("./*[local-name()='config' and starts-with(@key,'connection_')]")
+        for ccfg in conn_cfgs:
+            src = (ccfg.xpath("string(.//*[local-name()='entry' and @key='sourceID']/@value)") or "").strip()
+            dst = (ccfg.xpath("string(.//*[local-name()='entry' and @key='destID']/@value)") or "").strip()
+            s_port = (ccfg.xpath("string(.//*[local-name()='entry' and @key='sourcePort']/@value)") or "").strip() or None
+            d_port = (ccfg.xpath("string(.//*[local-name()='entry' and @key='destPort']/@value)") or "").strip() or None
             if src and dst:
                 edges.append(Edge(source=str(src), target=str(dst), source_port=s_port, target_port=d_port))
 
@@ -265,8 +204,7 @@ def _parse_legacy_structure(root: ET.Element, workflow_file: Path) -> Tuple[Dict
 def parse_workflow(workflow_file: Path) -> WorkflowGraph:
     """Parse a single workflow.knime into a WorkflowGraph. Supports KNIME 5.x (config tree)
     and older structures with <node>/<connection> elements."""
-    tree = ET.parse(workflow_file)
-    root = tree.getroot()
+    root = ET.parse(str(workflow_file), parser=XML_PARSER).getroot()
 
     nodes, edges = _parse_knime5_structure(root, workflow_file)
 
