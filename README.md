@@ -13,9 +13,9 @@ A command-line tool that parses a KNIME project and emits:
 ## Features
 
 * **Workflow discovery** — recursively finds all `workflow.knime` files under a root.
-* **Parser (KNIME 5.x & legacy)**
+* **Parser (KNIME 5.x)**
   * KNIME 5.x: nodes under `<config key="nodes">/config key="node_*">`; edges under `<config key="connections">/config key="connection_*">`.
-  * Legacy: falls back to `<node>` / `<connection>` elements.
+  * Legacy: Unsupported.
 * **Node enrichment** — reads each node’s `settings.xml` when present to get a human label and factory class (type).
 * **Outputs per workflow**
 
@@ -76,7 +76,7 @@ options:
 ## KNIME compatibility
 
 * **Supported**: KNIME 5.x exports where `workflow.knime` stores nodes under `<config key="nodes">` and connections under `<config key="connections">`.
-* **Legacy fallback**: Simple `<node>` & `<connection>` structures are handled when present.
+* **Legacy**: Unsupported. 
 * **Components / metanodes / loops**: Any discovered `workflow.knime` (including nested) is treated as a separate workflow. Detailed expansion of component semantics is **not** implemented yet.
 
 If nodes do not appear for a workflow, provide a minimal example so XML paths can be extended.

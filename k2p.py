@@ -7,9 +7,8 @@ Usage:
 
 What it does (MVP):
   • Recursively discovers KNIME workflows by locating files named 'workflow.knime'.
-  • Parses each workflow's XML to extract nodes and connections (edges) across KNIME versions.
-    - KNIME 5.x: nodes/connections are under <config key="nodes"> / <config key="connections">.
-    - Legacy: <node> / <connection> elements.
+  • Parses each workflow's XML to extract nodes and connections (edges) for 
+    KNIME 5.x: nodes/connections are under <config key="nodes"> / <config key="connections">.
   • Augments node metadata from each node's 'settings.xml' when available (e.g., factory/type).
   • Emits a graph JSON and Graphviz .dot per discovered workflow.
 
@@ -156,49 +155,9 @@ def _parse_knime5_structure(root, workflow_file: Path) -> Tuple[Dict[str, Node],
 
 
 # ---- Legacy <node>/<connection> parsing (older exports) ----
-
 def _parse_legacy_structure(root: ET.Element, workflow_file: Path) -> Tuple[Dict[str, Node], List[Edge]]:
-    nodes: Dict[str, Node] = {}
-    edges: List[Edge] = []
-
-    for node_el in _findall_any(root, ("node",)):
-        nid = (
-            _get_attr_any(node_el, "id", "nodeID", "nodeId", default=None)
-            or str(uuid.uuid4())
-        )
-        name = _get_attr_any(node_el, "name", "nodeName", "label")
-        ntype = _get_attr_any(node_el, "factory", "type", "nodeFactory")
-
-        candidate_dirs = []
-        for child in workflow_file.parent.iterdir():
-            if child.is_dir() and child.name.strip() == str(nid).strip():
-                candidate_dirs.append(child)
-        if not candidate_dirs:
-            for child in workflow_file.parent.iterdir():
-                if child.is_dir() and str(nid) in child.name:
-                    candidate_dirs.append(child)
-
-        for ndir in candidate_dirs:
-            nm2, fac2 = parse_settings_xml(ndir)
-            name = name or nm2
-            ntype = ntype or fac2
-            if name or ntype:
-                node_path = str(ndir)
-                break
-        else:
-            node_path = None
-
-        nodes[str(nid)] = Node(id=str(nid), name=name, type=ntype, path=node_path)
-
-    for conn_el in _findall_any(root, ("connection",)):
-        src = _get_attr_any(conn_el, "sourceID", "srcId", "source", "from")
-        dst = _get_attr_any(conn_el, "destID", "dstId", "target", "to")
-        s_port = _get_attr_any(conn_el, "sourcePort", "srcPort", "outport", "outPort")
-        d_port = _get_attr_any(conn_el, "destPort", "dstPort", "inport", "inPort")
-        if src and dst:
-            edges.append(Edge(source=str(src), target=str(dst), source_port=s_port, target_port=d_port))
-
-    return nodes, edges
+    # TODO: add legacy support if needed.
+    raise ValueError(f"Unsupported/legacy workflow format. File: {workflow_file}")
 
 
 def parse_workflow(workflow_file: Path) -> WorkflowGraph:
