@@ -26,3 +26,10 @@ def wf_io_csv_path() -> Path:
     if not wf.exists():
         pytest.fail(f"Missing sample workflow: {wf}")
     return wf
+
+@pytest.fixture(scope="session")
+def wf_two_graphs_path() -> Path:
+    wf = DATA_DIR / "KNIME_two_graphs" / "workflow.knime"
+    if not wf.exists():
+        pytest.fail(f"Test data missing: {wf}")
+    return wf
