@@ -15,14 +15,14 @@ def _workflow_path(project_dirname: str) -> Path:
 
 @pytest.fixture(scope="session")
 def wf_single_csv_path() -> Path:
-    wf = _workflow_path("KNIME_project_single_csv")
+    wf = _workflow_path("KNIME_single_csv")
     if not wf.exists():
         pytest.fail(f"Missing sample workflow: {wf}")
     return wf
 
 @pytest.fixture(scope="session")
 def wf_io_csv_path() -> Path:
-    wf = _workflow_path("KNIME_project_io_csv")
+    wf = _workflow_path("KNIME_io_csv")
     if not wf.exists():
         pytest.fail(f"Missing sample workflow: {wf}")
     return wf
