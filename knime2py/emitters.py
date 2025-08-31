@@ -1,10 +1,12 @@
 # emitters.py
 from __future__ import annotations
+
 import json
 import re
 from dataclasses import asdict
 from pathlib import Path
 from collections import defaultdict, deque
+from typing import Dict, List, Tuple
 
 __all__ = [
     "topo_order",
@@ -13,6 +15,62 @@ __all__ = [
     "write_workbook_py",
     "write_workbook_ipynb",
 ]
+
+# ----------------------------
+# Shared helpers
+# ----------------------------
+def _esc(s: str) -> str:
+    return s.replace("\\", "\\\\").replace('"', '\\"')
+
+def _derive_title_and_root(nid: str, n) -> tuple[str, str]:
+    """
+    Return (title, root_id) from folder name like 'CSV Reader (#1)' when available,
+    else from node.name, else short class name from node.type, else 'node_<nid>'.
+    """
+    root_id = nid
+    title = None
+    if getattr(n, "path", None):
+        base = Path(n.path).name  # e.g. "CSV Reader (#1)"
+        m = re.match(r"^(.*?)\s*\(#(\d+)\)\s*$", base)
+        if m:
+            title = m.group(1)
+            root_id = m.group(2)
+    if not title:
+        if getattr(n, "name", None):
+            title = n.name
+        elif getattr(n, "type", None):
+            title = n.type.rsplit(".", 1)[-1]  # short class name
+        else:
+            title = f"node_{nid}"
+    return title, root_id
+
+def _safe_name_from_title(title: str) -> str:
+    # Conservative function name slug: letters/digits/underscore only
+    return re.sub(r"\W+", "_", title).strip("_") or "node"
+
+def _id_sort_key(s: str) -> Tuple[int, str]:
+    return (int(s), "") if s.isdigit() else (10**9, s)
+
+def _build_edge_maps(edges):
+    """
+    Build incoming/outgoing maps for quick neighbor lookups.
+    Returns (incoming_map, outgoing_map) where:
+      incoming_map[target_id] -> [Edge...]
+      outgoing_map[source_id] -> [Edge...]
+    """
+    inc = defaultdict(list)
+    out = defaultdict(list)
+    for e in edges:
+        out[e.source].append(e)
+        inc[e.target].append(e)
+    return inc, out
+
+def _title_for_neighbor(g, nei_id: str) -> str:
+    nn = g.nodes.get(nei_id)
+    if not nn:
+        return nei_id
+    t, _ = _derive_title_and_root(nei_id, nn)
+    return t
 
 # ----------------------------
 # Graph utility used by emitters
@@ -54,30 +112,6 @@ def write_graph_json(g, out_dir: Path) -> Path:
     return fp
 
 def write_graph_dot(g, out_dir: Path) -> Path:
-    import re
-
-    def _derive_title_and_root(nid: str, n) -> tuple[str, str]:
-        """Return (title, root_id) from folder name like 'CSV Reader (#1)' when available."""
-        root_id = nid
-        title = None
-        if getattr(n, "path", None):
-            base = Path(n.path).name  # e.g. "CSV Reader (#1)"
-            m = re.match(r"^(.*?)\s*\(#(\d+)\)\s*$", base)
-            if m:
-                title = m.group(1)
-                root_id = m.group(2)
-        if not title:
-            if getattr(n, "name", None):
-                title = n.name
-            elif getattr(n, "type", None):
-                title = n.type.rsplit(".", 1)[-1]  # short class name
-            else:
-                title = f"node_{nid}"
-        return title, root_id
-
-    def _esc(s: str) -> str:
-        return s.replace("\\", "\\\\").replace('"', '\\"')
-
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}.dot"
     lines = ["digraph knime {", "  rankdir=LR;"]
@@ -88,7 +122,7 @@ def write_graph_dot(g, out_dir: Path) -> Path:
         label = _esc(f"{title}\n{root_id}")
         lines.append(f'  "{nid}" [shape=box, style=rounded, label="{label}"];')
 
-    # Edges (unchanged)
+    # Edges
     for e in g.edges:
         attrs = []
         if getattr(e, "source_port", None):
@@ -102,45 +136,11 @@ def write_graph_dot(g, out_dir: Path) -> Path:
     fp.write_text("\n".join(lines))
     return fp
 
-
-
 def write_workbook_py(g, out_dir: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.py"
     order = topo_order(g.nodes, g.edges)
-
-    def _derive_title_and_root(nid: str, n) -> tuple[str, str]:
-        """Return (title, root_id) from folder name like 'CSV Reader (#1)' when available."""
-        root_id = nid
-        title = None
-        if getattr(n, "path", None):
-            base = Path(n.path).name  # e.g. "CSV Reader (#1)"
-            m = re.match(r"^(.*?)\s*\(#(\d+)\)\s*$", base)
-            if m:
-                title = m.group(1)
-                root_id = m.group(2)
-        if not title:
-            if getattr(n, "name", None):
-                title = n.name
-            elif getattr(n, "type", None):
-                title = n.type.rsplit(".", 1)[-1]
-            else:
-                title = f"node_{nid}"
-        return title, root_id
-
-    def _title_for_neighbor(nei_id: str) -> str:
-        nn = g.nodes.get(nei_id)
-        if not nn:
-            return nei_id
-        t, _ = _derive_title_and_root(nei_id, nn)
-        return t
-
-    def _id_sort_key(s: str):
-        return (int(s), "") if s.isdigit() else (10**9, s)
-
-    def _safe_name_from_title(title: str) -> str:
-        # conservative: keep letters/digits/underscore
-        return re.sub(r"\W+", "_", title).strip("_") or "node"
+    incoming_map, outgoing_map = _build_edge_maps(g.edges)
 
     lines = []
     lines.append("# Auto-generated from KNIME workflow")
@@ -157,30 +157,27 @@ def write_workbook_py(g, out_dir: Path) -> Path:
         title, root_id = _derive_title_and_root(nid, n)
         safe_name = _safe_name_from_title(title)
 
-        # Collect incoming and outgoing edges for this node
-        incoming = [(e.source, e) for e in g.edges if e.target == nid]
-        outgoing = [(e.target, e) for e in g.edges if e.source == nid]
+        incoming = [(e.source, e) for e in incoming_map.get(nid, ())]
+        outgoing = [(e.target, e) for e in outgoing_map.get(nid, ())]
         incoming.sort(key=lambda x: _id_sort_key(x[0]))
         outgoing.sort(key=lambda x: _id_sort_key(x[0]))
 
         lines.append(f"def node_{nid}_{safe_name}():")
-        # Comments that mirror the notebook markdown
         lines.append(f"    # {title}")
         lines.append(f"    # root: {root_id}")
         if incoming:
             lines.append("    # Input port(s):")
             for src_id, e in incoming:
                 port = f" [in:{e.target_port}]" if getattr(e, 'target_port', None) else ""
-                lines.append(f"    #  - from {src_id} ({_title_for_neighbor(src_id)}){port}")
+                lines.append(f"    #  - from {src_id} ({_title_for_neighbor(g, src_id)}){port}")
         if outgoing:
             if incoming:
-                lines.append("    #")  # blank line between sections
+                lines.append("    #")
             lines.append("    # Output port(s):")
             for dst_id, e in outgoing:
                 port = f" [out:{e.source_port}]" if getattr(e, 'source_port', None) else ""
-                lines.append(f"    #  - to {dst_id} ({_title_for_neighbor(dst_id)}){port}")
+                lines.append(f"    #  - to {dst_id} ({_title_for_neighbor(g, dst_id)}){port}")
 
-        # Keep the TODO and original path
         lines.append("    # TODO: implement this node translation")
         if n.path:
             lines.append(f"    # original node path: {n.path}")
@@ -201,90 +198,51 @@ def write_workbook_py(g, out_dir: Path) -> Path:
     fp.write_text("\n".join(lines))
     return fp
 
-
 def write_workbook_ipynb(g, out_dir: Path) -> Path:
     """
     Emit a Jupyter notebook (.ipynb) with one markdown section and one code cell per KNIME node,
-    ordered by the workflow's topological order. The markdown now shows a concise title, root id,
+    ordered by the workflow's topological order. Markdown shows a concise title, root id,
     and lists of input/output neighbors by name.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.ipynb"
     order = topo_order(g.nodes, g.edges)
+    incoming_map, outgoing_map = _build_edge_maps(g.edges)
 
     cells = []
-
-    # Title
     title_md = (
         f"# Workflow: {g.workflow_id}\n"
         f"Generated from KNIME workflow at `{g.workflow_path}`\n"
     )
     cells.append({"cell_type": "markdown", "metadata": {}, "source": title_md})
 
-    # Shared context
     context_src = "# Shared context to pass dataframes/tables between nodes\ncontext = {}\n"
     cells.append({"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": context_src})
 
-    def _derive_title_and_root(nid: str, n) -> tuple[str, str]:
-        """Return (title, root_id) from folder name like 'CSV Reader (#1)' when available."""
-        root_id = nid
-        title = None
-        if getattr(n, "path", None):
-            base = Path(n.path).name  # e.g. "CSV Reader (#1)"
-            m = re.match(r"^(.*?)\s*\(#(\d+)\)\s*$", base)
-            if m:
-                title = m.group(1)
-                root_id = m.group(2)
-        if not title:
-            if getattr(n, "name", None):
-                title = n.name
-            elif getattr(n, "type", None):
-                title = n.type.rsplit(".", 1)[-1]
-            else:
-                title = f"node_{nid}"
-        return title, root_id
-
-    def _title_for_neighbor(nei_id: str) -> str:
-        nn = g.nodes.get(nei_id)
-        if not nn:
-            return nei_id
-        t, _ = _derive_title_and_root(nei_id, nn)
-        return t
-
-    def _id_sort_key(s: str):
-        return (int(s), "") if s.isdigit() else (10**9, s)
-
-    # One markdown + one code cell per node
     for nid in order:
         n = g.nodes[nid]
         title, root_id = _derive_title_and_root(nid, n)
 
-        # Collect incoming and outgoing edges for this node
-        incoming = [(e.source, e) for e in g.edges if e.target == nid]
-        outgoing = [(e.target, e) for e in g.edges if e.source == nid]
+        incoming = [(e.source, e) for e in incoming_map.get(nid, ())]
+        outgoing = [(e.target, e) for e in outgoing_map.get(nid, ())]
         incoming.sort(key=lambda x: _id_sort_key(x[0]))
         outgoing.sort(key=lambda x: _id_sort_key(x[0]))
 
-        # Build markdown block
-        md_lines = [f"## {title} \# `{root_id}`"]
-
+        md_lines = [f"## {title} \\# `{root_id}`"]
         if incoming:
             md_lines.append(" Input port(s):")
             for src_id, e in incoming:
                 port = f" [in:{e.target_port}]" if getattr(e, 'target_port', None) else ""
-                md_lines.append(f" - from `{src_id}` ({_title_for_neighbor(src_id)}){port}")
-
+                md_lines.append(f" - from `{src_id}` ({_title_for_neighbor(g, src_id)}){port}")
         if outgoing:
             if incoming:
                 md_lines.append("")
             md_lines.append(" Output port(s):")
             for dst_id, e in outgoing:
                 port = f" [out:{e.source_port}]" if getattr(e, 'source_port', None) else ""
-                md_lines.append(f" - to `{dst_id}` ({_title_for_neighbor(dst_id)}){port}")
-
+                md_lines.append(f" - to `{dst_id}` ({_title_for_neighbor(g, dst_id)}){port}")
         cells.append({"cell_type": "markdown", "metadata": {}, "source": "\n".join(md_lines) + "\n"})
 
-        # Code stub (unchanged)
         n_type = n.type or ""
         n_path = n.path or ""
         code_src = (
