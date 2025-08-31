@@ -1,104 +1,159 @@
-# knime2py 
-# KNIME → Python Workbook
+# knime2py — KNIME → Python Workbook
 
-A command-line tool that parses a KNIME project and emits:
+A command-line tool that parses a **KNIME workflow** and emits, for each isolated subgraph (component) inside it:
 
-* a “Python workbook” for each discovered workflow as either a **Jupyter notebook** (`*_workbook.ipynb`) or a **Python script** (`*_workbook.py`)
-* a machine-readable graph with KNIME nodes (`<workflow>.json`)
-* a Graphviz DOT file (`<workflow>.dot`)
+* a machine-readable graph (`<workflow_id>__gNN.json`)
+* a Graphviz DOT file (`<workflow_id>__gNN.dot`)
+* a “Python workbook” as either a **Jupyter notebook** (`<workflow_id>__gNN_workbook.ipynb`) or a **Python script** (`<workflow_id>__gNN_workbook.py`) — if you omit `--workbook`, both are generated
 
-> Status: prototype. Can parse KNIME project, create graphs and Python workbook with one empty section per node. 
+> Status: prototype/MVP. KNIME 5.x workflows supported. Legacy (<node>/<connection>) not supported.
+
 ---
 
 ## Features
 
-* **Workflow discovery** — recursively finds all `workflow.knime` files under a root.
-* **Parser (KNIME 5.x)**
-  * KNIME 5.x: nodes under `<config key="nodes">/config key="node_*">`; edges under `<config key="connections">/config key="connection_*">`.
-  * Legacy: Unsupported.
-* **Node enrichment** — reads each node’s `settings.xml` when present to get a human label and factory class (type).
-* **Outputs per workflow**
+* **Single-workflow focus** — point at a `workflow.knime` or a directory containing exactly one `workflow.knime`.
+* **Component detection** — splits the workflow into **weakly connected components**; each becomes its own output set with an ID suffix like `__g01`, `__g02`, …
+* **KNIME 5.x parser** — reads nodes under `<config key="nodes">/config key="node_*">` and connections under `<config key="connections">/config key="connection_*">`.
+* **Node enrichment** — if available, reads the node’s `settings.xml` to extract a human label and the factory class (type).
+* **Topological ordering** — workbook sections are ordered by DAG topological sort; if a cycle exists, remaining nodes are appended in a stable order.
+* **Readable workbooks**
 
-  * `*.json` graph (nodes, edges, metadata)
-  * `*.dot` Graphviz (left-to-right)
-  * `*_workbook.ipynb` (default) or `*_workbook.py` with one section per node
-* **Topological ordering** — workbook sections ordered by DAG topological sort; if a cycle is detected, remaining nodes are appended in a stable order.
+  * **Notebook cells**: markdown header like
+    `## CSV Reader` followed by `root: \`1\`\` and **Input port(s)/Output port(s)** listing neighbor nodes and ports.
+  * **Script stubs**: `def step_<id>_<title>()` with the same metadata in comments.
 
 ---
 
 ## Requirements
 
 * Python 3.8+
-* (Optional) Graphviz (`dot`) to render `.dot` files
-* A KNIME project directory containing one or more `workflow.knime` files
+* [`lxml`](https://lxml.de/) (XML parsing)
+* (Optional) Graphviz CLI to render `.dot` (`dot`, `neato`, etc.)
 
 ---
 
 ## Quick start
 
 ```bash
-# Run against a KNIME project root, write outputs to ./out
-python k2p.py /path/to/KNIME_project --out out
+# From the repo root:
+# Generate BOTH notebook and script (default when --workbook is omitted)
+python k2p.py /path/to/workflow.knime --out out_dir
 
-# Generate a Jupyter notebook workbook (default)
-python k2p.py /path/to/KNIME_project --out out --workbook ipynb
+# Or pass a directory that contains exactly one workflow.knime
+python k2p.py /path/to/knime_project_dir --out out_dir
 
-# Generate a Python script workbook
-python k2p.py /path/to/KNIME_project --out out --workbook py
+# Only notebook
+python k2p.py /path/to/workflow.knime --out out_dir --workbook ipynb
 
-# Generate both formats
-python k2p.py /path/to/KNIME_project --out out --workbook both
-
-# Only top-level workflows (skip nested ones with deeper paths)
-python k2p.py /path/to/KNIME_project --out out --toponly
+# Only script
+python k2p.py /path/to/workflow.knime --out out_dir --workbook py
 ```
 
-Outputs are placed in the `--out` directory, one set per discovered workflow.
+Outputs are written to `out_dir/` with one set **per component**:
+
+```
+<base>__g01.json
+<base>__g01.dot
+<base>__g01_workbook.ipynb
+<base>__g01_workbook.py
+<base>__g02.json
+…
+```
+
+`<base>` is the workflow directory name; `__gNN` is the component index.
 
 ---
 
 ## CLI
 
 ```
-usage: k2p.py [-h] [--out OUT] [--toponly] [--workbook {py,ipynb,both}] root
+usage: k2p.py [-h] [--out OUT] [--workbook {py,ipynb}] path
 
 positional arguments:
-  root                  Path to KNIME project root directory
+  path                  Path to a workflow.knime file OR a directory containing exactly one workflow.knime
 
 options:
   -h, --help            Show help message and exit
-  --out OUT             Output directory for JSON/DOT/Workbook (default: out_graphs)
-  --toponly             Emit only the shallowest (top-level) workflows by path depth
-  --workbook {py,ipynb,both}
-                        Which workbook format(s) to generate (default: ipynb)
+  --out OUT             Output directory (default: out_graphs)
+  --workbook {py,ipynb}
+                        Workbook format to generate. Omit to generate both.
 ```
+
+---
+
+## What gets emitted
+
+### Graph JSON (per component)
+
+* Nodes keyed by KNIME node id (strings)
+* Edges with `source`, `target`, and optional `source_port` / `target_port`
+* Node `name`, `type` (factory class), and `path` when discoverable
+
+### Graphviz DOT (per component)
+
+Left-to-right graph with node labels:
+
+```dot
+digraph knime {
+  rankdir=LR;
+  "1" [shape=box, style=rounded, label="1\nCSV Reader\n<org.knime...CSVTableReaderNodeFactory>"];
+  "2" [shape=box, style=rounded, label="2\nCSV Writer\n<org.knime...CSVWriter2NodeFactory>"];
+  "1" -> "2" [taillabel="1", headlabel="1"];
+}
+```
+
+Render example:
+
+```bash
+dot -Tpng <base>__g01.dot -o component01.png
+```
+
+### Workbooks (per component)
+
+**Notebook (`.ipynb`)**
+For each node, a markdown cell like:
+
+```
+## CSV Reader
+ root: `1`
+ Input port(s):
+ - from `…` (Upstream Title) [in:1]
+
+ Output port(s):
+ - to `2` (CSV Writer) [out:1]
+```
+
+followed by a code stub that references a shared `context` dict.
+
+**Script (`.py`)**
+Functions named `step_<id>_<title>()` with the same metadata embedded as comments, and a `run_all()` that calls steps in topological order.
+
+---
 
 ## KNIME compatibility
 
-* **Supported**: KNIME 5.x exports where `workflow.knime` stores nodes under `<config key="nodes">` and connections under `<config key="connections">`.
-* **Legacy**: Unsupported. 
-* **Components / metanodes / loops**: Any discovered `workflow.knime` (including nested) is treated as a separate workflow. Detailed expansion of component semantics is **not** implemented yet.
+* **Supported:** KNIME 5.x exports where `workflow.knime` stores nodes under `<config key="nodes">` and connections under `<config key="connections">`.
+* **Not supported:** older “legacy” exports using `<node>`/`<connection>` only.
+* **Components/metanodes/loops:** each discovered `workflow.knime` is parsed; nested workflows are treated independently if you run the CLI for them.
 
-If nodes do not appear for a workflow, provide a minimal example so XML paths can be extended.
-
----
-
-## Design notes
-
-* Namespace-tolerant parsing with fallbacks when attributes are missing.
-* Node labels inferred from the directory portion of `node_settings_file` and refined from `settings.xml` (entries like `name`, `label`, `factory`).
-* Topological order drives workbook section order. On cycles, remaining nodes are appended in stable order.
+If your workflow variant isn’t parsed, share a small repro and we’ll extend the XPath.
 
 ---
 
-## Contributing
+## Development & Tests
 
-* Open an issue with a small sample workflow (redacted is fine) and your KNIME version.
-* PRs for new node translators should include: a tiny test workflow, emitted code stub, and brief notes on assumptions.
+* Repo organizes logic under the `knime2py/` package; the CLI is `k2p.py`.
+* Tests live under `tests/`. Run from the repo root:
+
+  ```bash
+  pytest -q
+  ```
 
 ---
 
 ## License
+
 MIT
 
 ---
