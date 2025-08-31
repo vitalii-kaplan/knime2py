@@ -54,28 +54,55 @@ def write_graph_json(g, out_dir: Path) -> Path:
     return fp
 
 def write_graph_dot(g, out_dir: Path) -> Path:
+    import re
+
+    def _derive_title_and_root(nid: str, n) -> tuple[str, str]:
+        """Return (title, root_id) from folder name like 'CSV Reader (#1)' when available."""
+        root_id = nid
+        title = None
+        if getattr(n, "path", None):
+            base = Path(n.path).name  # e.g. "CSV Reader (#1)"
+            m = re.match(r"^(.*?)\s*\(#(\d+)\)\s*$", base)
+            if m:
+                title = m.group(1)
+                root_id = m.group(2)
+        if not title:
+            if getattr(n, "name", None):
+                title = n.name
+            elif getattr(n, "type", None):
+                title = n.type.rsplit(".", 1)[-1]  # short class name
+            else:
+                title = f"node_{nid}"
+        return title, root_id
+
+    def _esc(s: str) -> str:
+        return s.replace("\\", "\\\\").replace('"', '\\"')
+
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}.dot"
     lines = ["digraph knime {", "  rankdir=LR;"]
+
+    # Nodes: label = "<title>\n<root_id>"
     for nid, n in g.nodes.items():
-        label_parts = [nid]
-        if n.name:
-            label_parts.append(n.name)
-        if n.type:
-            label_parts.append(f"<{n.type}>")
-        label = "\n".join(label_parts)
-        lines.append(f"  \"{nid}\" [shape=box, style=rounded, label=\"{label}\"];")
+        title, root_id = _derive_title_and_root(nid, n)
+        label = _esc(f"{title}\n{root_id}")
+        lines.append(f'  "{nid}" [shape=box, style=rounded, label="{label}"];')
+
+    # Edges (unchanged)
     for e in g.edges:
         attrs = []
-        if e.source_port:
-            attrs.append(f"taillabel=\"{e.source_port}\"")
-        if e.target_port:
-            attrs.append(f"headlabel=\"{e.target_port}\"")
+        if getattr(e, "source_port", None):
+            attrs.append(f'taillabel="{_esc(str(e.source_port))}"')
+        if getattr(e, "target_port", None):
+            attrs.append(f'headlabel="{_esc(str(e.target_port))}"')
         attr_str = (" [" + ", ".join(attrs) + "]") if attrs else ""
-        lines.append(f"  \"{e.source}\" -> \"{e.target}\"{attr_str};")
+        lines.append(f'  "{e.source}" -> "{e.target}"{attr_str};')
+
     lines.append("}")
     fp.write_text("\n".join(lines))
     return fp
+
+
 
 def write_workbook_py(g, out_dir: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
