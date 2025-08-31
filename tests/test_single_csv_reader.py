@@ -18,3 +18,19 @@ def test_parse_single_csv_reader_only_one_node(wf_single_csv_path: Path):
     assert re.search(r"\bcsv\b", node.name or "", re.I) and re.search(r"\breader\b", node.name or "", re.I)
     assert node.type and re.search(r"csv.*reader", node.type, re.I)
     assert node.path
+
+def test_node_state_idle_from_settings(wf_single_csv_path: Path):
+    """
+    The single-CSV sample has one node whose settings.xml contains:
+      <entry key="state" type="xstring" value="IDLE"/>
+    Verify the parser surfaces that as node.state == "IDLE".
+    """
+    g = k2p.parse_workflow(wf_single_csv_path)
+
+    # sanity
+    assert len(g.nodes) == 1
+    assert len(g.edges) == 0
+
+    # the only node
+    (nid, node), = g.nodes.items()
+    assert node.state == "IDLE"
