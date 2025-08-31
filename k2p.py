@@ -57,19 +57,21 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
     p.add_argument("--out", type=Path, default=Path("out_graphs"), help="Output directory")
     p.add_argument(
         "--workbook",
-        choices=["py", "ipynb", "both"],
-        default="ipynb",
-        help="Which workbook format(s) to generate.",
+        choices=["py", "ipynb"],          # removed "both"
+        default=None,                     # None => generate both
+        help="Workbook format to generate. Omit to generate both.",
     )
 
     args = p.parse_args(argv)
+
+    
 
     wf = _resolve_single_workflow(args.path)
     out_dir = args.out.expanduser().resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        graphs = parse_workflow_components(wf)  # <-- one WorkflowGraph per isolated component
+        graphs = parse_workflow_components(wf)  # one WorkflowGraph per isolated component
     except Exception as e:
         print(f"ERROR parsing {wf}: {e}", file=sys.stderr)
         return 3
@@ -84,9 +86,10 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
         d = write_graph_dot(g, out_dir)
 
         wb_py = wb_ipynb = None
-        if args.workbook in ("py", "both"):
+        # If --workbook is omitted, create BOTH. If set, create only the requested one.
+        if args.workbook in (None, "py"):
             wb_py = write_workbook_py(g, out_dir)
-        if args.workbook in ("ipynb", "both"):
+        if args.workbook in (None, "ipynb"):
             wb_ipynb = write_workbook_ipynb(g, out_dir)
 
         components.append({
@@ -106,7 +109,6 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
     }
     print(json.dumps(summary, indent=2))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(run_cli())
