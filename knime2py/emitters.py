@@ -1,6 +1,7 @@
 # emitters.py
 from __future__ import annotations
 import json
+import re
 from dataclasses import asdict
 from pathlib import Path
 from collections import defaultdict, deque
@@ -114,30 +115,76 @@ def write_workbook_py(g, out_dir: Path) -> Path:
     return fp
 
 def write_workbook_ipynb(g, out_dir: Path) -> Path:
+    """
+    Emit a Jupyter notebook (.ipynb) with one markdown section and one code cell per KNIME node,
+    ordered by the workflow's topological order.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.ipynb"
     order = topo_order(g.nodes, g.edges)
 
     cells = []
+
+    # Top-level title / metadata
     title_md = (
         f"# Workflow: {g.workflow_id}\n"
         f"Generated from KNIME workflow at `{g.workflow_path}`\n"
     )
-    cells.append({"cell_type": "markdown", "metadata": {}, "source": title_md})
-    context_src = "# Shared context to pass dataframes/tables between steps\ncontext = {}\n"
-    cells.append({"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": context_src})
-    for idx, nid in enumerate(order, start=1):
+    cells.append({
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": title_md
+    })
+
+    # Shared context cell
+    context_src = (
+        "# Shared context to pass dataframes/tables between steps\n"
+        "context = {}\n"
+    )
+    cells.append({
+        "cell_type": "code",
+        "metadata": {},
+        "execution_count": None,
+        "outputs": [],
+        "source": context_src
+    })
+
+    # One markdown + one code cell per node
+    for nid in order:
         n = g.nodes[nid]
-        n_name = n.name or f"node_{nid}"
+
+        # Prefer folder name "CSV Reader (#1)" to derive title and id
+        title = None
+        root_id = nid
+        if n.path:
+            base = Path(n.path).name  # e.g. "CSV Reader (#1)"
+            m = re.match(r"^(.*?)\s*\(#(\d+)\)\s*$", base)
+            if m:
+                title = m.group(1)
+                root_id = m.group(2)
+
+        if not title:
+            # Fallbacks if folder pattern not available
+            if n.name:
+                title = n.name
+            elif n.type:
+                # Last segment of factory class, e.g., "...CSVWriter2NodeFactory" -> "CSVWriter2NodeFactory"
+                title = n.type.rsplit(".", 1)[-1]
+            else:
+                title = f"node_{nid}"
+
+        # Markdown exactly as requested:
+        md = f"## {title}\n root: `{root_id}`\n"
+        cells.append({
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": md
+        })
+
+        # Keep the same code stub as before (unchanged)
+        n_name = title
         n_type = n.type or ""
         n_path = n.path or ""
-        md = (
-            f"## Step {idx}: {n_name}\n"
-            f"- Node ID: `{nid}`\n"
-            f"- Type: `{n_type}`\n"
-            f"- Original path: `{n_path}`\n"
-        )
-        cells.append({"cell_type": "markdown", "metadata": {}, "source": md})
         code_src = (
             f"# {n_name}  [{n_type}]  (node id: {nid})\n"
             f"# TODO: implement this node translation\n"
@@ -145,15 +192,30 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
             + "# Example: read from context['<src_id>:output'] and write to context['<this_id>:output']\n"
             "pass\n"
         )
-        cells.append({"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": code_src})
+        cells.append({
+            "cell_type": "code",
+            "metadata": {},
+            "execution_count": None,
+            "outputs": [],
+            "source": code_src
+        })
+
     nb = {
         "cells": cells,
         "metadata": {
-            "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
-            "language_info": {"name": "python", "pygments_lexer": "ipython3"},
+            "kernelspec": {
+                "display_name": "Python 3",
+                "language": "python",
+                "name": "python3"
+            },
+            "language_info": {
+                "name": "python",
+                "pygments_lexer": "ipython3"
+            }
         },
         "nbformat": 4,
-        "nbformat_minor": 5,
+        "nbformat_minor": 5
     }
+
     fp.write_text(json.dumps(nb, indent=2, ensure_ascii=False))
     return fp
