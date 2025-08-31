@@ -116,11 +116,24 @@ def write_graph_dot(g, out_dir: Path) -> Path:
     fp = out_dir / f"{g.workflow_id}.dot"
     lines = ["digraph knime {", "  rankdir=LR;"]
 
-    # Nodes: label = "<title>\n<root_id>"
+    color_map = {
+        "EXECUTED": "lightgreen",
+        "CONFIGURED": "yellow",
+        "IDLE": "red",
+    }
+
+    # Nodes: label = "<title>\n<root_id>", optional fill by state
     for nid, n in g.nodes.items():
         title, root_id = _derive_title_and_root(nid, n)
         label = _esc(f"{title}\n{root_id}")
-        lines.append(f'  "{nid}" [shape=box, style=rounded, label="{label}"];')
+        state = getattr(n, "state", None)
+        fill = color_map.get(state)
+        if fill:
+            lines.append(
+                f'  "{nid}" [shape=box, style="rounded,filled", fillcolor="{fill}", label="{label}"];'
+            )
+        else:
+            lines.append(f'  "{nid}" [shape=box, style=rounded, label="{label}"];')
 
     # Edges
     for e in g.edges:
@@ -156,6 +169,7 @@ def write_workbook_py(g, out_dir: Path) -> Path:
         n = g.nodes[nid]
         title, root_id = _derive_title_and_root(nid, n)
         safe_name = _safe_name_from_title(title)
+        state = getattr(n, "state", None) or "UNKNOWN"
 
         incoming = [(e.source, e) for e in incoming_map.get(nid, ())]
         outgoing = [(e.target, e) for e in outgoing_map.get(nid, ())]
@@ -165,6 +179,7 @@ def write_workbook_py(g, out_dir: Path) -> Path:
         lines.append(f"def node_{nid}_{safe_name}():")
         lines.append(f"    # {title}")
         lines.append(f"    # root: {root_id}")
+        lines.append(f"    # state: {state}")
         if incoming:
             lines.append("    # Input port(s):")
             for src_id, e in incoming:
@@ -202,7 +217,7 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
     """
     Emit a Jupyter notebook (.ipynb) with one markdown section and one code cell per KNIME node,
     ordered by the workflow's topological order. Markdown shows a concise title, root id,
-    and lists of input/output neighbors by name.
+    node state, and lists of input/output neighbors by name.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.ipynb"
@@ -222,20 +237,23 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
     for nid in order:
         n = g.nodes[nid]
         title, root_id = _derive_title_and_root(nid, n)
+        state = getattr(n, "state", None) or "UNKNOWN"
 
         incoming = [(e.source, e) for e in incoming_map.get(nid, ())]
         outgoing = [(e.target, e) for e in outgoing_map.get(nid, ())]
         incoming.sort(key=lambda x: _id_sort_key(x[0]))
         outgoing.sort(key=lambda x: _id_sort_key(x[0]))
 
-        md_lines = [f"## {title} \\# `{root_id}`"]
+        md_lines = [f"## {title} \\# `{root_id}`", f" State: `{state}`"]
         if incoming:
+            if state:
+                md_lines.append("")
             md_lines.append(" Input port(s):")
             for src_id, e in incoming:
                 port = f" [in:{e.target_port}]" if getattr(e, 'target_port', None) else ""
                 md_lines.append(f" - from `{src_id}` ({_title_for_neighbor(g, src_id)}){port}")
         if outgoing:
-            if incoming:
+            if incoming or state:
                 md_lines.append("")
             md_lines.append(" Output port(s):")
             for dst_id, e in outgoing:
@@ -247,7 +265,8 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
         n_path = n.path or ""
         code_src = (
             f"# {title}  [{n_type}]  (node id: {nid})\n"
-            f"# TODO: implement this node translation\n"
+            f"# state: {state}\n"
+            "# TODO: implement this node translation\n"
             + (f"# original node path: {n_path}\n" if n_path else "")
             + "# Example: read from context['<src_id>:output'] and write to context['<this_id>:output']\n"
             "pass\n"

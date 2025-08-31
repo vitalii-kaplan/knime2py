@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Literal
 
 from lxml import etree as ET
 from .xml_utils import XML_PARSER, parse_settings_xml
@@ -16,6 +16,8 @@ class Node:
     name: Optional[str] = None
     type: Optional[str] = None
     path: Optional[str] = None
+    # Execution state (maps to KNIME colors): EXECUTED=green, CONFIGURED=yellow, IDLE=red
+    state: Optional[Literal["EXECUTED", "CONFIGURED", "IDLE"]] = None
 
 
 @dataclass
@@ -36,6 +38,27 @@ class WorkflowGraph:
 
 def discover_workflows(root: Path) -> List[Path]:
     return sorted((p for p in root.rglob("workflow.knime") if p.is_file()), key=lambda p: str(p))
+
+
+def _read_state_from_settings(settings_ref: Path) -> Optional[str]:
+    """
+    Read the <entry key="state" value="..."/> from a node's settings.xml.
+    Accepts either the settings.xml file path OR the node directory path.
+    Returns one of {"EXECUTED", "CONFIGURED", "IDLE"} (uppercased) or None.
+    """
+    settings = settings_ref
+    if settings_ref.is_dir():
+        settings = settings_ref / "settings.xml"
+    if not settings.exists():
+        return None
+    try:
+        root = ET.parse(str(settings), parser=XML_PARSER).getroot()
+        vals = root.xpath(".//*[local-name()='entry' and @key='state']/@value")
+        if vals:
+            return (vals[0] or "").strip().upper()
+    except Exception:
+        pass
+    return None
 
 
 def _parse_knime5_structure(root, workflow_file: Path) -> Tuple[Dict[str, Node], List[Edge]]:
@@ -70,17 +93,25 @@ def _parse_knime5_structure(root, workflow_file: Path) -> Tuple[Dict[str, Node],
 
             name = None
             node_path = None
+            state: Optional[str] = None
+
             if settings_file:
-                rel = Path(settings_file)
-                name = rel.parent.name or name
-                abs_settings = (workflow_file.parent / rel)
+                rel = Path(settings_file)                       # e.g. "CSV Reader (#1)/settings.xml"
+                inferred_folder_name = rel.parent.name or None  # e.g. "CSV Reader (#1)"
+                name = inferred_folder_name or name
+                abs_settings = (workflow_file.parent / rel)     # absolute path to settings.xml
+
                 if abs_settings.exists():
-                    node_path = str(abs_settings.parent)
+                    node_path = str(abs_settings.parent)        # directory containing settings.xml
+                    # Enrich name/type from settings.xml (existing helper)
                     nm2, fac2 = parse_settings_xml(abs_settings.parent)
                     name = nm2 or name
                     node_type = fac2 or node_type
+                    # Read exact state from settings.xml
+                    state = _read_state_from_settings(abs_settings)
 
-            nodes[nid_str] = Node(id=nid_str, name=name, type=node_type, path=node_path)
+            # Create node (state comes from settings.xml if present, otherwise None)
+            nodes[nid_str] = Node(id=nid_str, name=name, type=node_type, path=node_path, state=state)
 
     if conns_cont is not None:
         conn_cfgs = conns_cont.xpath("./*[local-name()='config' and starts-with(@key,'connection_')]")
@@ -139,7 +170,6 @@ def _weakly_connected_components(nodes: Dict[str, Node], edges: List[Edge]) -> L
                     seen.add(v)
                     stack.append(v)
         comps.append(sorted(comp, key=lambda x: (int(x) if x.isdigit() else float("inf"), x)))
-    # Deterministic order: by smallest numeric node id in each component
     comps.sort(key=lambda comp: (int(comp[0]) if comp and comp[0].isdigit() else float("inf"), comp[0] if comp else ""))
     return comps
 
@@ -166,8 +196,8 @@ def _split_into_subgraphs(workflow_id: str, workflow_path: str,
 
 def parse_workflow_components(workflow_file: Path) -> List[WorkflowGraph]:
     """
-    Parse a single workflow.knime and return one WorkflowGraph per weakly connected component
-    (i.e., per isolated graph). Component IDs are suffixed as '__g01', '__g02', …
+    Parse a single workflow.knime and return one WorkflowGraph per weakly connected component.
+    Component IDs are suffixed as '__g01', '__g02', …
     """
     root = ET.parse(str(workflow_file), parser=XML_PARSER).getroot()
     nodes, edges = _parse_knime5_structure(root, workflow_file)
@@ -180,7 +210,7 @@ def parse_workflow_components(workflow_file: Path) -> List[WorkflowGraph]:
 
 def parse_workflow(workflow_file: Path) -> WorkflowGraph:
     """
-    Backward-compatible parser that returns the *combined* graph for the workflow.
+    Backward-compatible parser that returns the combined graph for the workflow.
     Use parse_workflow_components(...) if you need per-component subgraphs.
     """
     root = ET.parse(str(workflow_file), parser=XML_PARSER).getroot()
