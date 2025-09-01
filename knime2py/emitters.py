@@ -9,7 +9,7 @@ from collections import defaultdict, deque
 from typing import Dict, List, Tuple, Iterator
 
 __all__ = [
-    "topo_order",
+    "depth_order",
     "write_graph_json",
     "write_graph_dot",
     "write_workbook_py",
@@ -75,33 +75,98 @@ def _title_for_neighbor(g, nei_id: str) -> str:
 # ----------------------------
 # Graph utility used by emitters
 # ----------------------------
-def topo_order(nodes, edges) -> list[str]:
-    indeg = {nid: 0 for nid in nodes}
-    adj = defaultdict(list)
+
+
+from collections import defaultdict
+from typing import List
+
+def depth_order(nodes, edges) -> List[str]:
+    """
+    Depth-biased traversal that *emits* a node only after all of its predecessors
+    have been visited. It explores as deep as possible along outgoing edges, but
+    will recursively visit unvisited predecessors first (backtracking as needed).
+    - Deterministic: numeric node IDs first, then lexicographic.
+    - Safe on cycles: nodes in the current recursion stack are not re-entered.
+    - Covers disconnected components.
+
+    Args:
+        nodes: dict[node_id -> NodeLike] (only keys are used here)
+        edges: iterable of EdgeLike with .source and .target
+
+    Returns:
+        A list of node IDs in the desired traversal order.
+    """
+    # Build predecessor/successor maps
+    succ = defaultdict(list)   # u -> [v...]
+    preds = defaultdict(set)   # v -> {u...}
     for e in edges:
         if e.source in nodes and e.target in nodes:
-            adj[e.source].append(e.target)
-            indeg[e.target] += 1
-    q = deque([n for n, d in indeg.items() if d == 0])
-    order = []
-    while q:
-        u = q.popleft()
-        order.append(u)
-        for v in adj[u]:
-            indeg[v] -= 1
-            if indeg[v] == 0:
-                q.append(v)
-    if len(order) != len(nodes):
-        remaining = [n for n in nodes if n not in order]
-        order.extend(sorted(remaining))
+            succ[e.source].append(e.target)
+            preds[e.target].add(e.source)
+
+    # Ensure every node appears in maps
+    for nid in nodes.keys():
+        succ.setdefault(nid, [])
+        preds.setdefault(nid, set())
+
+    def _id_key(s: str):
+        # numeric IDs first, then lexicographic
+        return (0, int(s)) if s.isdigit() else (1, s)
+
+    # Sort children deterministically
+    for u in list(succ.keys()):
+        succ[u].sort(key=_id_key)
+
+    # Roots: no predecessors
+    roots = sorted([nid for nid in nodes if not preds[nid]], key=_id_key)
+
+    order: List[str] = []
+    visited = set()
+    onstack = set()  # cycle guard
+
+    def dfs(u: str):
+        if u in visited:
+            return
+        if u in onstack:
+            # back-edge/cycle; don't recurse further
+            return
+        onstack.add(u)
+
+        # First, ensure all predecessors are visited (this may recurse "upstream")
+        for p in sorted(preds[u], key=_id_key):
+            if p not in visited:
+                dfs(p)
+
+        # Now it's safe to emit u
+        if u not in visited:
+            visited.add(u)
+            order.append(u)
+
+        # Go deep along successors
+        for v in succ[u]:
+            if v not in visited:
+                dfs(v)
+
+        onstack.remove(u)
+
+    # 1) Traverse from roots (depth-first)
+    for r in roots:
+        dfs(r)
+
+    # 2) Cover any remaining nodes (disconnected/cyclic leftovers)
+    for nid in sorted(nodes.keys(), key=_id_key):
+        if nid not in visited:
+            dfs(nid)
+
     return order
+
+
 
 # ----------------------------
 # Unified traversal for emitters
 # ----------------------------
 def _traverse_nodes(g) -> Iterator[dict]:
     """
-    Yield per-node context in topological order:
       {
         "nid": str,
         "node": Node,
@@ -112,7 +177,7 @@ def _traverse_nodes(g) -> Iterator[dict]:
         "outgoing": list[(dst_id, Edge)],
       }
     """
-    order = topo_order(g.nodes, g.edges)
+    order = depth_order(g.nodes, g.edges)
     incoming_map, outgoing_map = _build_edge_maps(g.edges)
 
     for nid in order:
