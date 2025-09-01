@@ -15,8 +15,7 @@ A command-line tool that parses a **KNIME workflow** and emits, for each isolate
 * **Single-workflow focus** — point at a `workflow.knime` or a directory containing exactly one `workflow.knime`.
 * **Component detection** — splits the workflow into **weakly connected components**; each becomes its own output set with an ID suffix like `__g01`, `__g02`, …
 * **KNIME 5.x parser** — reads nodes under `<config key="nodes">/config key="node_*">` and connections under `<config key="connections">/config key="connection_*">`.
-* **Node enrichment** — if available, reads the node’s `settings.xml` to extract a human label and the factory class (type).
-* **Topological ordering** — workbook sections are ordered by DAG topological sort; if a cycle exists, remaining nodes are appended in a stable order.
+* **Depth-ready ordering** - sections are emitted by a deterministic depth-first traversal that only visits a node once all of its predecessors have been visited; in cyclic or disconnected regions it continues depth-first and then appends any remaining nodes in a stable order.
 * **Readable workbooks**
 
   * **Notebook cells**: markdown header like
