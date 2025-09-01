@@ -33,3 +33,10 @@ def wf_two_graphs_path() -> Path:
     if not wf.exists():
         pytest.fail(f"Test data missing: {wf}")
     return wf
+
+@pytest.fixture(scope="session")
+def wf_traverse_path() -> Path:
+     wf = _workflow_path("KNIME_traverse_order")
+     if not wf.exists():
+         pytest.fail(f"Missing sample workflow: {wf}")
+     return wf
