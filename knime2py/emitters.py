@@ -6,7 +6,7 @@ import re
 from dataclasses import asdict
 from pathlib import Path
 from collections import defaultdict, deque
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Iterator
 
 __all__ = [
     "topo_order",
@@ -97,6 +97,45 @@ def topo_order(nodes, edges) -> list[str]:
     return order
 
 # ----------------------------
+# Unified traversal for emitters
+# ----------------------------
+def _traverse_nodes(g) -> Iterator[dict]:
+    """
+    Yield per-node context in topological order:
+      {
+        "nid": str,
+        "node": Node,
+        "title": str,
+        "root_id": str,
+        "state": Optional[str],
+        "incoming": list[(src_id, Edge)],
+        "outgoing": list[(dst_id, Edge)],
+      }
+    """
+    order = topo_order(g.nodes, g.edges)
+    incoming_map, outgoing_map = _build_edge_maps(g.edges)
+
+    for nid in order:
+        n = g.nodes[nid]
+        title, root_id = _derive_title_and_root(nid, n)
+        state = getattr(n, "state", None)
+
+        incoming = [(e.source, e) for e in incoming_map.get(nid, ())]
+        outgoing = [(e.target, e) for e in outgoing_map.get(nid, ())]
+        incoming.sort(key=lambda x: _id_sort_key(x[0]))
+        outgoing.sort(key=lambda x: _id_sort_key(x[0]))
+
+        yield {
+            "nid": nid,
+            "node": n,
+            "title": title,
+            "root_id": root_id,
+            "state": state,
+            "incoming": incoming,
+            "outgoing": outgoing,
+        }
+
+# ----------------------------
 # Emission helpers
 # ----------------------------
 def write_graph_json(g, out_dir: Path) -> Path:
@@ -152,8 +191,6 @@ def write_graph_dot(g, out_dir: Path) -> Path:
 def write_workbook_py(g, out_dir: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.py"
-    order = topo_order(g.nodes, g.edges)
-    incoming_map, outgoing_map = _build_edge_maps(g.edges)
 
     lines = []
     lines.append("# Auto-generated from KNIME workflow")
@@ -165,26 +202,31 @@ def write_workbook_py(g, out_dir: Path) -> Path:
     lines.append("context = {}  # e.g., {'1:output_table': df}")
     lines.append("")
 
-    for nid in order:
-        n = g.nodes[nid]
-        title, root_id = _derive_title_and_root(nid, n)
-        safe_name = _safe_name_from_title(title)
-        state = getattr(n, "state", None) or "UNKNOWN"
+    # Generate functions in unified traversal order
+    call_order: List[str] = []
+    for ctx in _traverse_nodes(g):
+        nid = ctx["nid"]
+        n = ctx["node"]
+        title = ctx["title"]
+        root_id = ctx["root_id"]
+        state = ctx["state"] or "UNKNOWN"
+        incoming = ctx["incoming"]
+        outgoing = ctx["outgoing"]
 
-        incoming = [(e.source, e) for e in incoming_map.get(nid, ())]
-        outgoing = [(e.target, e) for e in outgoing_map.get(nid, ())]
-        incoming.sort(key=lambda x: _id_sort_key(x[0]))
-        outgoing.sort(key=lambda x: _id_sort_key(x[0]))
+        safe_name = _safe_name_from_title(title)
+        call_order.append(f"node_{nid}_{safe_name}")
 
         lines.append(f"def node_{nid}_{safe_name}():")
         lines.append(f"    # {title}")
         lines.append(f"    # root: {root_id}")
         lines.append(f"    # state: {state}")
+
         if incoming:
             lines.append("    # Input port(s):")
             for src_id, e in incoming:
                 port = f" [in:{e.target_port}]" if getattr(e, 'target_port', None) else ""
                 lines.append(f"    #  - from {src_id} ({_title_for_neighbor(g, src_id)}){port}")
+
         if outgoing:
             if incoming:
                 lines.append("    #")
@@ -200,12 +242,10 @@ def write_workbook_py(g, out_dir: Path) -> Path:
         lines.append("    pass")
         lines.append("")
 
+    # run_all invoker in the same traversal order
     lines.append("def run_all():")
-    for nid in order:
-        n = g.nodes[nid]
-        title, _ = _derive_title_and_root(nid, n)
-        safe_name = _safe_name_from_title(title)
-        lines.append(f"    node_{nid}_{safe_name}()")
+    for fn in call_order:
+        lines.append(f"    {fn}()")
     lines.append("")
     lines.append("if __name__ == '__main__':")
     lines.append("    run_all()")
@@ -216,15 +256,13 @@ def write_workbook_py(g, out_dir: Path) -> Path:
 def write_workbook_ipynb(g, out_dir: Path) -> Path:
     """
     Emit a Jupyter notebook (.ipynb) with one markdown section and one code cell per KNIME node,
-    ordered by the workflow's topological order. Markdown shows a concise title, root id,
-    node state, and lists of input/output neighbors by name.
+    using the unified traversal. Markdown shows a concise title, root id, node state,
+    and lists of input/output neighbors by name.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.ipynb"
-    order = topo_order(g.nodes, g.edges)
-    incoming_map, outgoing_map = _build_edge_maps(g.edges)
 
-    cells = []
+    cells: List[dict] = []
     title_md = (
         f"# Workflow: {g.workflow_id}\n"
         f"Generated from KNIME workflow at `{g.workflow_path}`\n"
@@ -234,16 +272,16 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
     context_src = "# Shared context to pass dataframes/tables between nodes\ncontext = {}\n"
     cells.append({"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": context_src})
 
-    for nid in order:
-        n = g.nodes[nid]
-        title, root_id = _derive_title_and_root(nid, n)
-        state = getattr(n, "state", None) or "UNKNOWN"
+    for ctx in _traverse_nodes(g):
+        nid = ctx["nid"]
+        n = ctx["node"]
+        title = ctx["title"]
+        root_id = ctx["root_id"]
+        state = ctx["state"] or "UNKNOWN"
+        incoming = ctx["incoming"]
+        outgoing = ctx["outgoing"]
 
-        incoming = [(e.source, e) for e in incoming_map.get(nid, ())]
-        outgoing = [(e.target, e) for e in outgoing_map.get(nid, ())]
-        incoming.sort(key=lambda x: _id_sort_key(x[0]))
-        outgoing.sort(key=lambda x: _id_sort_key(x[0]))
-
+        # Markdown cell
         md_lines = [f"## {title} \\# `{root_id}`", f" State: `{state}`"]
         if incoming:
             if state:
@@ -261,6 +299,7 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
                 md_lines.append(f" - to `{dst_id}` ({_title_for_neighbor(g, dst_id)}){port}")
         cells.append({"cell_type": "markdown", "metadata": {}, "source": "\n".join(md_lines) + "\n"})
 
+        # Code cell
         n_type = n.type or ""
         n_path = n.path or ""
         code_src = (
