@@ -73,13 +73,8 @@ def _title_for_neighbor(g, nei_id: str) -> str:
     return t
 
 # ----------------------------
-# Graph utility used by emitters
+# Depth-biased traversal (depth-ready order)
 # ----------------------------
-
-
-from collections import defaultdict
-from typing import List
-
 def depth_order(nodes, edges) -> List[str]:
     """
     Depth-biased traversal that *emits* a node only after all of its predecessors
@@ -88,13 +83,6 @@ def depth_order(nodes, edges) -> List[str]:
     - Deterministic: numeric node IDs first, then lexicographic.
     - Safe on cycles: nodes in the current recursion stack are not re-entered.
     - Covers disconnected components.
-
-    Args:
-        nodes: dict[node_id -> NodeLike] (only keys are used here)
-        edges: iterable of EdgeLike with .source and .target
-
-    Returns:
-        A list of node IDs in the desired traversal order.
     """
     # Build predecessor/successor maps
     succ = defaultdict(list)   # u -> [v...]
@@ -110,14 +98,11 @@ def depth_order(nodes, edges) -> List[str]:
         preds.setdefault(nid, set())
 
     def _id_key(s: str):
-        # numeric IDs first, then lexicographic
         return (0, int(s)) if s.isdigit() else (1, s)
 
-    # Sort children deterministically
     for u in list(succ.keys()):
         succ[u].sort(key=_id_key)
 
-    # Roots: no predecessors
     roots = sorted([nid for nid in nodes if not preds[nid]], key=_id_key)
 
     order: List[str] = []
@@ -125,54 +110,50 @@ def depth_order(nodes, edges) -> List[str]:
     onstack = set()  # cycle guard
 
     def dfs(u: str):
-        if u in visited:
-            return
-        if u in onstack:
-            # back-edge/cycle; don't recurse further
+        if u in visited or u in onstack:
             return
         onstack.add(u)
 
-        # First, ensure all predecessors are visited (this may recurse "upstream")
+        # Ensure all predecessors are visited first
         for p in sorted(preds[u], key=_id_key):
             if p not in visited:
                 dfs(p)
 
-        # Now it's safe to emit u
         if u not in visited:
             visited.add(u)
             order.append(u)
 
-        # Go deep along successors
+        # Then go deep along successors
         for v in succ[u]:
             if v not in visited:
                 dfs(v)
 
         onstack.remove(u)
 
-    # 1) Traverse from roots (depth-first)
+    # Traverse from roots
     for r in roots:
         dfs(r)
 
-    # 2) Cover any remaining nodes (disconnected/cyclic leftovers)
+    # Cover leftovers
     for nid in sorted(nodes.keys(), key=_id_key):
         if nid not in visited:
             dfs(nid)
 
     return order
 
-
-
 # ----------------------------
-# Unified traversal for emitters
+# Unified traversal context for emitters
 # ----------------------------
 def _traverse_nodes(g) -> Iterator[dict]:
     """
+      Yields per-node context dicts:
       {
         "nid": str,
         "node": Node,
         "title": str,
         "root_id": str,
         "state": Optional[str],
+        "comments": Optional[str],
         "incoming": list[(src_id, Edge)],
         "outgoing": list[(dst_id, Edge)],
       }
@@ -184,6 +165,7 @@ def _traverse_nodes(g) -> Iterator[dict]:
         n = g.nodes[nid]
         title, root_id = _derive_title_and_root(nid, n)
         state = getattr(n, "state", None)
+        comments = getattr(n, "comments", None)
 
         incoming = [(e.source, e) for e in incoming_map.get(nid, ())]
         outgoing = [(e.target, e) for e in outgoing_map.get(nid, ())]
@@ -196,6 +178,7 @@ def _traverse_nodes(g) -> Iterator[dict]:
             "title": title,
             "root_id": root_id,
             "state": state,
+            "comments": comments,
             "incoming": incoming,
             "outgoing": outgoing,
         }
@@ -226,10 +209,13 @@ def write_graph_dot(g, out_dir: Path) -> Path:
         "IDLE": "red",
     }
 
-    # Nodes: label = "<title>\n<root_id>", optional fill by state
+    # Nodes: label = "<title>\n<root_id>\n<comments?>", optional fill by state
     for nid, n in g.nodes.items():
         title, root_id = _derive_title_and_root(nid, n)
-        label = _esc(f"{title}\n{root_id}")
+        parts = [title, root_id]
+        if getattr(n, "comments", None):
+            parts.append(str(n.comments))
+        label = _esc("\n".join(parts))
         state = getattr(n, "state", None)
         fill = color_map.get(state)
         if fill:
@@ -257,7 +243,7 @@ def write_workbook_py(g, out_dir: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.py"
 
-    lines = []
+    lines: List[str] = []
     lines.append("# Auto-generated from KNIME workflow")
     lines.append(f"# workflow: {g.workflow_id}")
     lines.append("")
@@ -267,7 +253,6 @@ def write_workbook_py(g, out_dir: Path) -> Path:
     lines.append("context = {}  # e.g., {'1:output_table': df}")
     lines.append("")
 
-    # Generate functions in unified traversal order
     call_order: List[str] = []
     for ctx in _traverse_nodes(g):
         nid = ctx["nid"]
@@ -275,6 +260,7 @@ def write_workbook_py(g, out_dir: Path) -> Path:
         title = ctx["title"]
         root_id = ctx["root_id"]
         state = ctx["state"] or "UNKNOWN"
+        comments = ctx["comments"]
         incoming = ctx["incoming"]
         outgoing = ctx["outgoing"]
 
@@ -285,6 +271,10 @@ def write_workbook_py(g, out_dir: Path) -> Path:
         lines.append(f"    # {title}")
         lines.append(f"    # root: {root_id}")
         lines.append(f"    # state: {state}")
+        if comments:
+            lines.append("    # comments:")
+            for line in str(comments).splitlines():
+                lines.append(f"    #   {line}")
 
         if incoming:
             lines.append("    # Input port(s):")
@@ -293,7 +283,7 @@ def write_workbook_py(g, out_dir: Path) -> Path:
                 lines.append(f"    #  - from {src_id} ({_title_for_neighbor(g, src_id)}){port}")
 
         if outgoing:
-            if incoming:
+            if incoming or comments:
                 lines.append("    #")
             lines.append("    # Output port(s):")
             for dst_id, e in outgoing:
@@ -307,7 +297,6 @@ def write_workbook_py(g, out_dir: Path) -> Path:
         lines.append("    pass")
         lines.append("")
 
-    # run_all invoker in the same traversal order
     lines.append("def run_all():")
     for fn in call_order:
         lines.append(f"    {fn}()")
@@ -321,7 +310,7 @@ def write_workbook_py(g, out_dir: Path) -> Path:
 def write_workbook_ipynb(g, out_dir: Path) -> Path:
     """
     Emit a Jupyter notebook (.ipynb) with one markdown section and one code cell per KNIME node,
-    using the unified traversal. Markdown shows a concise title, root id, node state,
+    using the unified traversal. Markdown shows title, root id, state, comments,
     and lists of input/output neighbors by name.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -343,39 +332,53 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
         title = ctx["title"]
         root_id = ctx["root_id"]
         state = ctx["state"] or "UNKNOWN"
+        comments = ctx["comments"]
         incoming = ctx["incoming"]
         outgoing = ctx["outgoing"]
 
         # Markdown cell
         md_lines = [f"## {title} \\# `{root_id}`", f" State: `{state}`"]
+        if comments:
+            md_lines.append("")
+            md_lines.append(" Comments:")
+            for line in str(comments).splitlines():
+                md_lines.append(f" > {line}")
+
         if incoming:
-            if state:
-                md_lines.append("")
+            md_lines.append("")
             md_lines.append(" Input port(s):")
             for src_id, e in incoming:
                 port = f" [in:{e.target_port}]" if getattr(e, 'target_port', None) else ""
                 md_lines.append(f" - from `{src_id}` ({_title_for_neighbor(g, src_id)}){port}")
+
         if outgoing:
-            if incoming or state:
-                md_lines.append("")
+            md_lines.append("")
             md_lines.append(" Output port(s):")
             for dst_id, e in outgoing:
                 port = f" [out:{e.source_port}]" if getattr(e, 'source_port', None) else ""
                 md_lines.append(f" - to `{dst_id}` ({_title_for_neighbor(g, dst_id)}){port}")
+
         cells.append({"cell_type": "markdown", "metadata": {}, "source": "\n".join(md_lines) + "\n"})
 
         # Code cell
         n_type = n.type or ""
         n_path = n.path or ""
-        code_src = (
-            f"# {title}  [{n_type}]  (node id: {nid})\n"
-            f"# state: {state}\n"
-            "# TODO: implement this node translation\n"
-            + (f"# original node path: {n_path}\n" if n_path else "")
-            + "# Example: read from context['<src_id>:output'] and write to context['<this_id>:output']\n"
-            "pass\n"
-        )
-        cells.append({"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": code_src})
+        code_lines = [
+            f"# {title}  [{n_type}]  (node id: {nid})",
+            f"# state: {state}",
+        ]
+        if comments:
+            code_lines.append("# comments:")
+            for line in str(comments).splitlines():
+                code_lines.append(f"#   {line}")
+        if n_path:
+            code_lines.append(f"# original node path: {n_path}")
+        code_lines += [
+            "# TODO: implement this node translation",
+            "# Example: read from context['<src_id>:output'] and write to context['<this_id>:output']",
+            "pass",
+        ]
+        cells.append({"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": "\n".join(code_lines) + "\n"})
 
     nb = {
         "cells": cells,

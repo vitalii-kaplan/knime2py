@@ -1,3 +1,4 @@
+# knime2py/parse_knime.py
 #!/usr/bin/env python3
 from __future__ import annotations
 
@@ -18,6 +19,8 @@ class Node:
     path: Optional[str] = None
     # Execution state (maps to KNIME colors): EXECUTED=green, CONFIGURED=yellow, IDLE=red
     state: Optional[Literal["EXECUTED", "CONFIGURED", "IDLE"]] = None
+    # Node annotation text (cleaned: %%00010 removed/collapsed)
+    comments: Optional[str] = None
 
 
 @dataclass
@@ -40,25 +43,44 @@ def discover_workflows(root: Path) -> List[Path]:
     return sorted((p for p in root.rglob("workflow.knime") if p.is_file()), key=lambda p: str(p))
 
 
-def _read_state_from_settings(settings_ref: Path) -> Optional[str]:
+def _clean_annotation_text(s: str) -> str:
     """
-    Read the <entry key="state" value="..."/> from a node's settings.xml.
-    Accepts either the settings.xml file path OR the node directory path.
-    Returns one of {"EXECUTED", "CONFIGURED", "IDLE"} (uppercased) or None.
+    KNIME encodes line breaks as the literal token '%%00010'.
+    We strip/normalize it to a single space and collapse whitespace.
     """
-    settings = settings_ref
-    if settings_ref.is_dir():
-        settings = settings_ref / "settings.xml"
+    s = s.replace("%%00010", " ")
+    return " ".join(s.split()).strip()
+
+
+def _read_state_and_annotation_from_settings(settings_ref: Path) -> tuple[Optional[str], Optional[str]]:
+    """
+    Read <entry key="state" .../> and nodeAnnotation/text from settings.xml.
+    Accepts either a settings.xml file path or the node directory path.
+    Returns (STATE|None, COMMENTS|None).
+    """
+    settings = settings_ref / "settings.xml" if settings_ref.is_dir() else settings_ref
     if not settings.exists():
-        return None
+        return None, None
+
     try:
         root = ET.parse(str(settings), parser=XML_PARSER).getroot()
-        vals = root.xpath(".//*[local-name()='entry' and @key='state']/@value")
-        if vals:
-            return (vals[0] or "").strip().upper()
+        # state
+        state_vals = root.xpath(".//*[local-name()='entry' and @key='state']/@value")
+        state = (state_vals[0].strip().upper() if state_vals and state_vals[0] else None)
+
+        # nodeAnnotation/text
+        ann_vals = root.xpath(
+            ".//*[local-name()='config' and @key='nodeAnnotation']"
+            "/*[local-name()='entry' and @key='text']/@value"
+        )
+        comments = None
+        if ann_vals:
+            raw = ann_vals[0] or ""
+            comments = _clean_annotation_text(raw)
+
+        return state, (comments or None)
     except Exception:
-        pass
-    return None
+        return None, None
 
 
 def _parse_knime5_structure(root, workflow_file: Path) -> Tuple[Dict[str, Node], List[Edge]]:
@@ -94,24 +116,27 @@ def _parse_knime5_structure(root, workflow_file: Path) -> Tuple[Dict[str, Node],
             name = None
             node_path = None
             state: Optional[str] = None
+            comments: Optional[str] = None
 
             if settings_file:
-                rel = Path(settings_file)                       # e.g. "CSV Reader (#1)/settings.xml"
-                inferred_folder_name = rel.parent.name or None  # e.g. "CSV Reader (#1)"
-                name = inferred_folder_name or name
-                abs_settings = (workflow_file.parent / rel)     # absolute path to settings.xml
-
+                rel = Path(settings_file)                      # e.g. "Column Filter (#1350)/settings.xml"
+                name = rel.parent.name or name                 # folder name
+                abs_settings = (workflow_file.parent / rel)    # absolute path to settings.xml
                 if abs_settings.exists():
-                    node_path = str(abs_settings.parent)        # directory containing settings.xml
-                    # Enrich name/type from settings.xml (existing helper)
+                    node_path = str(abs_settings.parent)
                     nm2, fac2 = parse_settings_xml(abs_settings.parent)
                     name = nm2 or name
                     node_type = fac2 or node_type
-                    # Read exact state from settings.xml
-                    state = _read_state_from_settings(abs_settings)
+                    state, comments = _read_state_and_annotation_from_settings(abs_settings)
 
-            # Create node (state comes from settings.xml if present, otherwise None)
-            nodes[nid_str] = Node(id=nid_str, name=name, type=node_type, path=node_path, state=state)
+            nodes[nid_str] = Node(
+                id=nid_str,
+                name=name,
+                type=node_type,
+                path=node_path,
+                state=state,
+                comments=comments,
+            )
 
     if conns_cont is not None:
         conn_cfgs = conns_cont.xpath("./*[local-name()='config' and starts-with(@key,'connection_')]")
