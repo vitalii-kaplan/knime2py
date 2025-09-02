@@ -106,42 +106,17 @@ def write_workbook_py(g, out_dir: Path) -> Path:
         nid = ctx["nid"]
         n = ctx["node"]
         title = ctx["title"]
-        root_id = ctx["root_id"]
-        state = ctx["state"] or "UNKNOWN"
-        comments = ctx["comments"]
-        incoming = ctx["incoming"]
-        outgoing = ctx["outgoing"]
 
         safe_name = _safe_name_from_title(title)
         call_order.append(f"node_{nid}_{safe_name}")
 
         lines.append(f"def node_{nid}_{safe_name}():")
-        lines.append(f"    # {title}")
-        lines.append(f"    # root: {root_id}")
-        lines.append(f"    # state: {state}")
-        if comments:
-            lines.append("    # comments:")
-            for line in str(comments).splitlines():
-                lines.append(f"    #   {line}")
-
-        if incoming:
-            lines.append("    # Input port(s):")
-            for src_id, e in incoming:
-                port = f" [in:{e.target_port}]" if getattr(e, 'target_port', None) else ""
-                lines.append(f"    #  - from {src_id} ({_title_for_neighbor(g, src_id)}){port}")
-
-        if outgoing:
-            if incoming or comments:
-                lines.append("    #")
-            lines.append("    # Output port(s):")
-            for dst_id, e in outgoing:
-                port = f" [out:{e.source_port}]" if getattr(e, 'source_port', None) else ""
-                lines.append(f"    #  - to {dst_id} ({_title_for_neighbor(g, dst_id)}){port}")
-
-        lines.append("    # TODO: implement this node translation")
-        if n.path:
-            lines.append(f"    # original node path: {n.path}")
-        lines.append("    # Example: read from context['<src_id>:output'] and write to context['<this_id>:output']")
+        if n.type:
+            hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
+            lines.append(f"    # {hub_url}")
+        else:
+            lines.append("    # Factory class unavailable")
+        lines.append("    # TODO: implement this node")
         lines.append("    pass")
         lines.append("")
 
@@ -158,9 +133,8 @@ def write_workbook_py(g, out_dir: Path) -> Path:
 
 def write_workbook_ipynb(g, out_dir: Path) -> Path:
     """
-    Emit a Jupyter notebook (.ipynb) with one markdown section and one code cell per KNIME node,
-    using the unified traversal. Markdown shows title, root id, state, comments,
-    and lists of input/output neighbors by name.
+    Emit a Jupyter notebook (.ipynb) with one markdown section and one *short* code cell per KNIME node.
+    Code cell now only links to the node's KNIME Hub doc and adds a TODO.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.ipynb"
@@ -185,6 +159,7 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
         incoming = ctx["incoming"]
         outgoing = ctx["outgoing"]
 
+        # Markdown (unchanged – still useful context)
         md_lines = [f"## {title} \\# `{root_id}`", f" State: `{state}`"]
         if comments:
             md_lines.append("")
@@ -203,27 +178,22 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
             for dst_id, e in outgoing:
                 port = f" [out:{e.source_port}]" if getattr(e, 'source_port', None) else ""
                 md_lines.append(f" - to `{dst_id}` ({_title_for_neighbor(g, dst_id)}){port}")
-
         cells.append({"cell_type": "markdown", "metadata": {}, "source": "\n".join(md_lines) + "\n"})
 
-        n_type = n.type or ""
-        n_path = n.path or ""
-        code_lines = [
-            f"# {title}  [{n_type}]  (node id: {nid})",
-            f"# state: {state}",
-        ]
-        if comments:
-            code_lines.append("# comments:")
-            for line in str(comments).splitlines():
-                code_lines.append(f"#   {line}")
-        if n_path:
-            code_lines.append(f"# original node path: {n_path}")
-        code_lines += [
-            "# TODO: implement this node translation",
-            "# Example: read from context['<src_id>:output'] and write to context['<this_id>:output']",
-            "pass",
-        ]
-        cells.append({"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": "\n".join(code_lines) + "\n"})
+        # Short code cell
+        if n.type:
+            hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
+            code_src = (
+                f"# {hub_url}\n"
+                "# TODO: implement this node\n"
+            )
+        else:
+            code_src = (
+                "# Factory class unavailable)\n"
+                "# TODO: implement this node\n"
+            )
+
+        cells.append({"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": code_src})
 
     nb = {
         "cells": cells,
