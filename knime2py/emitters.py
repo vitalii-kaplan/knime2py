@@ -5,6 +5,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import List
 from .traverse import depth_order, traverse_nodes, derive_title_and_root
+import re
 
 __all__ = [
     "write_graph_json",
@@ -12,7 +13,6 @@ __all__ = [
     "write_workbook_py",
     "write_workbook_ipynb",
 ]
-
 
 # ----------------------------
 # Shared helpers
@@ -28,6 +28,9 @@ def _title_for_neighbor(g, nei_id: str) -> str:
     t, _ = derive_title_and_root(nei_id, nn)
     return t
 
+
+def _safe_name_from_title(title: str) -> str:
+    return re.sub(r"\W+", "_", title).strip("_") or "node"
 
 # ----------------------------
 # Emission helpers
@@ -106,6 +109,13 @@ def write_workbook_py(g, out_dir: Path) -> Path:
         nid = ctx["nid"]
         n = ctx["node"]
         title = ctx["title"]
+        state = (ctx["state"] or "").upper()
+
+        root_id = ctx["root_id"]
+        state = ctx["state"] or "UNKNOWN"
+        comments = ctx["comments"]
+        incoming = ctx["incoming"]
+        outgoing = ctx["outgoing"]
 
         safe_name = _safe_name_from_title(title)
         call_order.append(f"node_{nid}_{safe_name}")
@@ -116,7 +126,31 @@ def write_workbook_py(g, out_dir: Path) -> Path:
             lines.append(f"    # {hub_url}")
         else:
             lines.append("    # Factory class unavailable")
-        lines.append("    # TODO: implement this node")
+
+        lines.append(f"    # {title}")
+        lines.append(f"    # root: {root_id}")
+        lines.append(f"    # state: {state}")
+        if comments:
+            lines.append("    # comments:")
+            for line in str(comments).splitlines():
+                lines.append(f"    #   {line}")
+
+        if incoming:
+            lines.append("    # Input port(s):")
+            for src_id, e in incoming:
+                port = f" [in:{e.target_port}]" if getattr(e, 'target_port', None) else ""
+                lines.append(f"    #  - from {src_id} ({_title_for_neighbor(g, src_id)}){port}")
+
+        if outgoing:
+            lines.append("    # Output port(s):")
+            for dst_id, e in outgoing:
+                port = f" [out:{e.source_port}]" if getattr(e, 'source_port', None) else ""
+                lines.append(f"    #  - to {dst_id} ({_title_for_neighbor(g, dst_id)}){port}")
+
+        if state == "IDLE":
+            lines.append("    # The node is IDLE. Codegen is not possible. Implement this node manually.")
+        else:
+            lines.append("    # TODO: implement this node")
         lines.append("    pass")
         lines.append("")
 
@@ -130,11 +164,10 @@ def write_workbook_py(g, out_dir: Path) -> Path:
     fp.write_text("\n".join(lines))
     return fp
 
-
 def write_workbook_ipynb(g, out_dir: Path) -> Path:
     """
     Emit a Jupyter notebook (.ipynb) with one markdown section and one *short* code cell per KNIME node.
-    Code cell now only links to the node's KNIME Hub doc and adds a TODO.
+    Code cell links to the node's KNIME Hub doc and adds a TODO (or an IDLE warning).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.ipynb"
@@ -154,12 +187,12 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
         n = ctx["node"]
         title = ctx["title"]
         root_id = ctx["root_id"]
-        state = ctx["state"] or "UNKNOWN"
+        state = (ctx["state"] or "UNKNOWN").upper()
         comments = ctx["comments"]
         incoming = ctx["incoming"]
         outgoing = ctx["outgoing"]
 
-        # Markdown (unchanged – still useful context)
+        # Markdown context
         md_lines = [f"## {title} \\# `{root_id}`", f" State: `{state}`"]
         if comments:
             md_lines.append("")
@@ -180,20 +213,25 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
                 md_lines.append(f" - to `{dst_id}` ({_title_for_neighbor(g, dst_id)}){port}")
         cells.append({"cell_type": "markdown", "metadata": {}, "source": "\n".join(md_lines) + "\n"})
 
-        # Short code cell
+        # Short code cell with IDLE handling
+        code_lines: List[str] = []
         if n.type:
             hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
-            code_src = (
-                f"# {hub_url}\n"
-                "# TODO: implement this node\n"
-            )
+            code_lines.append(f"# {hub_url}")
         else:
-            code_src = (
-                "# Factory class unavailable)\n"
-                "# TODO: implement this node\n"
-            )
+            code_lines.append("# Factory class unavailable")
+        if state == "IDLE":
+            code_lines.append("# The node is IDLE. Codegen is not possible. Implement this node manually.")
+        else:
+            code_lines.append("# TODO: implement this node")
 
-        cells.append({"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": code_src})
+        cells.append({
+            "cell_type": "code",
+            "metadata": {},
+            "execution_count": None,
+            "outputs": [],
+            "source": "\n".join(code_lines)
+        })
 
     nb = {
         "cells": cells,
@@ -206,10 +244,3 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
     }
     fp.write_text(json.dumps(nb, indent=2, ensure_ascii=False))
     return fp
-
-
-# local to emitters (used above)
-import re  # for _safe_name_from_title
-
-def _safe_name_from_title(title: str) -> str:
-    return re.sub(r"\W+", "_", title).strip("_") or "node"
