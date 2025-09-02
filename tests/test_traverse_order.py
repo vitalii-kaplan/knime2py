@@ -2,7 +2,7 @@
 from pathlib import Path
 import pytest
 import knime2py.parse_knime as k2p
-from knime2py.emitters import depth_order
+from knime2py.traverse import depth_order
 
 
 def test_depth_ready_order_for_sample():
