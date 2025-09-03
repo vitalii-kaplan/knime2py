@@ -126,26 +126,26 @@ def write_workbook_py(g, out_dir: Path) -> Path:
 
         lines.append(f"    # state: {state}")
 
-        # ---- single-line comments / inputs / outputs ----
         if comments:
-            cmnt = " ; ".join(s.strip() for s in str(comments).splitlines() if s.strip())
-            if cmnt:
-                lines.append(f"    # comments: {cmnt}")
+            oneliner = "; ".join(line for line in str(comments).splitlines() if line.strip())
+            if oneliner:
+                lines.append(f"    # comments: {oneliner}")
 
         if incoming:
             ins = []
             for src_id, e in incoming:
-                port = f" [in:{e.target_port}]" if getattr(e, 'target_port', None) else ""
-                ins.append(f"from {src_id} ({_title_for_neighbor(g, src_id)}){port}")
-            lines.append(f"    # Input port(s): " + " ; ".join(ins))
+                p = str(getattr(e, "target_port", "") or "?")
+                src_title = _title_for_neighbor(g, src_id)
+                ins.append(f"[Port {p}] {src_id}:{p} from {src_title} #{src_id}")
+            lines.append(f"    # Input: " + "; ".join(ins))
 
         if outgoing:
             outs = []
             for dst_id, e in outgoing:
-                port = f" [out:{e.source_port}]" if getattr(e, 'source_port', None) else ""
-                outs.append(f"to {dst_id} ({_title_for_neighbor(g, dst_id)}){port}")
-            lines.append(f"    # Output port(s): " + " ; ".join(outs))
-        # -----------------------------------------------
+                p = str(getattr(e, "source_port", "") or "?")
+                dst_title = _title_for_neighbor(g, dst_id)
+                outs.append(f"[Port {p}] {nid}:{p} to {dst_title} #{dst_id}")
+            lines.append(f"    # Output: " + "; ".join(outs))
 
         if state == "IDLE":
             lines.append("    # The node is IDLE. Codegen is not possible. Implement this node manually.")
@@ -193,27 +193,31 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
         incoming = ctx["incoming"]
         outgoing = ctx["outgoing"]
 
-        # Markdown context with single-line sections
-        md_lines: List[str] = [f"## {title} \\# `{root_id}`", f" State: `{state}`"]
+        md_lines = [f"## {title} \\# `{root_id}`", f" State: `{state}`  "]
 
+        # One-line comments with hard break
         if comments:
-            comment_line = " ; ".join([line.strip() for line in str(comments).splitlines() if line.strip()])
-            if comment_line:
-                md_lines.append(f"\n Comments: {comment_line}")
+            oneliner = "; ".join(line for line in str(comments).splitlines() if line.strip())
+            if oneliner:
+                md_lines.append(f" Comments: {oneliner}  ")
 
+        # One-line input summary with hard break
         if incoming:
-            in_parts = []
+            ins = []
             for src_id, e in incoming:
-                port = f" [in:{e.target_port}]" if getattr(e, 'target_port', None) else ""
-                in_parts.append(f"from `{src_id}` ({_title_for_neighbor(g, src_id)}){port}")
-            md_lines.append(f"\n Input port(s): " + " ; ".join(in_parts))
+                p = str(getattr(e, "target_port", "") or "?")
+                src_title = _title_for_neighbor(g, src_id)
+                ins.append(f"[Port {p}] {src_id}:{p} from {src_title} #{src_id}")
+            md_lines.append(" Input: " + "; ".join(ins) + "  ")
 
+        # One-line output summary with hard break
         if outgoing:
-            out_parts = []
+            outs = []
             for dst_id, e in outgoing:
-                port = f" [out:{e.source_port}]" if getattr(e, 'source_port', None) else ""
-                out_parts.append(f"to `{dst_id}` ({_title_for_neighbor(g, dst_id)}){port}")
-            md_lines.append(f"\n Output port(s): " + " ; ".join(out_parts))
+                p = str(getattr(e, "source_port", "") or "?")
+                dst_title = _title_for_neighbor(g, dst_id)
+                outs.append(f"[Port {p}] {nid}:{p} to {dst_title} #{dst_id}")
+            md_lines.append(" Output: " + "; ".join(outs) + "  ")
 
         cells.append({"cell_type": "markdown", "metadata": {}, "source": "\n".join(md_lines) + "\n"})
 
