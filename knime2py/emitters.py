@@ -109,10 +109,7 @@ def write_workbook_py(g, out_dir: Path) -> Path:
         nid = ctx["nid"]
         n = ctx["node"]
         title = ctx["title"]
-        state = (ctx["state"] or "").upper()
-
-        root_id = ctx["root_id"]
-        state = ctx["state"] or "UNKNOWN"
+        state = (ctx["state"] or "UNKNOWN").upper()
         comments = ctx["comments"]
         incoming = ctx["incoming"]
         outgoing = ctx["outgoing"]
@@ -127,25 +124,28 @@ def write_workbook_py(g, out_dir: Path) -> Path:
         else:
             lines.append("    # Factory class unavailable")
 
-        lines.append(f"    # {title}")
-        lines.append(f"    # root: {root_id}")
         lines.append(f"    # state: {state}")
+
+        # ---- single-line comments / inputs / outputs ----
         if comments:
-            lines.append("    # comments:")
-            for line in str(comments).splitlines():
-                lines.append(f"    #   {line}")
+            cmnt = " ; ".join(s.strip() for s in str(comments).splitlines() if s.strip())
+            if cmnt:
+                lines.append(f"    # comments: {cmnt}")
 
         if incoming:
-            lines.append("    # Input port(s):")
+            ins = []
             for src_id, e in incoming:
                 port = f" [in:{e.target_port}]" if getattr(e, 'target_port', None) else ""
-                lines.append(f"    #  - from {src_id} ({_title_for_neighbor(g, src_id)}){port}")
+                ins.append(f"from {src_id} ({_title_for_neighbor(g, src_id)}){port}")
+            lines.append(f"    # Input port(s): " + " ; ".join(ins))
 
         if outgoing:
-            lines.append("    # Output port(s):")
+            outs = []
             for dst_id, e in outgoing:
                 port = f" [out:{e.source_port}]" if getattr(e, 'source_port', None) else ""
-                lines.append(f"    #  - to {dst_id} ({_title_for_neighbor(g, dst_id)}){port}")
+                outs.append(f"to {dst_id} ({_title_for_neighbor(g, dst_id)}){port}")
+            lines.append(f"    # Output port(s): " + " ; ".join(outs))
+        # -----------------------------------------------
 
         if state == "IDLE":
             lines.append("    # The node is IDLE. Codegen is not possible. Implement this node manually.")
@@ -163,6 +163,7 @@ def write_workbook_py(g, out_dir: Path) -> Path:
 
     fp.write_text("\n".join(lines))
     return fp
+
 
 def write_workbook_ipynb(g, out_dir: Path) -> Path:
     """
@@ -192,25 +193,28 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
         incoming = ctx["incoming"]
         outgoing = ctx["outgoing"]
 
-        # Markdown context
-        md_lines = [f"## {title} \\# `{root_id}`", f" State: `{state}`"]
+        # Markdown context with single-line sections
+        md_lines: List[str] = [f"## {title} \\# `{root_id}`", f" State: `{state}`"]
+
         if comments:
-            md_lines.append("")
-            md_lines.append(" Comments:")
-            for line in str(comments).splitlines():
-                md_lines.append(f" > {line}")
+            comment_line = " ; ".join([line.strip() for line in str(comments).splitlines() if line.strip()])
+            if comment_line:
+                md_lines.append(f"\n Comments: {comment_line}")
+
         if incoming:
-            md_lines.append("")
-            md_lines.append(" Input port(s):")
+            in_parts = []
             for src_id, e in incoming:
                 port = f" [in:{e.target_port}]" if getattr(e, 'target_port', None) else ""
-                md_lines.append(f" - from `{src_id}` ({_title_for_neighbor(g, src_id)}){port}")
+                in_parts.append(f"from `{src_id}` ({_title_for_neighbor(g, src_id)}){port}")
+            md_lines.append(f"\n Input port(s): " + " ; ".join(in_parts))
+
         if outgoing:
-            md_lines.append("")
-            md_lines.append(" Output port(s):")
+            out_parts = []
             for dst_id, e in outgoing:
                 port = f" [out:{e.source_port}]" if getattr(e, 'source_port', None) else ""
-                md_lines.append(f" - to `{dst_id}` ({_title_for_neighbor(g, dst_id)}){port}")
+                out_parts.append(f"to `{dst_id}` ({_title_for_neighbor(g, dst_id)}){port}")
+            md_lines.append(f"\n Output port(s): " + " ; ".join(out_parts))
+
         cells.append({"cell_type": "markdown", "metadata": {}, "source": "\n".join(md_lines) + "\n"})
 
         # Short code cell with IDLE handling
