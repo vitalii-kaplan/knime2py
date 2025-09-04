@@ -6,7 +6,12 @@ from pathlib import Path
 from typing import List
 from .traverse import depth_order, traverse_nodes, derive_title_and_root
 import re
+from dataclasses import dataclass
+from typing import List, Optional
 
+from .traverse import (
+    traverse_nodes,         
+)
 from .nodes import csv_reader, csv_writer
 
 __all__ = [
@@ -15,6 +20,24 @@ __all__ = [
     "write_workbook_py",
     "write_workbook_ipynb",
 ]
+
+@dataclass
+class NodeBlock:
+    # identity / ordering
+    func_name: str
+    nid: str
+    title: str
+    root_id: str
+
+    # state & summaries (already formatted one-liners)
+    state: str                      # upper-cased, e.g. "EXECUTED" / "IDLE"
+    comment_line: Optional[str]     # e.g. "comments: Remove Ids and time"
+    input_line: Optional[str]       # e.g. "Input: [Port 1] 1:1 from CSV Reader #1"
+    output_line: Optional[str]      # e.g. "Output: [Port 1] 1350:1 to 4 Missing Value #4"
+
+    # final code body lines (what will go inside the function / code cell)
+    code_lines: List[str]
+
 
 # ----------------------------
 # Shared helpers
@@ -33,6 +56,7 @@ def _title_for_neighbor(g, nei_id: str) -> str:
 
 def _safe_name_from_title(title: str) -> str:
     return re.sub(r"\W+", "_", title).strip("_") or "node"
+
 
 # ----------------------------
 # Emission helpers
@@ -92,9 +116,104 @@ def write_graph_dot(g, out_dir: Path) -> Path:
     return fp
 
 
+def build_workbook_blocks(g) -> List[NodeBlock]:
+    """
+    Build render-ready blocks for each node (same content used by .py and .ipynb writers).
+    """
+    blocks: List[NodeBlock] = []
+
+    for ctx in traverse_nodes(g):
+        nid = ctx["nid"]
+        n = ctx["node"]
+        title = ctx["title"]
+        root_id = ctx["root_id"]
+        state = (ctx["state"] or "UNKNOWN").upper()
+        comments = ctx["comments"]
+        incoming = ctx["incoming"]     # list[(src_id, Edge)]
+        outgoing = ctx["outgoing"]     # list[(dst_id, Edge)]
+
+        safe_name = _safe_name_from_title(title)
+        func_name = f"node_{nid}_{safe_name}"
+
+        # ---- one-line comments
+        comment_line = None
+        if comments:
+            oneliner = "; ".join(line for line in str(comments).splitlines() if line.strip())
+            if oneliner:
+                comment_line = f"comments: {oneliner}"
+
+        # ---- input line (display this node's input port = target_port; context key = src_id:source_port)
+        input_line = None
+        if incoming:
+            ins = []
+            for src_id, e in incoming:
+                p_in = str(getattr(e, "target_port", "") or "?")    # this node's port number
+                p_src = str(getattr(e, "source_port", "") or "?")   # upstream output index (context key)
+                src_title = _title_for_neighbor(g, src_id)
+                ins.append(f"[Port {p_in}] {src_id}:{p_src} from {src_title} #{src_id}")
+            input_line = "Input: " + "; ".join(ins)
+
+        # ---- output line (display this node's output port = source_port; context key = nid:source_port)
+        output_line = None
+        if outgoing:
+            outs = []
+            for dst_id, e in outgoing:
+                p_out = str(getattr(e, "source_port", "") or "?")
+                dst_title = _title_for_neighbor(g, dst_id)
+                outs.append(f"[Port {p_out}] {nid}:{p_out} to {dst_id} {dst_title} #{dst_id}")
+            output_line = "Output: " + "; ".join(outs)
+
+        # ---- code body lines (plugin-aware)
+        code_lines: List[str] = []
+
+        if state == "IDLE":
+            # IDLE nodes: only a hub link (if we have a type) + warning
+            if n.type:
+                hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
+                code_lines.append(f"# {hub_url}")
+            else:
+                code_lines.append("# Factory class unavailable")
+            code_lines.append("# The node is IDLE. Codegen is not possible. Implement this node manually.")
+        else:
+            # CSV Reader
+            if n.type and csv_reader.can_handle(n.type):
+                out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing]
+                code_lines.extend(csv_reader.generate_py_body(nid, n.path, out_ports))
+            # CSV Writer
+            elif n.type and csv_writer.can_handle(n.type):
+                # NOTE: writer needs upstream CONTEXT keys -> use SOURCE ports from incoming edges
+                in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in incoming]
+                code_lines.extend(csv_writer.generate_py_body(nid, n.path, in_ports))
+            else:
+                # fallback stub
+                if n.type:
+                    hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
+                    code_lines.append(f"# {hub_url}")
+                else:
+                    code_lines.append("# Factory class unavailable")
+                code_lines.append("# TODO: implement this node")
+                code_lines.append("pass")
+
+        blocks.append(NodeBlock(
+            func_name=func_name,
+            nid=nid,
+            title=title,
+            root_id=root_id,
+            state=state,
+            comment_line=comment_line,
+            input_line=input_line,
+            output_line=output_line,
+            code_lines=code_lines,
+        ))
+
+    return blocks
+
+
 def write_workbook_py(g, out_dir: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.py"
+
+    blocks = build_workbook_blocks(g)
 
     lines: List[str] = []
     lines.append("# Auto-generated from KNIME workflow")
@@ -106,87 +225,30 @@ def write_workbook_py(g, out_dir: Path) -> Path:
     lines.append("context = {}  # e.g., {'1:output_table': df}")
     lines.append("")
 
-    # Functions are emitted in traversal order and then called by run_all()
-    call_order: List[str] = []
+    # functions
+    for b in blocks:
+        lines.append(f"def {b.func_name}():")
+        lines.append(f"    # state: {b.state}")
+        if b.comment_line:
+            lines.append(f"    # {b.comment_line}")
+        if b.input_line:
+            lines.append(f"    # {b.input_line}")
+        if b.output_line:
+            lines.append(f"    # {b.output_line}")
 
-    for ctx in traverse_nodes(g):
-        nid = ctx["nid"]
-        n = ctx["node"]
-        title = ctx["title"]
-        state = (ctx["state"] or "UNKNOWN").upper()
-        comments = ctx["comments"]
-        incoming = ctx["incoming"]
-        outgoing = ctx["outgoing"]
-
-        safe_name = _safe_name_from_title(title)
-        call_order.append(f"node_{nid}_{safe_name}")
-
-        lines.append(f"def node_{nid}_{safe_name}():")
-        lines.append(f"    # state: {state}")
-
-        # One-line comments
-        if comments:
-            oneliner = "; ".join(line for line in str(comments).splitlines() if line.strip())
-            if oneliner:
-                lines.append(f"    # comments: {oneliner}")
-
-        # One-line input summary
-        if incoming:
-            ins = []
-            for src_id, e in incoming:
-                p = str(getattr(e, "target_port", "") or "?")
-                src_title = _title_for_neighbor(g, src_id)
-                ins.append(f"[Port {p}] {src_id}:{p} from {src_title} #{src_id}")
-            lines.append("    # Input: " + "; ".join(ins))
-
-        # One-line output summary
-        if outgoing:
-            outs = []
-            for dst_id, e in outgoing:
-                p = str(getattr(e, "source_port", "") or "?")
-                dst_title = _title_for_neighbor(g, dst_id)
-                outs.append(f"[Port {p}] {nid}:{p} to {dst_title} #{dst_id}")
-            lines.append("    # Output: " + "; ".join(outs))
-
-        # Code body
-        if state == "IDLE":
-            # IDLE nodes: no codegen
-            if n.type:
-                hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
-                lines.append(f"    # {hub_url}")
-            else:
-                lines.append("    # Factory class unavailable")
-            lines.append("    # The node is IDLE. Codegen is not possible. Implement this node manually.")
+        # body
+        if not b.code_lines:
+            lines.append("    # TODO: implement this node")
             lines.append("    pass")
         else:
-            # CSV Reader → generate reader code (publish df to context)
-            if n.type and csv_reader.can_handle(n.type):
-                out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing]
-                body = csv_reader.generate_py_body(nid, n.path, out_ports)
-                for bline in body:
-                    lines.append("    " + bline)
-            # CSV Writer → generate writer code (consume df from context)
-            elif n.type and csv_writer.can_handle(n.type):
-                in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in incoming]
-                body = csv_writer.generate_py_body(nid, n.path, in_ports)
-                for bline in body:
-                    lines.append("    " + bline)
-            else:
-                # Fallback stub
-                if n.type:
-                    hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
-                    lines.append(f"    # {hub_url}")
-                else:
-                    lines.append("    # Factory class unavailable")
-                lines.append("    # TODO: implement this node")
-                lines.append("    pass")
-
+            for cl in b.code_lines:
+                lines.append("    " + cl)
         lines.append("")
 
-    # run_all invoker
+    # run_all
     lines.append("def run_all():")
-    for fn in call_order:
-        lines.append(f"    {fn}()")
+    for b in blocks:
+        lines.append(f"    {b.func_name}()")
     lines.append("")
     lines.append("if __name__ == '__main__':")
     lines.append("    run_all()")
@@ -197,97 +259,44 @@ def write_workbook_py(g, out_dir: Path) -> Path:
 
 def write_workbook_ipynb(g, out_dir: Path) -> Path:
     """
-    Emit a Jupyter notebook (.ipynb) with one markdown section and one *short* code cell per KNIME node.
-    Code cell links to the node's KNIME Hub doc and adds a TODO (or an IDLE warning).
+    Jupyter notebook: one markdown cell (header + summaries) + one code cell per node.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.ipynb"
 
+    blocks = build_workbook_blocks(g)
+
     cells: List[dict] = []
+
+    # Title
     title_md = (
         f"# Workflow: {g.workflow_id}\n"
         f"Generated from KNIME workflow at `{g.workflow_path}`\n"
     )
     cells.append({"cell_type": "markdown", "metadata": {}, "source": title_md})
 
+    # Shared context
     context_src = "# Shared context to pass dataframes/tables between nodes\ncontext = {}\n"
     cells.append({"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": context_src})
 
-    for ctx in traverse_nodes(g):
-        nid = ctx["nid"]
-        n = ctx["node"]
-        title = ctx["title"]
-        root_id = ctx["root_id"]
-        state = (ctx["state"] or "UNKNOWN").upper()
-        comments = ctx["comments"]
-        incoming = ctx["incoming"]
-        outgoing = ctx["outgoing"]
-
-        md_lines = [f"## {title} \\# `{root_id}`", f" State: `{state}`  "]
-
-        # One-line comments with hard break
-        if comments:
-            oneliner = "; ".join(line for line in str(comments).splitlines() if line.strip())
-            if oneliner:
-                md_lines.append(f" Comments: {oneliner}  ")
-
-        # One-line input summary with hard break
-        if incoming:
-            ins = []
-            for src_id, e in incoming:
-                p = str(getattr(e, "target_port", "") or "?")
-                src_title = _title_for_neighbor(g, src_id)
-                ins.append(f"[Port {p}] {src_id}:{p} from {src_title} #{src_id}")
-            md_lines.append(" Input: " + "; ".join(ins) + "  ")
-
-        # One-line output summary with hard break
-        if outgoing:
-            outs = []
-            for dst_id, e in outgoing:
-                p = str(getattr(e, "source_port", "") or "?")
-                dst_title = _title_for_neighbor(g, dst_id)
-                outs.append(f"[Port {p}] {nid}:{p} to {dst_title} #{dst_id}")
-            md_lines.append(" Output: " + "; ".join(outs) + "  ")
-
+    # Per-node cells
+    for b in blocks:
+        md_lines = [f"## {b.title} \\# `{b.root_id}`", f" State: `{b.state}`  "]
+        if b.comment_line:
+            md_lines.append(f" {b.comment_line}  ")
+        if b.input_line:
+            md_lines.append(f" {b.input_line}  ")
+        if b.output_line:
+            md_lines.append(f" {b.output_line}  ")
         cells.append({"cell_type": "markdown", "metadata": {}, "source": "\n".join(md_lines) + "\n"})
 
-        # Code cell
-        if state == "IDLE":
-            code_lines: List[str] = []
-            if n.type:
-                hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
-                code_lines.append(f"# {hub_url}")
-            else:
-                code_lines.append("# Factory class unavailable")
-            code_lines.append("# The node is IDLE. Codegen is not possible. Implement this node manually.")
-            code_src = "\n".join(code_lines)
-        else:
-            # CSV Reader
-            if n.type and csv_reader.can_handle(n.type):
-                out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing]
-                code_src = csv_reader.generate_ipynb_code(nid, n.path, out_ports)
-            # CSV Writer
-            elif n.type and csv_writer.can_handle(n.type):
-                # Use SOURCE ports from incoming edges; those are the context keys upstream wrote.
-                in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in incoming]
-                code_src = csv_writer.generate_ipynb_code(nid, n.path, in_ports)
-
-            else:
-                code_lines: List[str] = []
-                if n.type:
-                    hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
-                    code_lines.append(f"# {hub_url}")
-                else:
-                    code_lines.append("# Factory class unavailable")
-                code_lines.append("# TODO: implement this node")
-                code_src = "\n".join(code_lines)
-
+        code_src = "\n".join(b.code_lines) + ("\n" if b.code_lines and not b.code_lines[-1].endswith("\n") else "")
         cells.append({
             "cell_type": "code",
             "metadata": {},
             "execution_count": None,
             "outputs": [],
-            "source": code_src
+            "source": code_src or "# TODO: implement this node\npass\n"
         })
 
     nb = {
@@ -301,3 +310,4 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
     }
     fp.write_text(json.dumps(nb, indent=2, ensure_ascii=False))
     return fp
+

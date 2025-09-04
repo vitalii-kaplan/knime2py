@@ -49,25 +49,72 @@ def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
 
     root = ET.parse(str(settings_path), parser=XML_PARSER).getroot()
 
-    path = extract_csv_path(root)
-    sep = extract_csv_sep(root) or ","
-    quotechar = extract_csv_quotechar(root) or '"'
-    header = extract_csv_header_writer(root)
+    # --- robust file path detection ---
+    path_candidates = [
+        v for v in root.xpath(
+            "(.//*[local-name()='entry' and contains(translate(@key,"
+            " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'path')]/@value"
+            " | .//*[local-name()='entry' and contains(translate(@key,"
+            " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'url')]/@value"
+            " | .//*[local-name()='entry' and contains(translate(@key,"
+            " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'file')]/@value"
+            " | .//*[local-name()='entry' and contains(translate(@key,"
+            " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'location')]/@value)"
+        ) if v
+    ]
+    path = next((p for p in path_candidates if looks_like_path(p)), None)
+
+    # Separator
+    sep_raw = first(
+        root,
+        "(.//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'delim')]/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'separator')]/@value)"
+    )
+    sep = normalize_delim(sep_raw) or ","
+
+    # Quote character
+    quote_raw = first(
+        root,
+        ".//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'quote')]/@value"
+    )
+    quotechar = normalize_char(quote_raw) or '"'
+
+    # Header flag (write header)
+    header_raw = first(
+        root,
+        "(.//*[local-name()='entry' and @key='writeColumnHeader']/@value"
+        " | .//*[local-name()='entry' and @key='write_header']/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'write')"
+        "    and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'header')]/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'header')]/@value)"
+    )
+    header = bool_from_value(header_raw)
     if header is None:
         header = True
-    enc = extract_csv_encoding(root) or "utf-8"
 
+    # Encoding (writer uses character_set)
+    enc = first(
+        root,
+        "(.//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'encoding')]/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'charset')]/@value"
+        " | .//*[local-name()='entry' and translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='character_set']/@value)"
+    ) or "utf-8"
+
+    # NA representation:
+    #   modern writer: key="missing_value_pattern"
+    #   older pattern: keys containing both 'missing' and 'representation'
     na_rep = first(
         root,
-        ".//*[local-name()='entry' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'missing')"
-        " and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'representation')]/@value"
+        "(.//*[local-name()='entry' and translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='missing_value_pattern']/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'missing')"
+        "    and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'representation')]/@value)"
     )
+    # NOTE: keep empty string ("") as-is; only None means “unset”.
 
+    # Include index?
     include_index_raw = first(
         root,
-        ".//*[local-name()='entry' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'includeindex')]/@value"
+        ".//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'includeindex')]/@value"
     )
     include_index = bool_from_value(include_index_raw)
     if include_index is None:
@@ -79,9 +126,10 @@ def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
         quotechar=quotechar,
         header=header,
         encoding=enc,
-        na_rep=na_rep,
+        na_rep=na_rep,          # may be '' (empty string) which is desired
         include_index=include_index,
     )
+
 
 
 # ----------------------------

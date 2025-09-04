@@ -9,6 +9,7 @@ if str(repo_root) not in sys.path:
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 
+
 def _workflow_path(project_dirname: str) -> Path:
     """tests/data/<project>/workflow.knime"""
     return DATA_DIR / project_dirname / "workflow.knime"
@@ -66,3 +67,12 @@ def node_csv_reader_dir() -> Path:
 @pytest.fixture(scope="session")
 def csv_reader_node_dir(node_csv_reader_dir: Path) -> Path:
     return node_csv_reader_dir
+
+
+@pytest.fixture(scope="session")
+def node_csv_writer_dir() -> Path:
+    p = DATA_DIR / "Node_csv_writer"
+    settings = p / "settings.xml"
+    if not settings.exists():
+        pytest.fail(f"Missing writer node settings at {settings}")
+    return p
