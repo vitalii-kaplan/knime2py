@@ -102,6 +102,18 @@ def _normalize_in_ports(in_ports: List[object]) -> List[Tuple[str, str]]:
         norm.append(("UNKNOWN", "1"))
     return norm
 
+def _looks_like_path(s: str) -> bool:
+    if not s:
+        return False
+    low = s.lower()
+    if low.startswith(("file:", "s3:", "hdfs:", "abfss:", "http://", "https://")):
+        return True
+    if s.endswith(".csv"):
+        return True
+    if "/" in s or "\\" in s:
+        return True
+    return False
+
 
 # ----------------------------
 # Read settings.xml → CSVWriterSettings
@@ -116,14 +128,22 @@ def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
 
     root = ET.parse(str(settings_path), parser=XML_PARSER).getroot()
 
-    # File path (look for keys like path/url/file/location)
-    path = _first(
-        root,
-        "(.//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'path')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'url')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'file')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'location')]/@value)"
-    )
+    # --- robust file path detection (avoid grabbing node_file="settings.xml") ---
+    path_candidates = [
+        v for v in root.xpath(
+            "(.//*[local-name()='entry' and contains(translate(@key,"
+            " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'path')]/@value"
+            " | .//*[local-name()='entry' and contains(translate(@key,"
+            " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'url')]/@value"
+            " | .//*[local-name()='entry' and contains(translate(@key,"
+            " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'file')]/@value"
+            " | .//*[local-name()='entry' and contains(translate(@key,"
+            " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'location')]/@value)"
+        )
+        if v
+    ]
+    # choose the first thing that actually looks like a csv path/uri
+    path = next((p for p in path_candidates if _looks_like_path(p)), None)
 
     # Separator
     sep_raw = _first(
@@ -182,6 +202,7 @@ def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
         na_rep=na_rep,
         include_index=include_index,
     )
+
 
 # ----------------------------
 # Code generators
