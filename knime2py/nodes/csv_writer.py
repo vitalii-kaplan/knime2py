@@ -7,12 +7,7 @@ from typing import List, Tuple, Optional
 
 from lxml import etree as ET
 from ..xml_utils import XML_PARSER
-from .node_utils import (
-    first, bool_from_value, normalize_delim, normalize_char, looks_like_path,
-    normalize_in_ports,
-    extract_csv_path, extract_csv_sep, extract_csv_quotechar,
-    extract_csv_encoding, extract_csv_header_writer,
-)
+from .node_utils import *
 
 
 CSV_WRITER_FACTORY = "org.knime.base.node.io.filehandling.csv.writer.CSVWriter2NodeFactory"
