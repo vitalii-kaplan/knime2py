@@ -8,13 +8,12 @@ from typing import List, Tuple, Optional
 from lxml import etree as ET
 from ..xml_utils import XML_PARSER
 from .node_utils import (
-    first,
-    bool_from_value,
-    normalize_delim,
-    normalize_char,
-    looks_like_path,
+    first, bool_from_value, normalize_delim, normalize_char, looks_like_path,
     normalize_in_ports,
+    extract_csv_path, extract_csv_sep, extract_csv_quotechar,
+    extract_csv_encoding, extract_csv_header_writer,
 )
+
 
 CSV_WRITER_FACTORY = "org.knime.base.node.io.filehandling.csv.writer.CSVWriter2NodeFactory"
 
@@ -50,65 +49,25 @@ def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
 
     root = ET.parse(str(settings_path), parser=XML_PARSER).getroot()
 
-    # Robust file path detection (avoid grabbing node_file="settings.xml")
-    path_candidates = [
-        v for v in root.xpath(
-            "(.//*[local-name()='entry' and contains(translate(@key,"
-            " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'path')]/@value"
-            " | .//*[local-name()='entry' and contains(translate(@key,"
-            " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'url')]/@value"
-            " | .//*[local-name()='entry' and contains(translate(@key,"
-            " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'file')]/@value"
-            " | .//*[local-name()='entry' and contains(translate(@key,"
-            " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'location')]/@value)"
-        )
-        if v
-    ]
-    path = next((p for p in path_candidates if looks_like_path(p)), None)
-
-    # Separator
-    sep_raw = first(
-        root,
-        "(.//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'delim')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'separator')]/@value)"
-    )
-    sep = normalize_delim(sep_raw) or ","
-
-    # Quote character
-    quote_raw = first(
-        root,
-        ".//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'quote')]/@value"
-    )
-    quotechar = normalize_char(quote_raw) or '"'
-
-    # Header flag (write header)
-    header_raw = first(
-        root,
-        "(.//*[local-name()='entry' and @key='writeHeader']/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'header')]/@value)"
-    )
-    header = bool_from_value(header_raw)
+    path = extract_csv_path(root)
+    sep = extract_csv_sep(root) or ","
+    quotechar = extract_csv_quotechar(root) or '"'
+    header = extract_csv_header_writer(root)
     if header is None:
         header = True
+    enc = extract_csv_encoding(root) or "utf-8"
 
-    # Encoding
-    enc = first(
-        root,
-        "(.//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'encoding')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'charset')]/@value)"
-    ) or "utf-8"
-
-    # NA representation
     na_rep = first(
         root,
-        ".//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'missing')"
-        " and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'representation')]/@value"
+        ".//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'missing')"
+        " and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'representation')]/@value"
     )
 
-    # Include index?
     include_index_raw = first(
         root,
-        ".//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'includeindex')]/@value"
+        ".//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'includeindex')]/@value"
     )
     include_index = bool_from_value(include_index_raw)
     if include_index is None:

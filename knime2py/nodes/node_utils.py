@@ -6,6 +6,7 @@ from typing import List, Optional, Tuple
 from lxml import etree as ET
 
 
+
 # ----------------------------
 # Generic XML helpers
 # ----------------------------
@@ -119,3 +120,87 @@ def context_assignment_lines(node_id: str, out_ports: List[str]) -> List[str]:
     """
     ports = sorted({(p or "1") for p in (out_ports or [])}) or ["1"]
     return [f"context['{node_id}:{p}'] = df" for p in ports]
+
+# --- CSV common extractors (settings.xml) ---
+
+def extract_csv_path(root: ET._Element) -> Optional[str]:
+    """Return the first value that looks like a CSV path/URI."""
+    candidates = all_values(
+        root,
+        "(.//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'path')]/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'url')]/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'file')]/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'location')]/@value)"
+    )
+    for v in candidates:
+        if looks_like_path(v):
+            return v
+    return None
+
+
+def extract_csv_sep(root: ET._Element) -> Optional[str]:
+    raw = first(
+        root,
+        "(.//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'delim')]/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'separator')]/@value)"
+    )
+    return normalize_delim(raw)
+
+
+def extract_csv_quotechar(root: ET._Element) -> Optional[str]:
+    raw = first(
+        root,
+        ".//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'quote')]/@value"
+    )
+    return normalize_char(raw)
+
+
+def extract_csv_escapechar(root: ET._Element) -> Optional[str]:
+    raw = first(
+        root,
+        ".//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'escape')]/@value"
+    )
+    return normalize_char(raw)
+
+
+def extract_csv_encoding(root: ET._Element) -> Optional[str]:
+    return first(
+        root,
+        "(.//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'charset')]/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'encoding')]/@value)"
+    )
+
+
+def extract_csv_header_reader(root: ET._Element) -> Optional[bool]:
+    """Header presence for the *reader*."""
+    raw = first(
+        root,
+        "(.//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'column')"
+        " and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'header')]/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'hasheader')]/@value"
+        " | .//*[local-name()='entry' and @key='header']/@value)"
+    )
+    return bool_from_value(raw)
+
+
+def extract_csv_header_writer(root: ET._Element) -> Optional[bool]:
+    """Header writing flag for the *writer*."""
+    raw = first(
+        root,
+        "(.//*[local-name()='entry' and @key='writeHeader']/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'header')]/@value)"
+    )
+    return bool_from_value(raw)

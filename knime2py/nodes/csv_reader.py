@@ -8,14 +8,12 @@ from typing import List, Optional
 from lxml import etree as ET
 from ..xml_utils import XML_PARSER  # project helper (ok)
 from .node_utils import (
-    first,
-    all_values,
-    normalize_delim,
-    normalize_char,
-    looks_like_path,
-    bool_from_value,
-    context_assignment_lines,
+    first, all_values, normalize_delim, normalize_char, looks_like_path,
+    bool_from_value, context_assignment_lines,
+    extract_csv_path, extract_csv_sep, extract_csv_quotechar,
+    extract_csv_escapechar, extract_csv_encoding, extract_csv_header_reader,
 )
+
 
 CSV_FACTORY = "org.knime.base.node.io.filehandling.csv.reader.CSVTableReaderNodeFactory"
 
@@ -43,8 +41,7 @@ class CSVReaderSettings:
 
 def parse_csv_reader_settings(node_dir: Path) -> CSVReaderSettings:
     """
-    Read <node_dir>/settings.xml and extract the csv file path and common options.
-    Heuristic but robust across KNIME 5.x file-handling variants.
+    Read <node_dir>/settings.xml and extract csv path & common options.
     """
     settings = node_dir / "settings.xml"
     if not settings.exists():
@@ -52,68 +49,14 @@ def parse_csv_reader_settings(node_dir: Path) -> CSVReaderSettings:
 
     root = ET.parse(str(settings), parser=XML_PARSER).getroot()
 
-    # 1) File path candidates
-    path_candidates = all_values(
-        root,
-        "(.//*[local-name()='entry' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'path')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'url')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'file')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'location')]/@value)"
-    )
-    file_path = next((p for p in path_candidates if looks_like_path(p)), None)
-
-    # 2) Delimiter
-    delim_raw = first(
-        root,
-        "(.//*[local-name()='entry' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'delim')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'separator')]/@value)"
-    )
-    sep = normalize_delim(delim_raw) or ","
-
-    # 3) Quote
-    quote_raw = first(
-        root,
-        ".//*[local-name()='entry' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'quote')]/@value"
-    )
-    quotechar = normalize_char(quote_raw) or '"'
-
-    # 4) Escape
-    esc_raw = first(
-        root,
-        ".//*[local-name()='entry' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'escape')]/@value"
-    )
-    escapechar = normalize_char(esc_raw)
-
-    # 5) Header
-    header_raw = first(
-        root,
-        "(.//*[local-name()='entry' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'column')"
-        " and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'header')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'hasheader')]/@value"
-        " | .//*[local-name()='entry' and @key='header']/@value)"
-    )
-    header = bool_from_value(header_raw)
+    file_path = extract_csv_path(root)
+    sep = extract_csv_sep(root) or ","
+    quotechar = extract_csv_quotechar(root) or '"'
+    escapechar = extract_csv_escapechar(root)
+    header = extract_csv_header_reader(root)
     if header is None:
         header = True
-
-    # 6) Encoding
-    enc = first(
-        root,
-        "(.//*[local-name()='entry' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'charset')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'encoding')]/@value)"
-    ) or "utf-8"
+    enc = extract_csv_encoding(root) or "utf-8"
 
     return CSVReaderSettings(
         path=file_path,
