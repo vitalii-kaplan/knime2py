@@ -6,7 +6,6 @@ from typing import List, Optional, Tuple
 from lxml import etree as ET
 
 
-
 # ----------------------------
 # Generic XML helpers
 # ----------------------------
@@ -121,7 +120,10 @@ def context_assignment_lines(node_id: str, out_ports: List[str]) -> List[str]:
     ports = sorted({(p or "1") for p in (out_ports or [])}) or ["1"]
     return [f"context['{node_id}:{p}'] = df" for p in ports]
 
-# --- CSV common extractors (settings.xml) ---
+
+# ----------------------------
+# CSV common extractors (settings.xml)
+# ----------------------------
 
 def extract_csv_path(root: ET._Element) -> Optional[str]:
     """Return the first value that looks like a CSV path/URI."""
@@ -172,12 +174,15 @@ def extract_csv_escapechar(root: ET._Element) -> Optional[str]:
 
 
 def extract_csv_encoding(root: ET._Element) -> Optional[str]:
+    """Handle 'charset', 'encoding', and writer's 'character_set'."""
     return first(
         root,
         "(.//*[local-name()='entry' and contains(translate(@key,"
         " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'charset')]/@value"
         " | .//*[local-name()='entry' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'encoding')]/@value)"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'encoding')]/@value"
+        " | .//*[local-name()='entry' and translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='character_set']/@value)"
     )
 
 
@@ -196,11 +201,43 @@ def extract_csv_header_reader(root: ET._Element) -> Optional[bool]:
 
 
 def extract_csv_header_writer(root: ET._Element) -> Optional[bool]:
-    """Header writing flag for the *writer*."""
+    """Header writing flag for the *writer* (various key names across versions)."""
     raw = first(
         root,
-        "(.//*[local-name()='entry' and @key='writeHeader']/@value"
+        "(.//*[local-name()='entry' and @key='writeColumnHeader']/@value"
+        " | .//*[local-name()='entry' and @key='write_header']/@value"
         " | .//*[local-name()='entry' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'header')]/@value)"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'write')"
+        "    and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'header')]/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'header')]/@value)"
     )
     return bool_from_value(raw)
+
+
+def extract_csv_na_rep(root: ET._Element) -> Optional[str]:
+    """
+    NA representation for writer:
+      - modern: key='missing_value_pattern' (may be empty string '')
+      - older: contains both 'missing' and 'representation'
+    Return None if truly unset. Empty string '' is preserved.
+    """
+    return first(
+        root,
+        "(.//*[local-name()='entry' and translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='missing_value_pattern']/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'missing')"
+        "    and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'representation')]/@value)"
+    )
+
+
+def extract_csv_include_index(root: ET._Element) -> Optional[bool]:
+    """Optional writer flag to include pandas index."""
+    raw = first(
+        root,
+        ".//*[local-name()='entry' and contains(translate(@key,"
+        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'includeindex')]/@value"
+    )
+    return bool_from_value(raw)
+
