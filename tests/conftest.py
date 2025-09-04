@@ -36,7 +36,21 @@ def wf_two_graphs_path() -> Path:
 
 @pytest.fixture(scope="session")
 def wf_traverse_path() -> Path:
-     wf = _workflow_path("KNIME_traverse_order")
-     if not wf.exists():
-         pytest.fail(f"Missing sample workflow: {wf}")
-     return wf
+    wf = _workflow_path("KNIME_traverse_order")
+    if not wf.exists():
+        pytest.fail(f"Missing sample workflow: {wf}")
+    return wf
+
+# --- Node-level test data fixtures ---
+
+@pytest.fixture(scope="session")
+def node_csv_reader_dir() -> Path:
+    """
+    Directory containing a single node's settings.xml for CSV Reader.
+    Expected at: tests/data/Node_csv_reader/settings.xml
+    """
+    ndir = DATA_DIR / "Node_csv_reader"
+    settings = ndir / "settings.xml"
+    if not settings.exists():
+        pytest.fail(f"Missing CSV Reader node settings: {settings}")
+    return ndir
