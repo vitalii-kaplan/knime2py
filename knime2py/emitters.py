@@ -7,7 +7,7 @@ from typing import List
 from .traverse import depth_order, traverse_nodes, derive_title_and_root
 import re
 
-from knime2py.nodes import csv_reader
+from .nodes import csv_reader, csv_writer
 
 __all__ = [
     "write_graph_json",
@@ -148,25 +148,38 @@ def write_workbook_py(g, out_dir: Path) -> Path:
                 outs.append(f"[Port {p}] {nid}:{p} to {dst_title} #{dst_id}")
             lines.append("    # Output: " + "; ".join(outs))
 
-        # Code body:
-        # - If CSV Reader and not IDLE, generate actual code using the node helper
-        # - Otherwise, leave a short hub link + TODO (or IDLE warning)
-        if n.type and csv_reader.can_handle(n.type) and state != "IDLE":
-            out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing]
-            body = csv_reader.generate_py_body(nid, n.path, out_ports)
-            for bline in body:
-                lines.append("    " + bline)
-        else:
+        # Code body
+        if state == "IDLE":
+            # IDLE nodes: no codegen
             if n.type:
                 hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
                 lines.append(f"    # {hub_url}")
             else:
                 lines.append("    # Factory class unavailable")
-            if state == "IDLE":
-                lines.append("    # The node is IDLE. Codegen is not possible. Implement this node manually.")
-            else:
-                lines.append("    # TODO: implement this node")
+            lines.append("    # The node is IDLE. Codegen is not possible. Implement this node manually.")
             lines.append("    pass")
+        else:
+            # CSV Reader → generate reader code (publish df to context)
+            if n.type and csv_reader.can_handle(n.type):
+                out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing]
+                body = csv_reader.generate_py_body(nid, n.path, out_ports)
+                for bline in body:
+                    lines.append("    " + bline)
+            # CSV Writer → generate writer code (consume df from context)
+            elif n.type and csv_writer.can_handle(n.type):
+                in_ports = [str(getattr(e, "target_port", "") or "1") for _, e in incoming]
+                body = csv_writer.generate_py_body(nid, n.path, in_ports)
+                for bline in body:
+                    lines.append("    " + bline)
+            else:
+                # Fallback stub
+                if n.type:
+                    hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
+                    lines.append(f"    # {hub_url}")
+                else:
+                    lines.append("    # Factory class unavailable")
+                lines.append("    # TODO: implement this node")
+                lines.append("    pass")
 
         lines.append("")
 
@@ -180,7 +193,6 @@ def write_workbook_py(g, out_dir: Path) -> Path:
 
     fp.write_text("\n".join(lines))
     return fp
-
 
 
 def write_workbook_ipynb(g, out_dir: Path) -> Path:
@@ -239,22 +251,34 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
 
         cells.append({"cell_type": "markdown", "metadata": {}, "source": "\n".join(md_lines) + "\n"})
 
-         # Code cell (CSV Reader special case)
-        if n.type and csv_reader.can_handle(n.type) and state != "IDLE":
-            out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing]
-            code_src = csv_reader.generate_ipynb_code(nid, n.path, out_ports)
-        else:
+        # Code cell
+        if state == "IDLE":
             code_lines: List[str] = []
             if n.type:
                 hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
                 code_lines.append(f"# {hub_url}")
             else:
                 code_lines.append("# Factory class unavailable")
-            if state == "IDLE":
-                code_lines.append("# The node is IDLE. Codegen is not possible. Implement this node manually.")
-            else:
-                code_lines.append("# TODO: implement this node")
+            code_lines.append("# The node is IDLE. Codegen is not possible. Implement this node manually.")
             code_src = "\n".join(code_lines)
+        else:
+            # CSV Reader
+            if n.type and csv_reader.can_handle(n.type):
+                out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing]
+                code_src = csv_reader.generate_ipynb_code(nid, n.path, out_ports)
+            # CSV Writer
+            elif n.type and csv_writer.can_handle(n.type):
+                in_ports = [str(getattr(e, "target_port", "") or "1") for _, e in incoming]
+                code_src = csv_writer.generate_ipynb_code(nid, n.path, in_ports)
+            else:
+                code_lines: List[str] = []
+                if n.type:
+                    hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
+                    code_lines.append(f"# {hub_url}")
+                else:
+                    code_lines.append("# Factory class unavailable")
+                code_lines.append("# TODO: implement this node")
+                code_src = "\n".join(code_lines)
 
         cells.append({
             "cell_type": "code",
