@@ -3,36 +3,29 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Tuple, Optional
 
 from lxml import etree as ET
-from ..xml_utils import XML_PARSER  # project helper is OK here
+from ..xml_utils import XML_PARSER
 
-
-CSV_FACTORY = "org.knime.base.node.io.filehandling.csv.writer.CSVWriter2NodeFactory"
-
+CSV_WRITER_FACTORY = "org.knime.base.node.io.filehandling.csv.writer.CSVWriter2NodeFactory"
 
 def can_handle(node_type: Optional[str]) -> bool:
     """Return True if this generator supports the node factory."""
     if not node_type:
         return False
-    # KNIME 5.x CSV writer
+    # KNIME Base CSV Writer 2
     return node_type.endswith(".CSVWriter2NodeFactory")
-
 
 @dataclass
 class CSVWriterSettings:
-    out_path: Optional[str] = None
-    sep: Optional[str] = None
-    quotechar: Optional[str] = None
-    escapechar: Optional[str] = None
-    header: Optional[bool] = None
-    encoding: Optional[str] = None
-    line_terminator: Optional[str] = None
-    append: Optional[bool] = None
-    overwrite: Optional[bool] = None
-    na_rep: Optional[str] = None
-
+    path: Optional[str] = None
+    sep: Optional[str] = ","
+    quotechar: Optional[str] = '"'
+    header: Optional[bool] = True
+    encoding: Optional[str] = "utf-8"
+    na_rep: Optional[str] = None          # representation for NaN, e.g. "" or "null"
+    include_index: bool = False           # pandas index to file?
 
 # ----------------------------
 # XML helpers
@@ -44,10 +37,15 @@ def _first(root: ET._Element, xpath: str) -> Optional[str]:
         return (vals[0] or "").strip()
     return None
 
-
-def _all(root: ET._Element, xpath: str) -> List[str]:
-    return [(v or "").strip() for v in root.xpath(xpath)]
-
+def _bool(v: Optional[str]) -> Optional[bool]:
+    if v is None:
+        return None
+    t = v.strip().lower()
+    if t in {"true", "1", "yes", "y"}:
+        return True
+    if t in {"false", "0", "no", "n"}:
+        return False
+    return None
 
 def _normalize_delim(raw: Optional[str]) -> Optional[str]:
     if raw is None:
@@ -70,7 +68,6 @@ def _normalize_delim(raw: Optional[str]) -> Optional[str]:
         return "\t"
     return v or None
 
-
 def _normalize_char(raw: Optional[str]) -> Optional[str]:
     if not raw:
         return None
@@ -84,198 +81,165 @@ def _normalize_char(raw: Optional[str]) -> Optional[str]:
     return v[:1] if len(v) >= 1 else None
 
 
-def _bool_from_value(v: Optional[str]) -> Optional[bool]:
-    if v is None:
-        return None
-    up = v.strip().lower()
-    if up in {"true", "1", "yes", "y"}:
-        return True
-    if up in {"false", "0", "no", "n"}:
-        return False
-    return None
-
-
-def _looks_like_path(s: str) -> bool:
-    if not s:
-        return False
-    if s.lower().startswith(("file:", "s3:", "hdfs:", "abfss:", "http://", "https://")):
-        return True
-    if s.endswith(".csv"):
-        return True
-    if "/" in s or "\\" in s:
-        return True
-    return False
+def _normalize_in_ports(in_ports: List[object]) -> List[Tuple[str, str]]:
+    """
+    Accepts items like ('1393','1') or '1393:1' (or just '1393') and
+    returns a normalized list of (src_id, port) as strings.
+    """
+    norm: List[Tuple[str, str]] = []
+    for item in in_ports or []:
+        if isinstance(item, tuple) and len(item) == 2:
+            src, port = str(item[0]), str(item[1] or "1")
+            norm.append((src, port))
+        else:
+            s = str(item)
+            if ":" in s:
+                src, port = s.split(":", 1)
+                norm.append((src, port or "1"))
+            elif s:
+                norm.append((s, "1"))
+    if not norm:
+        norm.append(("UNKNOWN", "1"))
+    return norm
 
 
 # ----------------------------
-# settings.xml -> CSVWriterSettings
+# Read settings.xml → CSVWriterSettings
 # ----------------------------
 
-def parse_csv_writer_settings(node_dir: Path) -> CSVWriterSettings:
-    """
-    Extract CSV writer options from <node_dir>/settings.xml.
-    Heuristic, robust across KNIME 5.x variants.
-    """
-    settings = node_dir / "settings.xml"
-    if not settings.exists():
+def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
+    if not node_dir:
+        return CSVWriterSettings()
+    settings_path = node_dir / "settings.xml"
+    if not settings_path.exists():
         return CSVWriterSettings()
 
-    root = ET.parse(str(settings), parser=XML_PARSER).getroot()
+    root = ET.parse(str(settings_path), parser=XML_PARSER).getroot()
 
-    # Output path: look for common keys
-    out_candidates = _all(
+    # File path (look for keys like path/url/file/location)
+    path = _first(
         root,
-        "(.//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'path')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'file')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'location')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'dest')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), 'output')]/@value)"
+        "(.//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'path')]/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'url')]/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'file')]/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'location')]/@value)"
     )
-    out_path = next((p for p in out_candidates if _looks_like_path(p)), None)
 
     # Separator
-    delim_raw = _first(
+    sep_raw = _first(
         root,
         "(.//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'delim')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','lowercase'),'separator')]/@value"
         " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'separator')]/@value)"
     )
-    sep = _normalize_delim(delim_raw) or ","
+    sep = _normalize_delim(sep_raw) or ","
 
-    # Quote / escape
+    # Quote character
     quote_raw = _first(
         root,
         ".//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'quote')]/@value"
     )
     quotechar = _normalize_char(quote_raw) or '"'
 
-    esc_raw = _first(
-        root,
-        ".//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'escape')]/@value"
-    )
-    escapechar = _normalize_char(esc_raw)
-
-    # Header flag (write column header)
+    # Header flag (write header)
     header_raw = _first(
         root,
-        "(.//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'header')]/@value"
-        " | .//*[local-name()='entry' and @key='header']/@value)"
+        "(.//*[local-name()='entry' and @key='writeHeader']/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'header')]/@value)"
     )
-    header = _bool_from_value(header_raw)
+    header = _bool(header_raw)
     if header is None:
         header = True
 
     # Encoding
     enc = _first(
         root,
-        "(.//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'charset')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'encoding')]/@value)"
+        "(.//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'encoding')]/@value"
+        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'charset')]/@value)"
     ) or "utf-8"
 
-    # Line terminator / newline
-    lt = _first(
+    # NA representation
+    na_rep = _first(
         root,
-        "(.//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'line')"
-        " and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'separator')]/@value"
-        " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'lineterminator')]/@value)"
+        ".//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'missing')"
+        " and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'representation')]/@value"
     )
 
-    # Append / overwrite hints
-    append = _bool_from_value(_first(root, ".//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'append')]/@value"))
-    overwrite = _bool_from_value(_first(root, ".//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'overwrite')]/@value"))
-
-    # Missing value representation
-    na_rep = _first(root, ".//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'missing')]/@value")
+    # Include index?
+    include_index_raw = _first(
+        root,
+        ".//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'includeindex')]/@value"
+    )
+    include_index = _bool(include_index_raw)
+    if include_index is None:
+        include_index = False
 
     return CSVWriterSettings(
-        out_path=out_path,
+        path=path,
         sep=sep,
         quotechar=quotechar,
-        escapechar=escapechar,
         header=header,
         encoding=enc,
-        line_terminator=lt,
-        append=append,
-        overwrite=overwrite,
         na_rep=na_rep,
+        include_index=include_index,
     )
-
 
 # ----------------------------
 # Code generators
 # ----------------------------
 
-def _context_read_lines(in_ports: List[str]) -> List[str]:
-    lines: List[str] = []
-    if in_ports:
-        # prefer the first declared input
-        key = in_ports[0]
-        lines.append(f"df = context[{key!r}]")
-    else:
-        lines.append("# WARNING: no inputs detected; please set `df` manually")
-        lines.append("df = None  # replace with your DataFrame")
-    return lines
-
-
-def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[str]) -> List[str]:
+def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[object]) -> List[str]:
+    print(in_ports)
     """
-    Return the *body* lines to place inside the function for this node in the .py workbook.
+    Return the *body* lines to place inside the function for this CSV Writer node
+    in the .py workbook. Accepts input ports as either [('1393','1')] or ['1393:1'].
     """
     ndir = Path(node_dir) if node_dir else None
     settings = parse_csv_writer_settings(ndir) if ndir else CSVWriterSettings()
 
     lines: List[str] = []
-    lines.append("# https://hub.knime.com/knime/extensions/org.knime.features.base/latest/" + CSV_FACTORY)
+    # Link to hub doc
+    lines.append("# https://hub.knime.com/knime/extensions/org.knime.features.base/latest/"
+                 + CSV_WRITER_FACTORY)
     lines.append("from pathlib import Path")
     lines.append("import pandas as pd")
 
-    # Read DF from context
-    lines += _context_read_lines(in_ports)
+    # Pull input dataframe from context (first input only; CSV Writer has a single table input)
+    pairs = _normalize_in_ports(in_ports)
+    src_id, in_port = pairs[0]
+    lines.append(f"df = context['{src_id}:{in_port}']")
 
     # Output path
-    if settings.out_path:
-        lines.append(f"out_path = Path(r\"{settings.out_path}\")")
+    if settings.path:
+        lines.append(f"out_path = Path(r\"{settings.path}\")")
     else:
-        lines.append("# WARNING: CSV output path not found in settings.xml. Please set manually:")
-        lines.append("out_path = Path('output.csv')")
+        lines.append("# WARNING: output CSV path not found in settings.xml. Please set manually:")
+        lines.append("out_path = Path('path/to/output.csv')")
 
-    # Build to_csv params safely (avoid backslashes in f-string expressions)
-    params: List[str] = ["out_path"]
-    # sep
-    sep = settings.sep if settings.sep is not None else ","
-    params.append(f"sep={sep!r}")
-    # quotechar (default '"' if None)
-    q = settings.quotechar if settings.quotechar is not None else '"'
-    params.append(f"quotechar={q!r}")
-    # escapechar only if present and different from quotechar
-    if settings.escapechar is not None and settings.escapechar != q:
-        params.append(f"escapechar={settings.escapechar!r}")
-    # header flag
-    params.append("header=True" if (settings.header is None or settings.header) else "header=False")
-    # encoding
-    if settings.encoding:
-        params.append(f"encoding={settings.encoding!r}")
-    # line terminator
-    if settings.line_terminator:
-        params.append(f"lineterminator={settings.line_terminator!r}")
-    # na_rep
-    if settings.na_rep:
-        params.append(f"na_rep={settings.na_rep!r}")
-    # Never write the pandas index by default
-    params.append("index=False")
-    # mode (append/overwrite hints)
-    if settings.append:
-        params.append("mode='a'")
-    elif settings.overwrite:
-        params.append("mode='w'")
+    # Build to_csv kwargs (precompute reprs to avoid f-string escape issues)
+    sep_repr = repr(settings.sep) if settings.sep is not None else repr(",")
+    quote_repr = repr(settings.quotechar) if settings.quotechar is not None else repr('"')
+    enc_repr = repr(settings.encoding) if settings.encoding else repr("utf-8")
+    na_rep_repr = repr(settings.na_rep) if settings.na_rep is not None else "None"
+    index_bool = "True" if settings.include_index else "False"
+    header_bool = "True" if settings.header else "False"
 
-    lines.append(f"df.to_csv({', '.join(params)})")
+    # Emit to_csv
+    line = (
+        "df.to_csv("
+        "out_path, "
+        f"sep={sep_repr}, "
+        f"quotechar={quote_repr}, "
+        f"header={header_bool}, "
+        f"encoding={enc_repr}, "
+        f"na_rep={na_rep_repr}, "
+        f"index={index_bool}"
+        ")"
+    )
+    lines.append(line)
+
     return lines
 
 
-def generate_ipynb_code(node_id: str, node_dir: Optional[str], in_ports: List[str]) -> str:
-    """
-    Return the code cell text for the notebook workbook (single string).
-    """
+def generate_ipynb_code(node_id: str, node_dir: Optional[str], in_ports: List[object]) -> str:
     body = generate_py_body(node_id, node_dir, in_ports)
     return "\n".join(body) + "\n"

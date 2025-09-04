@@ -268,8 +268,10 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
                 code_src = csv_reader.generate_ipynb_code(nid, n.path, out_ports)
             # CSV Writer
             elif n.type and csv_writer.can_handle(n.type):
-                in_ports = [str(getattr(e, "target_port", "") or "1") for _, e in incoming]
+                # Use SOURCE ports from incoming edges; those are the context keys upstream wrote.
+                in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in incoming]
                 code_src = csv_writer.generate_ipynb_code(nid, n.path, in_ports)
+
             else:
                 code_lines: List[str] = []
                 if n.type:
