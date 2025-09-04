@@ -54,3 +54,15 @@ def node_csv_reader_dir() -> Path:
     if not settings.exists():
         pytest.fail(f"Missing CSV Reader node settings: {settings}")
     return ndir
+
+@pytest.fixture(scope="session")
+def node_csv_reader_dir() -> Path:
+    p = DATA_DIR / "Node_csv_reader"
+    if not p.exists():
+        pytest.fail(f"Test data missing: {p}")
+    return p
+
+# Back-compat alias so tests that expect `csv_reader_node_dir` keep working
+@pytest.fixture(scope="session")
+def csv_reader_node_dir(node_csv_reader_dir: Path) -> Path:
+    return node_csv_reader_dir

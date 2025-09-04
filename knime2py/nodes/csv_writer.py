@@ -7,15 +7,24 @@ from typing import List, Tuple, Optional
 
 from lxml import etree as ET
 from ..xml_utils import XML_PARSER
+from .node_utils import (
+    first,
+    bool_from_value,
+    normalize_delim,
+    normalize_char,
+    looks_like_path,
+    normalize_in_ports,
+)
 
 CSV_WRITER_FACTORY = "org.knime.base.node.io.filehandling.csv.writer.CSVWriter2NodeFactory"
+
 
 def can_handle(node_type: Optional[str]) -> bool:
     """Return True if this generator supports the node factory."""
     if not node_type:
         return False
-    # KNIME Base CSV Writer 2
     return node_type.endswith(".CSVWriter2NodeFactory")
+
 
 @dataclass
 class CSVWriterSettings:
@@ -24,95 +33,8 @@ class CSVWriterSettings:
     quotechar: Optional[str] = '"'
     header: Optional[bool] = True
     encoding: Optional[str] = "utf-8"
-    na_rep: Optional[str] = None          # representation for NaN, e.g. "" or "null"
-    include_index: bool = False           # pandas index to file?
-
-# ----------------------------
-# XML helpers
-# ----------------------------
-
-def _first(root: ET._Element, xpath: str) -> Optional[str]:
-    vals = root.xpath(xpath)
-    if vals:
-        return (vals[0] or "").strip()
-    return None
-
-def _bool(v: Optional[str]) -> Optional[bool]:
-    if v is None:
-        return None
-    t = v.strip().lower()
-    if t in {"true", "1", "yes", "y"}:
-        return True
-    if t in {"false", "0", "no", "n"}:
-        return False
-    return None
-
-def _normalize_delim(raw: Optional[str]) -> Optional[str]:
-    if raw is None:
-        return None
-    v = raw.strip()
-    if len(v) == 1:
-        return v
-    up = v.upper()
-    if up in {"TAB", "\\T", "CTRL-I"}:
-        return "\t"
-    if up in {"COMMA"}:
-        return ","
-    if up in {"SEMICOLON", "SEMI", "SC"}:
-        return ";"
-    if up in {"SPACE"}:
-        return " "
-    if up in {"PIPE"}:
-        return "|"
-    if v == "\\t":
-        return "\t"
-    return v or None
-
-def _normalize_char(raw: Optional[str]) -> Optional[str]:
-    if not raw:
-        return None
-    v = raw.strip()
-    if v.upper() in {"", "NONE", "NULL"}:
-        return None
-    if v == "&quot;":
-        return '"'
-    if v == "&apos;":
-        return "'"
-    return v[:1] if len(v) >= 1 else None
-
-
-def _normalize_in_ports(in_ports: List[object]) -> List[Tuple[str, str]]:
-    """
-    Accepts items like ('1393','1') or '1393:1' (or just '1393') and
-    returns a normalized list of (src_id, port) as strings.
-    """
-    norm: List[Tuple[str, str]] = []
-    for item in in_ports or []:
-        if isinstance(item, tuple) and len(item) == 2:
-            src, port = str(item[0]), str(item[1] or "1")
-            norm.append((src, port))
-        else:
-            s = str(item)
-            if ":" in s:
-                src, port = s.split(":", 1)
-                norm.append((src, port or "1"))
-            elif s:
-                norm.append((s, "1"))
-    if not norm:
-        norm.append(("UNKNOWN", "1"))
-    return norm
-
-def _looks_like_path(s: str) -> bool:
-    if not s:
-        return False
-    low = s.lower()
-    if low.startswith(("file:", "s3:", "hdfs:", "abfss:", "http://", "https://")):
-        return True
-    if s.endswith(".csv"):
-        return True
-    if "/" in s or "\\" in s:
-        return True
-    return False
+    na_rep: Optional[str] = None         # representation for NaN, e.g. "" or "null"
+    include_index: bool = False          # pandas index to file?
 
 
 # ----------------------------
@@ -128,7 +50,7 @@ def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
 
     root = ET.parse(str(settings_path), parser=XML_PARSER).getroot()
 
-    # --- robust file path detection (avoid grabbing node_file="settings.xml") ---
+    # Robust file path detection (avoid grabbing node_file="settings.xml")
     path_candidates = [
         v for v in root.xpath(
             "(.//*[local-name()='entry' and contains(translate(@key,"
@@ -142,54 +64,53 @@ def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
         )
         if v
     ]
-    # choose the first thing that actually looks like a csv path/uri
-    path = next((p for p in path_candidates if _looks_like_path(p)), None)
+    path = next((p for p in path_candidates if looks_like_path(p)), None)
 
     # Separator
-    sep_raw = _first(
+    sep_raw = first(
         root,
         "(.//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'delim')]/@value"
         " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'separator')]/@value)"
     )
-    sep = _normalize_delim(sep_raw) or ","
+    sep = normalize_delim(sep_raw) or ","
 
     # Quote character
-    quote_raw = _first(
+    quote_raw = first(
         root,
         ".//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'quote')]/@value"
     )
-    quotechar = _normalize_char(quote_raw) or '"'
+    quotechar = normalize_char(quote_raw) or '"'
 
     # Header flag (write header)
-    header_raw = _first(
+    header_raw = first(
         root,
         "(.//*[local-name()='entry' and @key='writeHeader']/@value"
         " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'header')]/@value)"
     )
-    header = _bool(header_raw)
+    header = bool_from_value(header_raw)
     if header is None:
         header = True
 
     # Encoding
-    enc = _first(
+    enc = first(
         root,
         "(.//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'encoding')]/@value"
         " | .//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'charset')]/@value)"
     ) or "utf-8"
 
     # NA representation
-    na_rep = _first(
+    na_rep = first(
         root,
         ".//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'missing')"
         " and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'representation')]/@value"
     )
 
     # Include index?
-    include_index_raw = _first(
+    include_index_raw = first(
         root,
         ".//*[local-name()='entry' and contains(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'includeindex')]/@value"
     )
-    include_index = _bool(include_index_raw)
+    include_index = bool_from_value(include_index_raw)
     if include_index is None:
         include_index = False
 
@@ -209,7 +130,6 @@ def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
 # ----------------------------
 
 def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[object]) -> List[str]:
-    print(in_ports)
     """
     Return the *body* lines to place inside the function for this CSV Writer node
     in the .py workbook. Accepts input ports as either [('1393','1')] or ['1393:1'].
@@ -219,13 +139,12 @@ def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[objec
 
     lines: List[str] = []
     # Link to hub doc
-    lines.append("# https://hub.knime.com/knime/extensions/org.knime.features.base/latest/"
-                 + CSV_WRITER_FACTORY)
+    lines.append("# https://hub.knime.com/knime/extensions/org.knime.features.base/latest/" + CSV_WRITER_FACTORY)
     lines.append("from pathlib import Path")
     lines.append("import pandas as pd")
 
-    # Pull input dataframe from context (first input only; CSV Writer has a single table input)
-    pairs = _normalize_in_ports(in_ports)
+    # Pull input dataframe from context (CSV Writer has a single table input)
+    pairs = normalize_in_ports(in_ports)
     src_id, in_port = pairs[0]
     lines.append(f"df = context['{src_id}:{in_port}']")
 
@@ -262,5 +181,8 @@ def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[objec
 
 
 def generate_ipynb_code(node_id: str, node_dir: Optional[str], in_ports: List[object]) -> str:
+    """
+    Return the code cell text for the notebook workbook (single string).
+    """
     body = generate_py_body(node_id, node_dir, in_ports)
     return "\n".join(body) + "\n"
