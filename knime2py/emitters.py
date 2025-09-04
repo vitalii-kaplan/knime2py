@@ -167,7 +167,7 @@ def write_workbook_py(g, out_dir: Path) -> Path:
                     lines.append("    " + bline)
             # CSV Writer → generate writer code (consume df from context)
             elif n.type and csv_writer.can_handle(n.type):
-                in_ports = [str(getattr(e, "target_port", "") or "1") for _, e in incoming]
+                in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in incoming]
                 body = csv_writer.generate_py_body(nid, n.path, in_ports)
                 for bline in body:
                     lines.append("    " + bline)
