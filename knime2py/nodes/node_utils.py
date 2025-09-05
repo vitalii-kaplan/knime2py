@@ -11,10 +11,29 @@ from lxml import etree as ET
 # ----------------------------
 
 def first(root: ET._Element, xpath: str) -> Optional[str]:
-    """Return the first (string) value for xpath, stripped, or None."""
+    """Return the first string value for xpath, stripped, or None.
+
+    If the xpath returns an element, prefer its @value, else its .text.
+    If it returns a scalar (string/number), cast to str and strip.
+    """
     vals = root.xpath(xpath)
-    if vals:
-        return (vals[0] or "").strip()
+    if not vals:
+        return None
+    v = vals[0]
+    # Element -> prefer @value then .text
+    if isinstance(v, ET._Element):
+        if v.get("value") is not None:
+            return (v.get("value") or "").strip()
+        return (v.text or "").strip()
+    # Scalar / attribute string / number
+    return (str(v) if v is not None else "").strip()
+
+def first_el(root: ET._Element, xpath: str) -> Optional[ET._Element]:
+    """Return the first Element for xpath, or None (ignores non-Elements)."""
+    vals = root.xpath(xpath)
+    for v in vals:
+        if isinstance(v, ET._Element):
+            return v
     return None
 
 def all_values(root: ET._Element, xpath: str) -> List[str]:

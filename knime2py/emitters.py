@@ -12,7 +12,7 @@ from typing import List, Optional
 from .traverse import (
     traverse_nodes,         
 )
-from .nodes import csv_reader, csv_writer, column_filter, missing_value
+from .nodes import csv_reader, csv_writer, column_filter, missing_value, normalizer
 
 __all__ = [
     "write_graph_json",
@@ -192,6 +192,8 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
                 res = column_filter.handle(n.type, nid, n.path, incoming, outgoing)
             elif n.type and missing_value.can_handle(n.type):
                 res = missing_value.handle(n.type, nid, n.path, incoming, outgoing)
+            elif n.type and normalizer.can_handle(n.type):
+                res = normalizer.handle(n.type, nid, n.path, incoming, outgoing)
 
             if res:
                 found_imports, body = res
