@@ -1,0 +1,14 @@
+[tool.pytest.ini_options]
+addopts = "-q --cov=knime2py --cov-branch --cov-report=term-missing --cov-report=xml:coverage.xml"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["knime2py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+
+[tool.coverage.xml]
+output = "coverage.xml"
