@@ -3,20 +3,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from lxml import etree as ET
 from ..xml_utils import XML_PARSER
-from .node_utils import *  # re-use shared XML + port helpers, as agreed
+from . import node_utils as U  # reuse shared XML + port helpers (incl. _iter_entries)
 
 
-# KNIME Base Column Filter factories seen across versions
-COLUMN_FILTER_FACTORIES = "org.knime.base.node.preproc.filter.column.DataColumnSpecFilterNodeFactory"
+# Support multiple Column Filter factories across KNIME versions
+COLUMN_FILTER_FACTORIES = (
+    "org.knime.base.node.preproc.filter.column2.ColumnFilter2NodeFactory",   # newer
+    "org.knime.base.node.preproc.colfilter.ColumnFilterNodeFactory",         # classic
+    "org.knime.base.node.preproc.filter.column.DataColumnSpecFilterNodeFactory",  # legacy/alt
+)
 
 def can_handle(node_type: Optional[str]) -> bool:
-    if not node_type:
-        return False
-    return node_type.endswith(COLUMN_FILTER_FACTORIES)
+    return bool(node_type and any(node_type.endswith(sfx) for sfx in COLUMN_FILTER_FACTORIES))
 
 
 # ---------------------------------------------------------------------
@@ -29,50 +31,18 @@ class ColumnFilterSettings:
     excludes: List[str] = field(default_factory=list)
 
 
-def _gather_numeric_entries(cfg: ET._Element) -> List[str]:
-    """
-    Extract values from <entry key="0" value="..."/>, <entry key="1" ...> ... patterns
-    within a subtree.
-    """
-    out: List[str] = []
-    for ent in cfg.xpath(".//*[local-name()='entry']"):
-        k = (ent.get("key") or "").strip()
-        v = (ent.get("value") or "").strip()
-        if k.isdigit() and v:
-            out.append(v)
-    return out
-
-
-def _gather_named_entries(cfg: ET._Element) -> List[str]:
-    """
-    Extract values from <entry key='name' value='col'/> patterns somewhere below cfg.
-    KNIME often nests columns like <config key='columns'><config key='0'><entry key='name' ...>
-    """
-    return [
-        (v or "").strip()
-        for v in cfg.xpath(".//*[local-name()='entry' and translate(@key,"
-                           " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='name']/@value")
-        if v
-    ]
-
-
 def _uniq_preserve(seq: List[str]) -> List[str]:
-    seen = set()
-    out: List[str] = []
-    for s in seq:
-        if s not in seen:
-            seen.add(s)
-            out.append(s)
-    return out
+    # simple, fast order-preserving uniquifier
+    return list(dict.fromkeys([s for s in seq if s]))
 
 
 def parse_column_filter_settings(node_dir: Optional[Path]) -> ColumnFilterSettings:
     """
     Heuristic parser that finds include/exclude column names in Column Filter settings.xml.
-    Handles a few common KNIME layouts:
-      - lists under any config whose key contains 'include'/'exclude'
+    Handles common KNIME layouts:
+      - any <config> whose key contains 'include'/'exclude'
       - numeric entry lists (<entry key='0' value='Col'/> ...)
-      - nested column blocks with <entry key='name' value='Col'/>
+      - nested blocks with <entry key='name' value='Col'/>
     """
     if not node_dir:
         return ColumnFilterSettings()
@@ -82,38 +52,39 @@ def parse_column_filter_settings(node_dir: Optional[Path]) -> ColumnFilterSettin
 
     root = ET.parse(str(settings_path), parser=XML_PARSER).getroot()
 
-    # Collect INCLUDE candidates
+    def _collect_from_cfgs(cfgs) -> List[str]:
+        out: List[str] = []
+        for cfg in cfgs:
+            for k, v in U._iter_entries(cfg):  # from node_utils (regex-friendly)
+                lk = k.lower()
+                if (k.isdigit() or lk == "name") and v:
+                    out.append(v)
+        return out
+
+    # INCLUDE / EXCLUDE via config key tokens
     include_cfgs = root.xpath(
         ".//*[local-name()='config' and contains(translate(@key,"
         " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'include')]"
     )
-    includes: List[str] = []
-    for cfg in include_cfgs:
-        includes.extend(_gather_numeric_entries(cfg))
-        includes.extend(_gather_named_entries(cfg))
-
-    # Collect EXCLUDE candidates
     exclude_cfgs = root.xpath(
         ".//*[local-name()='config' and contains(translate(@key,"
         " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'exclude')]"
     )
-    excludes: List[str] = []
-    for cfg in exclude_cfgs:
-        excludes.extend(_gather_numeric_entries(cfg))
-        excludes.extend(_gather_named_entries(cfg))
 
-    # As a fallback, some exports put explicit columns under generic 'columns'
-    # blocks with an 'include'/'exclude' switch at a sibling. We try a broad sweep:
+    includes = _collect_from_cfgs(include_cfgs)
+    excludes = _collect_from_cfgs(exclude_cfgs)
+
+    # Fallback: generic 'columns' blocks when include/exclude buckets aren’t explicit
     if not includes and not excludes:
-        for cfg in root.xpath(".//*[local-name()='config' and contains(translate(@key,"
-                              " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'columns')]"):
-            names = _gather_named_entries(cfg) or _gather_numeric_entries(cfg)
-            # If we can’t detect mode, default to includes (safe/explicit)
-            includes.extend(names)
+        columns_cfgs = root.xpath(
+            ".//*[local-name()='config' and contains(translate(@key,"
+            " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'columns')]"
+        )
+        includes.extend(_collect_from_cfgs(columns_cfgs))
 
     return ColumnFilterSettings(
-        includes=_uniq_preserve([c for c in includes if c]),
-        excludes=_uniq_preserve([c for c in excludes if c]),
+        includes=_uniq_preserve(includes),
+        excludes=_uniq_preserve(excludes),
     )
 
 
@@ -121,8 +92,10 @@ def parse_column_filter_settings(node_dir: Optional[Path]) -> ColumnFilterSettin
 # Code generators
 # ---------------------------------------------------------------------
 
-HUB_URL = "https://hub.knime.com/knime/extensions/org.knime.features.base/latest/" \
-          "org.knime.base.node.preproc.filter.column2.ColumnFilter2NodeFactory"
+HUB_URL = (
+    "https://hub.knime.com/knime/extensions/org.knime.features.base/latest/"
+    "org.knime.base.node.preproc.filter.column2.ColumnFilter2NodeFactory"
+)
 
 def _emit_filter_code(settings: ColumnFilterSettings) -> List[str]:
     """
@@ -145,7 +118,6 @@ def _emit_filter_code(settings: ColumnFilterSettings) -> List[str]:
     if have_exc:
         exc_list = ", ".join(repr(c) for c in settings.excludes)
         lines.append(f"exclude_cols = [{exc_list}]")
-        # drop only those present; errors='ignore' is fine but we also filter for clarity
         lines.append("cols_exc = [c for c in exclude_cols if c in out_df.columns]")
         lines.append("out_df = out_df.drop(columns=cols_exc, errors='ignore')")
 
@@ -174,7 +146,7 @@ def generate_py_body(
     lines: List[str] = []
     lines.append(f"# {HUB_URL}")
     lines.append("import pandas as pd  # required at runtime")
-    pairs = normalize_in_ports(in_ports)
+    pairs = U.normalize_in_ports(in_ports)
     src_id, in_port = pairs[0]
     lines.append(f"df = context['{src_id}:{in_port}']  # input table")
 
