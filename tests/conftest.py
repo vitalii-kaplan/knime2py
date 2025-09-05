@@ -81,3 +81,11 @@ def node_column_filter_dir() -> Path:
     if not settings.exists():
         pytest.fail(f"Missing Column Filter node settings at {settings}")
     return p
+
+@pytest.fixture(scope="session")
+def node_missing_value_dir() -> Path:
+    p = DATA_DIR / "Node_missing_value"
+    settings = p / "settings.xml"
+    if not settings.exists():
+        pytest.fail(f"Missing Missing Value node settings at {settings}")
+    return p

@@ -16,16 +16,30 @@
         "justMyCode": true
       },
       {
-        "name": "pytest: debug all (-q)",
+        "name": "pytest: debug all",
         "type": "debugpy",
         "request": "launch",
         "module": "pytest",
-        "args": ["-q", "tests"],
+        "args": ["tests"],
         "cwd": "${workspaceFolder}",
         "console": "integratedTerminal",
         "justMyCode": true,
         "env": {
           "PYTHONPATH": "${workspaceFolder}"
+        }
+      },
+      {
+        "name": "pytest: debug all (no cov)",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "pytest",
+        "args": ["-q", "--no-cov", "-s", "tests"],
+        "cwd": "${workspaceFolder}",
+        "console": "integratedTerminal",
+        "justMyCode": true,
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "PYTEST_ADDOPTS": ""   // ensure nothing from env re-adds coverage
         }
       }
     ]

@@ -241,3 +241,44 @@ def extract_csv_na_rep(root: ET._Element) -> Optional[str]:
 def extract_csv_include_index(root: ET._Element) -> Optional[bool]:
     raw = _first_value_re(root, r"include[_-]?index")
     return bool_from_value(raw)
+
+# ----------------------------
+# Data type extractors
+# ----------------------------
+
+def extract_table_spec_types(root: ET._Element) -> dict:
+    """
+    Return {column_name: java_class} from table_spec_config_Internals.
+    Looks under .../individual_specs/*/<config key='0'..> blocks.
+    """
+    out = {}
+    for cfg in root.xpath(
+        ".//*[local-name()='config' and @key='table_spec_config_Internals']"
+        "/*[local-name()='config' and @key='individual_specs']"
+        "/*[local-name()='config']"  # per file block
+        "/*[local-name()='config' and re:test(@key, '^[0-9]+$')]",
+        namespaces={'re': "http://exslt.org/regular-expressions"}
+    ):
+        name = first(cfg, ".//*[local-name()='entry' and @key='name']/@value")
+        jcls = first(cfg, ".//*[local-name()='config' and @key='type']"
+                          "/*[local-name()='entry' and @key='class']/@value")
+        if name:
+            out[name] = jcls or ""
+    return out
+
+
+def java_to_pandas_dtype(java_class: str) -> Optional[str]:
+    """
+    Map KNIME java types to pandas nullable dtypes.
+    """
+    j = (java_class or "").lower()
+    if "integer" in j or "long" in j or "intcell" in j:
+        return "Int64"
+    if "double" in j or "float" in j:
+        return "Float64"
+    if "boolean" in j:
+        return "boolean"
+    if "string" in j:
+        return "string"
+    # leave unknowns to inference
+    return None
