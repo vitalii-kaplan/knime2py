@@ -128,6 +128,9 @@ def _emit_filter_code(settings: ColumnFilterSettings) -> List[str]:
     return lines
 
 
+def generate_imports():
+    return ["import pandas as pd"]
+
 def generate_py_body(
     node_id: str,
     node_dir: Optional[str],
@@ -145,7 +148,6 @@ def generate_py_body(
 
     lines: List[str] = []
     lines.append(f"# {HUB_URL}")
-    lines.append("import pandas as pd  # required at runtime")
     pairs = U.normalize_in_ports(in_ports)
     src_id, in_port = pairs[0]
     lines.append(f"df = context['{src_id}:{in_port}']  # input table")

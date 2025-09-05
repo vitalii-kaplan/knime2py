@@ -116,11 +116,47 @@ def write_graph_dot(g, out_dir: Path) -> Path:
     return fp
 
 
-def build_workbook_blocks(g) -> List[NodeBlock]:
+def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
     """
     Build render-ready blocks for each node (same content used by .py and .ipynb writers).
+    Also aggregates per-node imports into a single preamble list for the whole document.
+
+    Returns:
+        (blocks, aggregated_imports)
     """
     blocks: List[NodeBlock] = []
+
+    # Collect unique imports across nodes
+    aggregated_imports: set[str] = set()
+
+    def _collect_module_imports(mod) -> None:
+        """
+        If the node module defines generate_imports(), merge them into aggregated_imports.
+        """
+        try:
+            if hasattr(mod, "generate_imports"):
+                for line in (mod.generate_imports() or []):
+                    stripped = (line or "").strip()
+                    if stripped:
+                        aggregated_imports.add(stripped)
+        except Exception:
+            # don't let an import collector crash codegen
+            pass
+
+    def _split_out_imports(lines: List[str]) -> tuple[list[str], list[str]]:
+        """
+        Return (found_imports, body_without_imports) from a list of code lines.
+        Any line starting with 'import ' or 'from ' (after leading whitespace) is treated as import.
+        """
+        found: list[str] = []
+        body: list[str] = []
+        for ln in lines or []:
+            s = ln.lstrip()
+            if s.startswith("import ") or s.startswith("from "):
+                found.append(s.strip())
+            else:
+                body.append(ln)
+        return found, body
 
     for ctx in traverse_nodes(g):
         nid = ctx["nid"]
@@ -178,28 +214,41 @@ def build_workbook_blocks(g) -> List[NodeBlock]:
         else:
             # CSV Reader
             if n.type and csv_reader.can_handle(n.type):
-                # CSV Reader → publishes df to this node's output ports
+                _collect_module_imports(csv_reader)
                 out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing]
-                code_lines.extend(csv_reader.generate_py_body(nid, n.path, out_ports))
-            
+                node_lines = csv_reader.generate_py_body(nid, n.path, out_ports)
+                found, body = _split_out_imports(node_lines)
+                aggregated_imports.update(found)
+                code_lines.extend(body)
+
             # CSV Writer
             elif n.type and csv_writer.can_handle(n.type):
-                # CSV Writer → consumes df from upstream SOURCE ports
+                _collect_module_imports(csv_writer)
                 in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in incoming]
-                code_lines.extend(csv_writer.generate_py_body(nid, n.path, in_ports))
+                node_lines = csv_writer.generate_py_body(nid, n.path, in_ports)
+                found, body = _split_out_imports(node_lines)
+                aggregated_imports.update(found)
+                code_lines.extend(body)
 
             # Column Filter
             elif n.type and column_filter.can_handle(n.type):
-                # Column Filter → consumes df (first input), emits filtered df to this node's outputs
+                _collect_module_imports(column_filter)
                 in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in incoming]
                 out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing] or ["1"]
-                code_lines.extend(column_filter.generate_py_body(nid, n.path, in_ports, out_ports))
+                node_lines = column_filter.generate_py_body(nid, n.path, in_ports, out_ports)
+                found, body = _split_out_imports(node_lines)
+                aggregated_imports.update(found)
+                code_lines.extend(body)
 
             # Missing Value
             elif n.type and missing_value.can_handle(n.type):
+                _collect_module_imports(missing_value)
                 in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in incoming]
                 out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing] or ["1"]
-                code_lines.extend(missing_value.generate_py_body(nid, n.path, in_ports, out_ports))
+                node_lines = missing_value.generate_py_body(nid, n.path, in_ports, out_ports)
+                found, body = _split_out_imports(node_lines)
+                aggregated_imports.update(found)
+                code_lines.extend(body)
 
             else:
                 # fallback stub
@@ -223,22 +272,26 @@ def build_workbook_blocks(g) -> List[NodeBlock]:
             code_lines=code_lines,
         ))
 
-    return blocks
-
+    # Return blocks and a sorted list of unique imports
+    return blocks, sorted(aggregated_imports)
 
 
 def write_workbook_py(g, out_dir: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.py"
 
-    blocks = build_workbook_blocks(g)
+    blocks, imports = build_workbook_blocks(g)
 
     lines: List[str] = []
     lines.append("# Auto-generated from KNIME workflow")
     lines.append(f"# workflow: {g.workflow_id}")
     lines.append("")
-    lines.append("from pathlib import Path")
-    lines.append("")
+
+    # --- aggregated imports at module top
+    if imports:
+        lines.extend(imports)
+        lines.append("")
+
     lines.append("# Simple shared context to pass tabular data between sections")
     lines.append("context = {}  # e.g., {'1:output_table': df}")
     lines.append("")
@@ -277,12 +330,13 @@ def write_workbook_py(g, out_dir: Path) -> Path:
 
 def write_workbook_ipynb(g, out_dir: Path) -> Path:
     """
-    Jupyter notebook: one markdown cell (header + summaries) + one code cell per node.
+    Jupyter notebook: one markdown cell (header + summaries), then an imports cell,
+    then a shared context cell, then one code cell per node.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.ipynb"
 
-    blocks = build_workbook_blocks(g)
+    blocks, imports = build_workbook_blocks(g)
 
     cells: List[dict] = []
 
@@ -292,6 +346,17 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
         f"Generated from KNIME workflow at `{g.workflow_path}`\n"
     )
     cells.append({"cell_type": "markdown", "metadata": {}, "source": title_md})
+
+    # Aggregated imports cell (if any)
+    if imports:
+        imports_src = "\n".join(imports) + "\n"
+        cells.append({
+            "cell_type": "code",
+            "metadata": {},
+            "execution_count": None,
+            "outputs": [],
+            "source": imports_src
+        })
 
     # Shared context
     context_src = "# Shared context to pass dataframes/tables between nodes\ncontext = {}\n"
@@ -328,4 +393,3 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
     }
     fp.write_text(json.dumps(nb, indent=2, ensure_ascii=False))
     return fp
-

@@ -135,6 +135,9 @@ def parse_missing_value_settings(node_dir: Optional[Path]) -> MissingValueSettin
 # Code generators
 # ---------------------------------------------------------------------
 
+def generate_imports():
+    return ["import pandas as pd"]
+
 HUB_URL = (
     "https://hub.knime.com/knime/extensions/org.knime.features.base/latest/"
     "org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory"
@@ -230,7 +233,6 @@ def generate_py_body(
 
     lines: List[str] = []
     lines.append(f"# {HUB_URL}")
-    lines.append("import pandas as pd  # required at runtime")
 
     pairs = U.normalize_in_ports(in_ports)
     src_id, in_port = pairs[0]

@@ -68,6 +68,9 @@ def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
 # Code generators
 # ----------------------------
 
+def generate_imports():
+    return ["from pathlib import Path", "import pandas as pd"]
+
 def _fmt_kw(key: str, val) -> Optional[str]:
     """Return 'key=value' with correct literal formatting, or None to skip."""
     if isinstance(val, bool):
@@ -88,8 +91,6 @@ def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[objec
 
     lines: List[str] = []
     lines.append("# https://hub.knime.com/knime/extensions/org.knime.features.base/latest/" + CSV_WRITER_FACTORY)
-    lines.append("from pathlib import Path")
-    lines.append("import pandas as pd")
 
     # Pull input dataframe from context (CSV Writer has a single table input)
     pairs = normalize_in_ports(in_ports)

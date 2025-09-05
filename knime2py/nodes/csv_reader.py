@@ -76,6 +76,10 @@ def parse_csv_reader_settings(node_dir: Path) -> CSVReaderSettings:
 # Code generators
 # ----------------------------
 
+def generate_imports():
+    return ["from pathlib import Path", "import pandas as pd"]
+
+
 def generate_py_body(node_id: str, node_dir: Optional[str], out_ports: List[str]) -> List[str]:
     """
     Emit body lines for a CSV Reader node that reads a CSV into `df`
@@ -87,8 +91,7 @@ def generate_py_body(node_id: str, node_dir: Optional[str], out_ports: List[str]
     lines: List[str] = []
     lines.append("# https://hub.knime.com/knime/extensions/org.knime.features.base/latest/"
                  "org.knime.base.node.io.filehandling.csv.reader.CSVTableReaderNodeFactory")
-    lines.append("from pathlib import Path")
-    lines.append("import pandas as pd")
+
 
     # Path
     if settings.path:
