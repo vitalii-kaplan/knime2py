@@ -12,7 +12,7 @@ from typing import List, Optional
 from .traverse import (
     traverse_nodes,         
 )
-from .nodes import csv_reader, csv_writer
+from .nodes import csv_reader, csv_writer, column_filter
 
 __all__ = [
     "write_graph_json",
@@ -174,16 +174,21 @@ def build_workbook_blocks(g) -> List[NodeBlock]:
             else:
                 code_lines.append("# Factory class unavailable")
             code_lines.append("# The node is IDLE. Codegen is not possible. Implement this node manually.")
+            code_lines.append("pass")
         else:
-            # CSV Reader
             if n.type and csv_reader.can_handle(n.type):
+                # CSV Reader → publishes df to this node's output ports
                 out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing]
                 code_lines.extend(csv_reader.generate_py_body(nid, n.path, out_ports))
-            # CSV Writer
             elif n.type and csv_writer.can_handle(n.type):
-                # NOTE: writer needs upstream CONTEXT keys -> use SOURCE ports from incoming edges
+                # CSV Writer → consumes df from upstream SOURCE ports
                 in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in incoming]
                 code_lines.extend(csv_writer.generate_py_body(nid, n.path, in_ports))
+            elif n.type and column_filter.can_handle(n.type):
+                # Column Filter → consumes df (first input), emits filtered df to this node's outputs
+                in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in incoming]
+                out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing] or ["1"]
+                code_lines.extend(column_filter.generate_py_body(nid, n.path, in_ports, out_ports))
             else:
                 # fallback stub
                 if n.type:
@@ -207,6 +212,7 @@ def build_workbook_blocks(g) -> List[NodeBlock]:
         ))
 
     return blocks
+
 
 
 def write_workbook_py(g, out_dir: Path) -> Path:

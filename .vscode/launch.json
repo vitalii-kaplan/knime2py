@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "k2p: debug CLI",
+        "type": "debugpy",
+        "request": "launch",
+        "program": "${workspaceFolder}/k2p.py",
+        "args": [
+          "${workspaceFolder}/../../harbour/KNIME/KNIME_project_csv_sample",
+          "--out", "${workspaceFolder}/output",
+          "--workbook", "ipynb"
+        ],
+        "cwd": "${workspaceFolder}",
+        "console": "integratedTerminal",
+        "justMyCode": true
+      }
+    ]
+  }
+  
