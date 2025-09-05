@@ -89,3 +89,11 @@ def node_missing_value_dir() -> Path:
     if not settings.exists():
         pytest.fail(f"Missing Missing Value node settings at {settings}")
     return p
+
+@pytest.fixture(scope="session")
+def node_normalizer_dir() -> Path:
+    p = DATA_DIR / "Node_normalizer"
+    settings = p / "settings.xml"
+    if not settings.exists():
+        pytest.fail(f"Missing Normalizer node settings: {settings}")
+    return p
