@@ -8,7 +8,6 @@ from lxml import etree as ET
 from ..xml_utils import XML_PARSER  # project helper (ok)
 from .node_utils import *
 
-
 CSV_FACTORY = "org.knime.base.node.io.filehandling.csv.reader.CSVTableReaderNodeFactory"
 
 def can_handle(node_type: Optional[str]) -> bool:
@@ -92,7 +91,6 @@ def generate_py_body(node_id: str, node_dir: Optional[str], out_ports: List[str]
     lines.append("# https://hub.knime.com/knime/extensions/org.knime.features.base/latest/"
                  "org.knime.base.node.io.filehandling.csv.reader.CSVTableReaderNodeFactory")
 
-
     # Path
     if settings.path:
         lines.append(f"csv_path = Path(r\"{settings.path}\")")
@@ -136,3 +134,15 @@ def generate_ipynb_code(node_id: str, node_dir: Optional[str], out_ports: List[s
     """
     body = generate_py_body(node_id, node_dir, out_ports)
     return "\n".join(body) + "\n"
+
+
+def handle(ntype, nid, npath, incoming, outgoing):
+    if not (ntype and can_handle(ntype)):
+        return None
+    out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing]
+    node_lines = generate_py_body(nid, npath, out_ports)
+
+    found, body = split_out_imports(node_lines)
+    explicit = collect_module_imports(generate_imports) 
+    imports = sorted(set(found).union(explicit))
+    return imports, body

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Iterable, List, Optional, Union, Callable
 from lxml import etree as ET
 
 # ----------------------------
@@ -27,7 +27,7 @@ def all_values(root: ET._Element, xpath: str) -> List[str]:
 
 _ENTRY_XPATH = ".//*[local-name()='entry']"
 
-def _iter_entries(root: ET._Element):
+def iter_entries(root: ET._Element):
     """Yield (key, value) pairs for all KNIME <entry key="..." value="..."/> nodes."""
     for ent in root.xpath(_ENTRY_XPATH):
         k = (ent.get("key") or "").strip()
@@ -36,7 +36,7 @@ def _iter_entries(root: ET._Element):
 
 def _first_value_re(root: ET._Element, pattern: str, flags=re.I) -> Optional[str]:
     rx = re.compile(pattern, flags)
-    for k, v in _iter_entries(root):
+    for k, v in iter_entries(root):
         if rx.search(k):
             return v
     return None
@@ -44,7 +44,7 @@ def _first_value_re(root: ET._Element, pattern: str, flags=re.I) -> Optional[str
 def _first_value_re_excluding(root: ET._Element, include_pat: str, exclude_pat: str, flags=re.I) -> Optional[str]:
     inc = re.compile(include_pat, flags)
     exc = re.compile(exclude_pat, flags)
-    for k, v in _iter_entries(root):
+    for k, v in iter_entries(root):
         if inc.search(k) and not exc.search(k):
             return v
     return None
@@ -52,7 +52,7 @@ def _first_value_re_excluding(root: ET._Element, include_pat: str, exclude_pat: 
 def _first_value_all_tokens(root: ET._Element, tokens: List[str]) -> Optional[str]:
     """Return first value whose key contains ALL tokens (case-insensitive)."""
     toks = [t.lower() for t in tokens]
-    for k, v in _iter_entries(root):
+    for k, v in iter_entries(root):
         lk = k.lower()
         if all(t in lk for t in toks):
             return v
@@ -165,7 +165,7 @@ def extract_csv_path(root: ET._Element) -> Optional[str]:
         if v and looks_like_path(v):
             return v
     # Fallback: any entry value that looks like a CSV/path
-    for _k, v in _iter_entries(root):
+    for _k, v in iter_entries(root):
         if v and looks_like_path(v):
             return v
     return None
@@ -181,7 +181,7 @@ def extract_csv_quotechar(root: ET._Element) -> Optional[str]:
     raw = _first_value_re_excluding(root, r"\bquote(_?char)?\b", r"escape")
     if raw is None:
         # looser fallback: any 'quote' key that isn't an escape
-        for k, v in _iter_entries(root):
+        for k, v in iter_entries(root):
             if "quote" in k.lower() and "escape" not in k.lower():
                 raw = v
                 break
@@ -204,7 +204,7 @@ def extract_csv_header_reader(root: ET._Element) -> Optional[bool]:
     Reader: look for 'column header', 'hasheader', or plain 'header', but avoid writer-only
     keys like 'write_header'.
     """
-    for k, v in _iter_entries(root):
+    for k, v in iter_entries(root):
         lk = k.lower()
         if "header" not in lk:
             continue
@@ -282,3 +282,68 @@ def java_to_pandas_dtype(java_class: str) -> Optional[str]:
         return "string"
     # leave unknowns to inference
     return None
+
+# ----------------------------
+# Import ulils
+# ----------------------------
+
+def collect_module_imports(mod_or_func: Optional[Union[object, Callable[[], Iterable[str]]]]) -> List[str]:
+    """
+    Return a sorted list of unique import lines from either:
+      - a module object that defines generate_imports()
+      - a callable (e.g. the generate_imports function itself)
+    """
+    imports = set()
+    try:
+        if mod_or_func is None:
+            return []
+        # If they passed the function directly
+        if callable(mod_or_func):
+            items = mod_or_func() or []
+        else:
+            gi = getattr(mod_or_func, "generate_imports", None)
+            items = gi() if callable(gi) else []
+        for line in items:
+            s = (line or "").strip()
+            if s:
+                imports.add(s)
+    except Exception:
+        # don’t let import gathering crash codegen
+        return []
+    return sorted(imports)
+
+
+def split_out_imports(lines: List[str]) -> tuple[List[str], List[str]]:
+    """
+    Return (found_imports, body_without_imports).
+    Any line that begins with 'import ' or 'from ' (ignoring leading spaces) is treated as an import.
+    """
+    found: List[str] = []
+    body: List[str] = []
+    for ln in lines or []:
+        s = ln.lstrip()
+        if s.startswith("import ") or s.startswith("from "):
+            found.append(s.strip())
+        else:
+            body.append(ln)
+    return found, body
+
+def collect_module_imports(obj) -> list[str]:
+    """
+    Return sorted unique import lines from either:
+      - a module that defines generate_imports(), or
+      - a callable that returns a list[str] of import lines.
+    """
+    try:
+        if callable(obj):
+            lines = obj()
+        elif hasattr(obj, "generate_imports"):
+            lines = obj.generate_imports()
+        else:
+            return []
+    except Exception:
+        return []
+
+    out = { (ln or "").strip() for ln in (lines or []) if (ln or "").strip() }
+    return sorted(out)
+

@@ -129,35 +129,6 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
     # Collect unique imports across nodes
     aggregated_imports: set[str] = set()
 
-    def _collect_module_imports(mod) -> None:
-        """
-        If the node module defines generate_imports(), merge them into aggregated_imports.
-        """
-        try:
-            if hasattr(mod, "generate_imports"):
-                for line in (mod.generate_imports() or []):
-                    stripped = (line or "").strip()
-                    if stripped:
-                        aggregated_imports.add(stripped)
-        except Exception:
-            # don't let an import collector crash codegen
-            pass
-
-    def _split_out_imports(lines: List[str]) -> tuple[list[str], list[str]]:
-        """
-        Return (found_imports, body_without_imports) from a list of code lines.
-        Any line starting with 'import ' or 'from ' (after leading whitespace) is treated as import.
-        """
-        found: list[str] = []
-        body: list[str] = []
-        for ln in lines or []:
-            s = ln.lstrip()
-            if s.startswith("import ") or s.startswith("from "):
-                found.append(s.strip())
-            else:
-                body.append(ln)
-        return found, body
-
     for ctx in traverse_nodes(g):
         nid = ctx["nid"]
         n = ctx["node"]
@@ -212,42 +183,19 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
             code_lines.append("# The node is IDLE. Codegen is not possible. Implement this node manually.")
             code_lines.append("pass")
         else:
-            # CSV Reader
+            res = None
             if n.type and csv_reader.can_handle(n.type):
-                _collect_module_imports(csv_reader)
-                out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing]
-                node_lines = csv_reader.generate_py_body(nid, n.path, out_ports)
-                found, body = _split_out_imports(node_lines)
-                aggregated_imports.update(found)
-                code_lines.extend(body)
-
-            # CSV Writer
+                res = csv_reader.handle(n.type, nid, n.path, incoming, outgoing)
             elif n.type and csv_writer.can_handle(n.type):
-                _collect_module_imports(csv_writer)
-                in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in incoming]
-                node_lines = csv_writer.generate_py_body(nid, n.path, in_ports)
-                found, body = _split_out_imports(node_lines)
-                aggregated_imports.update(found)
-                code_lines.extend(body)
-
-            # Column Filter
+                res = csv_writer.handle(n.type, nid, n.path, incoming, outgoing)
             elif n.type and column_filter.can_handle(n.type):
-                _collect_module_imports(column_filter)
-                in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in incoming]
-                out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing] or ["1"]
-                node_lines = column_filter.generate_py_body(nid, n.path, in_ports, out_ports)
-                found, body = _split_out_imports(node_lines)
-                aggregated_imports.update(found)
-                code_lines.extend(body)
-
-            # Missing Value
+                res = column_filter.handle(n.type, nid, n.path, incoming, outgoing)
             elif n.type and missing_value.can_handle(n.type):
-                _collect_module_imports(missing_value)
-                in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in incoming]
-                out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing] or ["1"]
-                node_lines = missing_value.generate_py_body(nid, n.path, in_ports, out_ports)
-                found, body = _split_out_imports(node_lines)
-                aggregated_imports.update(found)
+                res = missing_value.handle(n.type, nid, n.path, incoming, outgoing)
+
+            if res:
+                found_imports, body = res
+                aggregated_imports.update(found_imports)
                 code_lines.extend(body)
 
             else:

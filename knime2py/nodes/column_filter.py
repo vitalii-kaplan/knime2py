@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from lxml import etree as ET
 from ..xml_utils import XML_PARSER
-from . import node_utils as U  # reuse shared XML + port helpers (incl. _iter_entries)
+from .node_utils import * 
 
 
 # Support multiple Column Filter factories across KNIME versions
@@ -55,7 +55,7 @@ def parse_column_filter_settings(node_dir: Optional[Path]) -> ColumnFilterSettin
     def _collect_from_cfgs(cfgs) -> List[str]:
         out: List[str] = []
         for cfg in cfgs:
-            for k, v in U._iter_entries(cfg):  # from node_utils (regex-friendly)
+            for k, v in iter_entries(cfg):  # from node_utils (regex-friendly)
                 lk = k.lower()
                 if (k.isdigit() or lk == "name") and v:
                     out.append(v)
@@ -148,7 +148,7 @@ def generate_py_body(
 
     lines: List[str] = []
     lines.append(f"# {HUB_URL}")
-    pairs = U.normalize_in_ports(in_ports)
+    pairs = normalize_in_ports(in_ports)
     src_id, in_port = pairs[0]
     lines.append(f"df = context['{src_id}:{in_port}']  # input table")
 
@@ -171,3 +171,25 @@ def generate_ipynb_code(
     """Single string for a notebook code cell."""
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
+
+
+def handle(ntype, nid, npath, incoming, outgoing):
+    if not (ntype and can_handle(ntype)):
+        return None
+
+    # explicit imports declared by this node module
+    explicit_imports = collect_module_imports(generate_imports)
+
+    # ports
+    in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in (incoming or [])]
+    out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in (outgoing or [])] or ["1"]
+
+    # single call with BOTH in/out ports
+    node_lines = generate_py_body(nid, npath, in_ports, out_ports)
+
+    # split inline imports out of the body
+    found_imports, body = split_out_imports(node_lines)
+
+    # merge explicit + found
+    imports = sorted(set(explicit_imports) | set(found_imports))
+    return imports, body

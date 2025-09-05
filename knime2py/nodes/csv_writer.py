@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from lxml import etree as ET
 from ..xml_utils import XML_PARSER
-from .node_utils import *  # centralized helpers
+from .node_utils import * 
 
 CSV_WRITER_FACTORY = "org.knime.base.node.io.filehandling.csv.writer.CSVWriter2NodeFactory"
 
@@ -122,3 +122,15 @@ def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[objec
 def generate_ipynb_code(node_id: str, node_dir: Optional[str], in_ports: List[object]) -> str:
     body = generate_py_body(node_id, node_dir, in_ports)
     return "\n".join(body) + "\n"
+
+
+def handle(ntype, nid, npath, incoming, outgoing):
+    if not (ntype and can_handle(ntype)):
+        return None
+    in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in incoming]
+    node_lines = generate_py_body(nid, npath, in_ports)
+
+    found, body = split_out_imports(node_lines)
+    explicit = collect_module_imports(generate_imports)
+    imports = sorted(set(found).union(explicit))
+    return imports, body

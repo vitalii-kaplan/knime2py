@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from lxml import etree as ET
 from ..xml_utils import XML_PARSER
-from . import node_utils as U  # reuse regex-friendly XML helpers (_iter_entries etc.)
+from .node_utils import * 
 
 # KNIME factory for this node
 MISSING_VALUE_FACTORY = (
@@ -70,7 +70,7 @@ _FIXED_VALUE_KEYS = (
 )
 
 def _first_present_value(cfg: ET._Element, keys=_FIXED_VALUE_KEYS) -> Optional[str]:
-    for k, v in U._iter_entries(cfg):
+    for k, v in iter_entries(cfg):
         if k in keys:
             return v
     return None
@@ -110,7 +110,7 @@ def parse_missing_value_settings(node_dir: Optional[Path]) -> MissingValueSettin
 
         # factoryID decides the strategy
         factory_id = None
-        for k, v in U._iter_entries(cfg):
+        for k, v in iter_entries(cfg):
             if k == "factoryID":
                 factory_id = v
                 break
@@ -234,7 +234,7 @@ def generate_py_body(
     lines: List[str] = []
     lines.append(f"# {HUB_URL}")
 
-    pairs = U.normalize_in_ports(in_ports)
+    pairs = normalize_in_ports(in_ports)
     src_id, in_port = pairs[0]
     lines.append(f"df = context['{src_id}:{in_port}']  # input table")
 
@@ -256,3 +256,25 @@ def generate_ipynb_code(
 ) -> str:
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
+
+
+def handle(ntype, nid, npath, incoming, outgoing):
+    if not (ntype and can_handle(ntype)):
+        return None
+
+    # explicit imports declared by this node module
+    explicit_imports = collect_module_imports(generate_imports)
+
+    # ports
+    in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in (incoming or [])]
+    out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in (outgoing or [])] or ["1"]
+
+    # single call with BOTH in/out ports
+    node_lines = generate_py_body(nid, npath, in_ports, out_ports)
+
+    # split inline imports out of the body
+    found_imports, body = split_out_imports(node_lines)
+
+    # merge explicit + found
+    imports = sorted(set(explicit_imports) | set(found_imports))
+    return imports, body
