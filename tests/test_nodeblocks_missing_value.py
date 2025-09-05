@@ -43,7 +43,7 @@ def test_missing_value_block_imputes_integers_to_zero(node_csv_reader_dir: Path)
         edges=[Edge(source=reader_id, target=mv_id, source_port="1", target_port="1")],
     )
 
-    blocks = build_workbook_blocks(g)
+    blocks, _ = build_workbook_blocks(g)
     assert blocks, "Expected NodeBlocks to be created"
 
     # Find the Missing Value block

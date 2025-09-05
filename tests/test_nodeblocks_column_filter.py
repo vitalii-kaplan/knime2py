@@ -38,7 +38,7 @@ def test_column_filter_block_emits_expected_excludes_line(node_csv_reader_dir: P
         edges=[Edge(source=reader_id, target=filter_id, source_port="1", target_port="1")],
     )
 
-    blocks = build_workbook_blocks(g)
+    blocks, _ = build_workbook_blocks(g)
     assert blocks, "Expected NodeBlocks to be created"
 
     # Find the Column Filter block

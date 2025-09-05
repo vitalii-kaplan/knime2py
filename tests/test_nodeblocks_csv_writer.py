@@ -38,7 +38,7 @@ def test_writer_nodeblock_uses_settings_and_correct_context_key(
         edges=[Edge(source=reader_id, target=writer_id, source_port="1", target_port="1")],
     )
 
-    blocks = build_workbook_blocks(g)
+    blocks, _ = build_workbook_blocks(g)
     assert blocks, "Expected at least two NodeBlocks (reader and writer)"
 
     writer_block = next((b for b in blocks if b.nid == writer_id), None)
