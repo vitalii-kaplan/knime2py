@@ -11,7 +11,6 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 
 
 def _workflow_path(project_dirname: str) -> Path:
-    """tests/data/<project>/workflow.knime"""
     return DATA_DIR / project_dirname / "workflow.knime"
 
 @pytest.fixture(scope="session")
@@ -45,29 +44,27 @@ def wf_traverse_path() -> Path:
 # --- Node-level test data fixtures ---
 
 @pytest.fixture(scope="session")
+def node_csv_writer_dir() -> Path:
+    p = DATA_DIR / "Node_csv_writer"
+    settings = p / "settings.xml"
+    if not settings.exists():
+        pytest.fail(f"Missing writer node settings at {settings}")
+    return p
+
+# --- Node-level test data fixtures ---
+
+@pytest.fixture(scope="session")
 def node_csv_reader_dir() -> Path:
-    """
-    Directory containing a single node's settings.xml for CSV Reader.
-    Expected at: tests/data/Node_csv_reader/settings.xml
-    """
     ndir = DATA_DIR / "Node_csv_reader"
     settings = ndir / "settings.xml"
     if not settings.exists():
         pytest.fail(f"Missing CSV Reader node settings: {settings}")
     return ndir
 
-@pytest.fixture(scope="session")
-def node_csv_reader_dir() -> Path:
-    p = DATA_DIR / "Node_csv_reader"
-    if not p.exists():
-        pytest.fail(f"Test data missing: {p}")
-    return p
-
 # Back-compat alias so tests that expect `csv_reader_node_dir` keep working
 @pytest.fixture(scope="session")
 def csv_reader_node_dir(node_csv_reader_dir: Path) -> Path:
     return node_csv_reader_dir
-
 
 @pytest.fixture(scope="session")
 def node_csv_writer_dir() -> Path:
@@ -75,4 +72,12 @@ def node_csv_writer_dir() -> Path:
     settings = p / "settings.xml"
     if not settings.exists():
         pytest.fail(f"Missing writer node settings at {settings}")
+    return p
+
+@pytest.fixture(scope="session")
+def node_column_filter_dir() -> Path:
+    p = DATA_DIR / "Node_column_filter"
+    settings = p / "settings.xml"
+    if not settings.exists():
+        pytest.fail(f"Missing Column Filter node settings at {settings}")
     return p
