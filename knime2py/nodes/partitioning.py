@@ -56,8 +56,8 @@ def parse_partition_settings(node_dir: Optional[Path]) -> PartitionSettings:
     root = ET.parse(str(settings_path), parser=XML_PARSER).getroot()
 
     model_el = first_el(root, ".//*[local-name()='config' and @key='model']")
-    if not model_el:
-        return PartitionSettings()
+    if model_el is None:
+        return PartitioningSettings()
 
     method = (first(model_el, ".//*[local-name()='entry' and @key='method']/@value") or "RELATIVE").upper().strip()
     sampling = (first(model_el, ".//*[local-name()='entry' and @key='samplingMethod']/@value") or "RANDOM").upper().strip()
