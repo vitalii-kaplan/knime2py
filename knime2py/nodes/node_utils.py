@@ -347,22 +347,3 @@ def split_out_imports(lines: List[str]) -> tuple[List[str], List[str]]:
             body.append(ln)
     return found, body
 
-def collect_module_imports(obj) -> list[str]:
-    """
-    Return sorted unique import lines from either:
-      - a module that defines generate_imports(), or
-      - a callable that returns a list[str] of import lines.
-    """
-    try:
-        if callable(obj):
-            lines = obj()
-        elif hasattr(obj, "generate_imports"):
-            lines = obj.generate_imports()
-        else:
-            return []
-    except Exception:
-        return []
-
-    out = { (ln or "").strip() for ln in (lines or []) if (ln or "").strip() }
-    return sorted(out)
-
