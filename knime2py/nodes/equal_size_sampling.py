@@ -7,7 +7,8 @@ from typing import List, Optional
 
 from lxml import etree as ET
 from ..xml_utils import XML_PARSER
-from .node_utils import *  
+from .node_utils import *  # normalize_in_ports, first/first_el, iter_entries, collect_module_imports, split_out_imports
+
 
 # KNIME factory for Equal Size Sampling
 EQUAL_SIZE_SAMPLING_FACTORY = "org.knime.base.node.preproc.equalsizesampling.EqualSizeSamplingNodeFactory"
@@ -25,6 +26,7 @@ class EqualSizeSamplingSettings:
     class_col: Optional[str] = None
     seed: int = 1
     method: str = "Exact"   # KNIME exposes "Exact" vs "Approximate"; we implement Exact (downsample to min)
+
 
 def parse_equal_size_sampling_settings(node_dir: Optional[Path]) -> EqualSizeSamplingSettings:
     """
@@ -60,7 +62,12 @@ def parse_equal_size_sampling_settings(node_dir: Optional[Path]) -> EqualSizeSam
 # ---------------------------------------------------------------------
 
 def generate_imports():
-    return ["import pandas as pd"]
+    # Use sklearn for the sampling
+    return [
+        "import pandas as pd",
+        "from sklearn.utils import resample",
+    ]
+
 
 HUB_URL = (
     "https://hub.knime.com/knime/extensions/org.knime.features.base/latest/"
@@ -69,8 +76,8 @@ HUB_URL = (
 
 def _emit_equal_size_code(cfg: EqualSizeSamplingSettings) -> List[str]:
     """
-    Emit lines that create `out_df` by downsampling each class to the size of the smallest class.
-    Only the 'Exact' method is implemented (KNIME's typical equal-size behavior).
+    Emit lines that create `out_df` with equal class sizes across `cfg.class_col`.
+    Implementation: 'Exact' downsampling to the minimum class size using sklearn.utils.resample.
     """
     lines: List[str] = []
     lines.append("out_df = df.copy()")
@@ -81,13 +88,20 @@ def _emit_equal_size_code(cfg: EqualSizeSamplingSettings) -> List[str]:
     lines.append(f"_class = {repr(cfg.class_col)}")
     lines.append(f"_seed = {cfg.seed}")
 
-    # Exact equal-size downsampling to the minimum class size
+    # Exact equal-size downsampling to the minimum class size using sklearn
     lines.append("if df.empty:")
     lines.append("    out_df = df.iloc[0:0]")
     lines.append("else:")
-    lines.append("    min_count = min(len(g) for _, g in df.groupby(_class, dropna=False, sort=False))")
-    lines.append("    parts = [g.sample(n=min_count, random_state=_seed) for _, g in df.groupby(_class, dropna=False, sort=False)]")
-    lines.append("    out_df = pd.concat(parts, axis=0).sort_index() if parts else df.iloc[0:0]")
+    lines.append("    groups = [g for _, g in df.groupby(_class, dropna=False, sort=False)]")
+    lines.append("    if not groups:")
+    lines.append("        out_df = df.iloc[0:0]")
+    lines.append("    else:")
+    lines.append("        min_count = min(len(g) for g in groups)")
+    lines.append("        if min_count <= 0:")
+    lines.append("            out_df = df.iloc[0:0]")
+    lines.append("        else:")
+    lines.append("            parts = [resample(g, replace=False, n_samples=min_count, random_state=_seed) for g in groups]")
+    lines.append("            out_df = pd.concat(parts, axis=0).sort_index() if parts else df.iloc[0:0]")
 
     return lines
 
