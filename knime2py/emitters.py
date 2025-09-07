@@ -12,7 +12,7 @@ from typing import List, Optional
 from .traverse import (
     traverse_nodes,         
 )
-from .nodes import csv_reader, csv_writer, column_filter, missing_value, normalizer, rule_engine, partitioning
+from .nodes import csv_reader, csv_writer, column_filter, missing_value, normalizer, rule_engine, partitioning, equal_size_sampling
 
 __all__ = [
     "write_graph_json",
@@ -197,7 +197,9 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
             elif n.type and rule_engine.can_handle(n.type):
                 res = rule_engine.handle(n.type, nid, n.path, incoming, outgoing)
             elif n.type and partitioning.can_handle(n.type):
-                res = partitioning.handle(n.type, nid, n.path, incoming, outgoing)
+                res = partitioning.handle(n.type, nid, n.path, incoming, outgoing)           
+            elif n.type and equal_size_sampling.can_handle(n.type):
+                res = equal_size_sampling.handle(n.type, nid, n.path, incoming, outgoing)
 
             if res:
                 found_imports, body = res

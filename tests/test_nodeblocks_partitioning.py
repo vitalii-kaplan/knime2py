@@ -1,4 +1,5 @@
 # tests/test_nodeblocks_partitioning.py
+import re
 import sys
 from pathlib import Path
 
@@ -16,7 +17,8 @@ def test_partitioning_block_emits_stratified_train_lines(node_csv_reader_dir: Pa
     """
     Build a minimal graph: Reader(1393) -> Partitioning(4001),
     then verify the Partitioning NodeBlock contains the expected
-    stratified-train code based on tests/data/Node_partitioning/settings.xml.
+    train_test_split-based stratified code using the settings under
+    tests/data/Node_partitioning/settings.xml.
     """
     node_partitioning_dir = repo_root / "tests" / "data" / "Node_partitioning"
     assert node_partitioning_dir.joinpath("settings.xml").exists(), "Missing Partitioning settings.xml test data"
@@ -47,8 +49,19 @@ def test_partitioning_block_emits_stratified_train_lines(node_csv_reader_dir: Pa
 
     code = "\n".join(p_block.code_lines)
 
-    # Expected exact lines from the generator (stratified, 70/30, seed=1, class column 'Dependent')
+    # Seed and fraction derived from settings.xml
     assert "_seed = 1" in code
     assert "_frac = 0.7" in code
-    assert "parts = [g.sample(frac=_frac, random_state=_seed) for _, g in df.groupby('Dependent', dropna=False, sort=False)]" in code
-    assert "train_df = pd.concat(parts, axis=0).sort_index() if parts else df.iloc[0:0]" in code
+
+    # Stratification helper column on 'Dependent'
+    assert "_y = df['Dependent'].astype('object').where(pd.notna(df['Dependent']), '__NA__')" in code
+
+    # Primary stratified split line (inside try)
+    assert "train_test_split(df, train_size=_frac, random_state=_seed, stratify=_y)" in code
+
+    # Fallback split (without stratify) in except
+    assert "train_test_split(df, train_size=_frac, random_state=_seed)" in code
+
+    # Port assignment rule: train_df to the numerically smaller port, test_df to the other
+    assert f"context['{part_id}:1'] = train_df" in code
+    assert f"context['{part_id}:2'] = test_df" in code
