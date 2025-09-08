@@ -23,6 +23,7 @@ from .nodes import (
     partitioning,
     equal_size_sampling,
     logreg_learner,
+    logreg_predictor
 )
 
 __all__ = [
@@ -213,6 +214,8 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
                 res = equal_size_sampling.handle(n.type, nid, n.path, incoming, outgoing)
             elif n.type and logreg_learner.can_handle(n.type):
                 res = logreg_learner.handle(n.type, nid, n.path, incoming, outgoing)
+            elif n.type and logreg_predictor.can_handle(n.type):
+                res = logreg_predictor.handle(n.type, nid, n.path, incoming, outgoing)
 
             if res:
                 found_imports, body = res
