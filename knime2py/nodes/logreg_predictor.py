@@ -10,7 +10,6 @@ from ..xml_utils import XML_PARSER
 from .node_utils import (
     first,
     first_el,
-    iter_entries,
     normalize_in_ports,
     collect_module_imports,
     split_out_imports,
@@ -55,11 +54,23 @@ def parse_predictor_settings(node_dir: Optional[Path]) -> PredictorSettings:
     if model_el is None:
         return PredictorSettings()
 
-    has_custom = _bool(first(model_el, ".//*[local-name()='entry' and @key='has_custom_predicition_name']/@value"), False)
-    # Note: KNIME uses that exact misspelling "predicition" in the XML.
-    custom_name = first(model_el, ".//*[local-name()='entry' and @key='custom_prediction_name']/@value")
-    include_probs = _bool(first(model_el, ".//*[local-name()='entry' and @key='include_probabilites']/@value"), True)
-    prob_suffix = first(model_el, ".//*[local-name()='entry' and @key='propability_columns_suffix']/@value") or "_LR"
+    # Note: KNIME uses these misspellings in XML and we must read them verbatim.
+    has_custom = _bool(
+        first(model_el, ".//*[local-name()='entry' and @key='has_custom_predicition_name']/@value"),
+        False,
+    )
+    custom_name = first(
+        model_el, ".//*[local-name()='entry' and @key='custom_prediction_name']/@value"
+    )
+
+    include_probs = _bool(
+        first(model_el, ".//*[local-name()='entry' and @key='include_probabilites']/@value"),
+        True,
+    )
+    prob_suffix = (
+        first(model_el, ".//*[local-name()='entry' and @key='propability_columns_suffix']/@value")
+        or "_LR"
+    )
 
     return PredictorSettings(
         has_custom_name=has_custom,
@@ -74,7 +85,7 @@ def parse_predictor_settings(node_dir: Optional[Path]) -> PredictorSettings:
 # ---------------------------------------------------------------------
 
 def generate_imports():
-    # Only pandas needed; we call predict/predict_proba on the sklearn estimator stored by the Learner.
+    # Only pandas needed here; estimator comes from the Learner bundle
     return ["import pandas as pd"]
 
 HUB_URL = (
@@ -84,29 +95,32 @@ HUB_URL = (
 
 def _emit_predict_code(cfg: PredictorSettings) -> List[str]:
     """
-    Accept either:
-      - a dict-like bundle with keys: estimator/model, features/feature_cols, target, classes, or
-      - a bare sklearn estimator (e.g., LogisticRegression).
+    Consume the bundle produced by logreg_learner:
+      {
+        'estimator': sklearn estimator,
+        'features': List[str],
+        'target': str,
+        'classes': List[Any],
+        'meta': {...}
+      }
+    Falls back gracefully if a bare estimator is provided.
     """
     lines: List[str] = []
     lines.append("model_obj = context[model_key]")
     lines.append("df = context[data_key]")
     lines.append("out_df = df.copy()")
     lines.append("")
-    lines.append("# Handle dict-like bundle vs bare estimator")
+    lines.append("# Unify to a dict-like bundle with expected keys")
     lines.append("if isinstance(model_obj, dict):")
-    lines.append("    est = model_obj.get('estimator') or model_obj.get('model') or model_obj")
-    lines.append("    feat = (model_obj.get('features') or "
-                 "            model_obj.get('feature_cols') or "
-                 "            getattr(est, 'feature_names_in_', None))")
-    lines.append("    tgt  = (model_obj.get('target') or model_obj.get('y_col') or "
-                 "            model_obj.get('target_name'))")
-    lines.append("    classes = list(model_obj.get('classes') or getattr(est, 'classes_', []))")
+    lines.append("    bundle = model_obj")
     lines.append("else:")
-    lines.append("    est = model_obj")
-    lines.append("    feat = getattr(est, 'feature_names_in_', None)")
-    lines.append("    tgt  = None")
-    lines.append("    classes = list(getattr(est, 'classes_', []))")
+    lines.append("    # Fallback: wrap bare estimator")
+    lines.append("    bundle = {'estimator': model_obj}")
+    lines.append("")
+    lines.append("est = bundle.get('estimator') or bundle.get('model')")
+    lines.append("feat = bundle.get('features') or getattr(est, 'feature_names_in_', None)")
+    lines.append("tgt  = bundle.get('target') or bundle.get('y_col') or bundle.get('target_name')")
+    lines.append("classes = list(bundle.get('classes') or getattr(est, 'classes_', []))")
     lines.append("")
     lines.append("# Normalize features to a plain list (avoid NumPy truth-value ambiguity)")
     lines.append("if isinstance(feat, (list, tuple)):")
@@ -122,7 +136,7 @@ def _emit_predict_code(cfg: PredictorSettings) -> List[str]:
     lines.append("        feat_list = []")
     lines.append("")
     lines.append("# Feature fallback if none provided by bundle/estimator")
-    lines.append("if not feat_list:")
+    lines.append("if len(feat_list) == 0:")
     lines.append("    if tgt and tgt in out_df.columns:")
     lines.append("        feat_list = [c for c in out_df.columns if c != tgt]")
     lines.append("    else:")
@@ -146,7 +160,7 @@ def _emit_predict_code(cfg: PredictorSettings) -> List[str]:
         lines.append("# Probability columns per class (if supported)")
         lines.append("if hasattr(est, 'predict_proba'):")
         lines.append("    proba = est.predict_proba(X)")
-        lines.append("    if not classes and proba.shape[1] == 2:")
+        lines.append("    if not classes and getattr(proba, 'shape', (0, 0))[1] == 2:")
         lines.append("        classes = ['class0', 'class1']")
         lines.append(f"    _suf = {repr(cfg.prob_suffix)}")
         lines.append("    for j, cls in enumerate(classes):")
@@ -160,15 +174,14 @@ def _emit_predict_code(cfg: PredictorSettings) -> List[str]:
 def generate_py_body(
     node_id: str,
     node_dir: Optional[str],
-    in_ports: List[object],   # we will receive two inputs: model (port 1), data (port 2)
+    in_ports: List[object],   # Port 1 = model bundle, Port 2 = data
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_predictor_settings(ndir)
 
-    # We want (model_key, data_key) in that order. Our handle() will pass them ordered, but keep a fallback.
+    # Map inputs: ensure port 1 -> model, port 2 -> data
     pairs = normalize_in_ports(in_ports)
-    # Fallbacks if caller passed just two pairs without target-port info
     model_src, model_in = pairs[0] if pairs else ("UNKNOWN", "1")
     data_src, data_in = (pairs[1] if len(pairs) > 1 else ("UNKNOWN", "2"))
 
@@ -179,7 +192,7 @@ def generate_py_body(
 
     lines.extend(_emit_predict_code(cfg))
 
-    # Publish to context (default single output port '1')
+    # Single output port: predicted table
     ports = out_ports or ["1"]
     for p in sorted({(p or '1') for p in ports}):
         lines.append(f"context['{node_id}:{p}'] = out_df")
@@ -208,31 +221,27 @@ def handle(ntype, nid, npath, incoming, outgoing):
     if not (ntype and can_handle(ntype)):
         return None
 
-    # explicit imports declared by this node module
     explicit_imports = collect_module_imports(generate_imports)
 
-    # Determine upstream context keys for each of our target ports
+    # Determine upstream keys for our input ports
     model_pair: Optional[Tuple[str, str]] = None
     data_pair: Optional[Tuple[str, str]] = None
     for src_id, e in (incoming or []):
-        src_port = str(getattr(e, "source_port", "") or "1")      # upstream's source port
-        tgt_port = str(getattr(e, "target_port", "") or "")       # this node's input port
+        src_port = str(getattr(e, "source_port", "") or "1")
+        tgt_port = str(getattr(e, "target_port", "") or "")
         if tgt_port == "1":
             model_pair = (str(src_id), src_port)
         elif tgt_port == "2":
             data_pair = (str(src_id), src_port)
 
-    # Fallbacks if target ports were missing/odd: preserve original order
-    norm_in = []
+    norm_in: List[Tuple[str, str]] = []
     if model_pair:
         norm_in.append(model_pair)
     if data_pair:
         norm_in.append(data_pair)
     if not norm_in:
-        # Last resort: just convert incoming to (src, source_port) pairs in given order
         norm_in = [(str(src), str(getattr(e, "source_port", "") or "1")) for src, e in (incoming or [])]
 
-    # One output (table with predictions)
     out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in (outgoing or [])] or ["1"]
 
     node_lines = generate_py_body(nid, npath, norm_in, out_ports)

@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from lxml import etree as ET
 from ..xml_utils import XML_PARSER
-from .node_utils import * 
+from .node_utils import *  # first, first_el, iter_entries, normalize_in_ports, collect_module_imports, split_out_imports
 
 # KNIME factory for Logistic Regression Learner (v4)
 LOGREG_FACTORY = "org.knime.base.node.mine.regression.logistic.learner4.LogRegLearnerNodeFactory4"
@@ -30,11 +30,10 @@ class LogisticRegressionSettings:
     max_iter: int = 100
     tol: float = 1e-4
     seed: Optional[int] = None
-    ref_category: Optional[str] = None  # KNIME "targetReferenceCategory" (informational here)
+    ref_category: Optional[str] = None  # KNIME "targetReferenceCategory" (informational)
 
 
 def _collect_numeric_name_entries(cfg: ET._Element) -> List[str]:
-    """Collect <entry key='0' value='col'>, <entry key='1' value='col'> … under cfg."""
     out: List[str] = []
     for k, v in iter_entries(cfg):
         if k.isdigit() and v:
@@ -109,7 +108,6 @@ def parse_logreg_settings(node_dir: Optional[Path]) -> LogisticRegressionSetting
     ref_category = None
     ref_el = first_el(model_el, ".//*[local-name()='config' and @key='targetReferenceCategory']")
     if ref_el is not None:
-        # pick the first entry whose key looks like '*Cell'
         rc = first(ref_el, ".//*[local-name()='entry' and contains(@key,'Cell')]/@value")
         if rc:
             ref_category = rc
@@ -150,6 +148,7 @@ def _emit_train_code(cfg: LogisticRegressionSettings) -> List[str]:
       - select X, y (using includes if present; else numeric columns minus target)
       - fit sklearn LogisticRegression
       - produce coef table & a small summary table
+      - build a *bundle* dict with estimator + metadata for downstream Predictor
     """
     lines: List[str] = []
     lines.append("out_df = df.copy()")
@@ -158,6 +157,7 @@ def _emit_train_code(cfg: LogisticRegressionSettings) -> List[str]:
         lines.append("model = None")
         lines.append("coef_df = pd.DataFrame(columns=['feature','coefficient','odds_ratio'])")
         lines.append("summary_df = pd.DataFrame([{'error': 'no target configured'}])")
+        lines.append("bundle = {'estimator': None, 'features': [], 'feature_cols': [], 'target': None, 'classes': []}")
         return lines
 
     tcol = repr(cfg.target)
@@ -187,7 +187,6 @@ def _emit_train_code(cfg: LogisticRegressionSettings) -> List[str]:
     lines.append(f"_tol = {float(cfg.tol)}")
     lines.append(f"_seed = {repr(cfg.seed)}")
     if cfg.ref_category:
-        # Informational note; sklearn handles label encoding automatically
         lines.append(f"# KNIME reference category (informational): {repr(cfg.ref_category)}")
 
     # Fit
@@ -201,11 +200,23 @@ def _emit_train_code(cfg: LogisticRegressionSettings) -> List[str]:
     lines.append("coef_df.loc[len(coef_df)] = ['__intercept__', inter, float(np.exp(inter))]")
 
     # A tiny summary frame
-    lines.append("summary_df = pd.DataFrame([{" +
-                 "'solver': _solver, 'max_iter': _max_iter, 'tol': _tol, "
-                 "'n_features': len(feat_cols), 'classes': ','.join(map(str, getattr(model, 'classes_', [])))" +
-                 "}])")
+    lines.append(
+        "summary_df = pd.DataFrame([{'solver': _solver, 'max_iter': _max_iter, 'tol': _tol, "
+        "'n_features': len(feat_cols), 'classes': ','.join(map(str, getattr(model, 'classes_', [])))}])"
+    )
 
+    # ---- Build model bundle for downstream Predictor ----
+    lines.append("bundle = {")
+    lines.append("    'estimator': model,")             # preferred key
+    lines.append("    'model': model,")                  # compatibility alias
+    lines.append("    'features': list(feat_cols),")
+    lines.append("    'feature_cols': list(feat_cols),") # compatibility alias
+    lines.append("    'target': _target,")
+    lines.append("    'classes': list(getattr(model, 'classes_', [])),")
+    lines.append("    'solver': _solver, 'max_iter': _max_iter, 'tol': _tol, 'random_state': _seed,")
+    lines.append("    'intercept_': float(inter),")
+    lines.append("    'coef_': coefs.values.tolist(),")
+    lines.append("}")
     return lines
 
 
@@ -230,14 +241,13 @@ def generate_py_body(
     lines.extend(_emit_train_code(cfg))
 
     # Publish:
-    # KNIME ports: 1=model, 2=coefficients table, 3=summary table
+    # KNIME ports: 1=model bundle, 2=coefficients table, 3=summary table
     ports = [str(p or "1") for p in (out_ports or ["1", "2", "3"])]
     if not ports:
         ports = ["1", "2", "3"]
 
-    # Assign by explicit port id where possible; otherwise fall back in order.
-    want = {"1": "model", "2": "coef_df", "3": "summary_df"}
-    remaining_vals = ["model", "coef_df", "summary_df"]
+    want = {"1": "bundle", "2": "coef_df", "3": "summary_df"}
+    remaining_vals = ["bundle", "coef_df", "summary_df"]
 
     for p in ports:
         val = want.get(p)
