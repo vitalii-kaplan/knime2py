@@ -24,7 +24,8 @@ from .nodes import (
     equal_size_sampling,
     logreg_learner,
     logreg_predictor,
-    scorer
+    scorer,
+    roc_curve
 )
 
 __all__ = [
@@ -219,6 +220,8 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
                 res = logreg_predictor.handle(n.type, nid, n.path, incoming, outgoing)
             elif n.type and scorer.can_handle(n.type):
                 res = scorer.handle(n.type, nid, n.path, incoming, outgoing)
+            elif n.type and roc_curve.can_handle(n.type):
+                res = roc_curve.handle(n.type, nid, n.path, incoming, outgoing)
 
             if res:
                 found_imports, body = res

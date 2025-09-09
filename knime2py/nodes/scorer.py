@@ -129,6 +129,9 @@ def _emit_scorer_code(cfg: ScorerSettings) -> List[str]:
     lines.append("# Port 1 → confusion matrix, Port 2 → summary metrics")
     lines.append("cm_out = cm_df")
     lines.append("stats_out = summary_df")
+    lines.append("print(cm_df)")
+    lines.append("print(summary_df)")
+
     return lines
 
 
