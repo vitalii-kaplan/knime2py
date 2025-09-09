@@ -164,7 +164,7 @@ def _emit_predict_code(cfg: PredictorSettings) -> List[str]:
         lines.append("        classes = ['class0', 'class1']")
         lines.append(f"    _suf = {repr(cfg.prob_suffix)}")
         lines.append("    for j, cls in enumerate(classes):")
-        lines.append("        cname = f\"P({cls}){_suf}\"")
+        lines.append("        cname = f\"P ({tgt}={cls}){_suf}\"")
         lines.append("        out_df[cname] = proba[:, j]")
     else:
         lines.append("# Probabilities disabled by settings")
