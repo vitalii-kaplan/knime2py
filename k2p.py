@@ -1,4 +1,70 @@
 #!/usr/bin/env python3
+# -----------------------------------------------------------------------------
+# k2p.py — KNIME → Python/Notebook codegen & graph exporter (CLI entry point)
+#
+# What this tool does
+# -------------------
+# • Takes a single KNIME workflow and generates, per isolated subgraph (component):
+#     - A “Python workbook” as a Jupyter notebook (.ipynb) and/or a Python script (.py)
+#     - Graph JSON (nodes/edges/metadata)
+#     - Graphviz .dot (left-to-right)
+#
+# Input
+# -----
+# • You can pass either:
+#     1) A path to a specific `workflow.knime` file, OR
+#     2) A directory that contains exactly one `workflow.knime`
+#
+# Outputs
+# -------
+# • Files are written to the directory given by `--out` (default: ./out_graphs).
+# • If `--workbook` is omitted, BOTH notebook and script are generated.
+# • If `--graph` is omitted, BOTH JSON and DOT are generated.
+#
+# Usage (examples)
+# ----------------
+# # Generate everything (graphs + both workbooks)
+# python k2p.py /path/to/workflow.knime --out output/
+#
+# # Point at a project directory that contains exactly one workflow.knime
+# python k2p.py /path/to/KNIME_project_dir --out output/
+#
+# # Only generate a notebook workbook (skip the .py script)
+# python k2p.py /path/to/workflow.knime --out output/ --workbook ipynb
+#
+# # Only generate a Python script workbook (skip the .ipynb)
+# python k2p.py /path/to/workflow.knime --out output/ --workbook py
+#
+# # Control graph artifacts:
+# #   --graph dot   → only .dot
+# #   --graph json  → only .json
+# #   --graph off   → no graph files
+# python k2p.py /path/to/workflow.knime --out output/ --graph dot
+# python k2p.py /path/to/workflow.knime --out output/ --graph json
+# python k2p.py /path/to/workflow.knime --out output/ --graph off
+#
+# Behavior and notes
+# ------------------
+# • The tool prints a JSON summary of emitted files to STDOUT on success.
+# • The output directory is created if it does not exist.
+# • Subgraphs (weakly connected components) of the workflow are emitted separately
+#   and suffixed like `__g01`, `__g02`, etc.
+#
+# Exit codes
+# ----------
+# 0  success
+# 2  bad input path (does not exist / not a workflow / multiple workflows found)
+# 3  parsing error while reading the workflow
+# 4  empty workflow (no nodes/edges discovered)
+#
+# Requirements
+# ------------
+# • Python 3.8+
+# • `lxml`, `graphviz` (CLI optional for rendering .dot), and other libs listed in requirements.
+#
+# -----------------------------------------------------------------------------
+
+
 from __future__ import annotations
 
 import argparse
@@ -57,14 +123,18 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
     p.add_argument("--out", type=Path, default=Path("out_graphs"), help="Output directory")
     p.add_argument(
         "--workbook",
-        choices=["py", "ipynb"],          # removed "both"
-        default=None,                     # None => generate both
+        choices=["py", "ipynb"],          # None => generate both
+        default=None,
         help="Workbook format to generate. Omit to generate both.",
+    )
+    p.add_argument(
+        "--graph",
+        choices=["dot", "json", "off"],
+        default=None,                     # None => generate both
+        help="Which graph file(s) to emit: dot, json, or off. Omit to generate both.",
     )
 
     args = p.parse_args(argv)
-
-    
 
     wf = _resolve_single_workflow(args.path)
     out_dir = args.out.expanduser().resolve()
@@ -82,8 +152,13 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
 
     components = []
     for g in graphs:
-        j = write_graph_json(g, out_dir)
-        d = write_graph_dot(g, out_dir)
+        # Conditionally emit JSON/DOT based on --graph
+        j = d = None
+        if args.graph in (None, "json"):
+            j = write_graph_json(g, out_dir)
+        if args.graph in (None, "dot"):
+            d = write_graph_dot(g, out_dir)
+        # args.graph == "off" → skip both
 
         wb_py = wb_ipynb = None
         # If --workbook is omitted, create BOTH. If set, create only the requested one.
@@ -94,8 +169,8 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
 
         components.append({
             "workflow_id": g.workflow_id,
-            "json": str(j),
-            "dot": str(d),
+            "json": str(j) if j else None,
+            "dot": str(d) if d else None,
             "workbook_py": str(wb_py) if wb_py else None,
             "workbook_ipynb": str(wb_ipynb) if wb_ipynb else None,
             "nodes": len(g.nodes),
@@ -109,6 +184,7 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
     }
     print(json.dumps(summary, indent=2))
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(run_cli())

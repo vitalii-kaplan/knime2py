@@ -1,0 +1,6 @@
+lxml>=4.9            # XML parsing (settings.xml, workflow.knime)
+pandas>=1.5          # dataframes for all nodes
+numpy>=1.23          # pandas/sklearn base
+scipy>=1.9           # sklearn dependency
+scikit-learn>=1.2    # partitioning (train_test_split), logistic regression
+matplotlib>=3.6      # ROC curve plotting
