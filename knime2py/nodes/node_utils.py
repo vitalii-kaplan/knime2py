@@ -347,3 +347,37 @@ def split_out_imports(lines: List[str]) -> tuple[List[str], List[str]]:
             body.append(ln)
     return found, body
 
+def resolve_reader_path(root: ET._Element, node_dir: Path) -> Optional[str]:
+    """
+    Resolve the path from settings.xml. Supports:
+      - LOCAL: absolute path is used as-is
+      - RELATIVE + knime.workflow: path is relative to the workflow directory
+    """
+    path_cfg = first_el(root, ".//*[local-name()='config' and @key='path']")
+    if path_cfg is None:
+        return None
+
+    raw_path = first(path_cfg, ".//*[local-name()='entry' and @key='path']/@value")
+    fs_type  = first(path_cfg, ".//*[local-name()='entry' and @key='file_system_type']/@value")
+    spec     = first(path_cfg, ".//*[local-name()='entry' and @key='file_system_specifier']/@value")
+
+    if not raw_path:
+        return None
+
+    node_has_settings = (node_dir / "settings.xml").exists()
+    workflow_dir = node_dir.parent if node_has_settings else node_dir
+
+    try:
+        p = Path(raw_path)
+        if (fs_type or "").upper() == "LOCAL" or p.is_absolute():
+            return str(p.expanduser().resolve())
+
+        if (fs_type or "").upper() == "RELATIVE" and (spec or "").lower() == "knime.workflow":
+            return str((workflow_dir / raw_path).expanduser().resolve())
+
+        # Fallback: treat as relative to workflow_dir
+        return str((workflow_dir / raw_path).expanduser().resolve())
+    except Exception:
+        # Last-ditch: just return the raw string
+        return raw_path
+

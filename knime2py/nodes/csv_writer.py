@@ -32,15 +32,33 @@ class CSVWriterSettings:
 # ----------------------------
 
 def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
+    """
+    Read <node_dir>/settings.xml and extract CSV Writer options.
+    Path resolution:
+      - LOCAL => absolute path from settings
+      - RELATIVE + knime.workflow => path relative to the workflow root (node_dir)
+    """
     if not node_dir:
         return CSVWriterSettings()
+
     settings_path = node_dir / "settings.xml"
     if not settings_path.exists():
         return CSVWriterSettings()
 
     root = ET.parse(str(settings_path), parser=XML_PARSER).getroot()
 
-    path = extract_csv_path(root)
+    # Path: prefer robust resolver (handles LOCAL vs RELATIVE/knime.workflow),
+    # fallback to legacy extractor if anything goes wrong.
+    out_path: Optional[str]
+    try:
+        resolved = resolve_reader_path(root, node_dir)  # shared helper moved to node_utils.py
+        out_path = str(resolved) if resolved is not None else None
+    except Exception:
+        out_path = None
+    if out_path is None:
+        out_path = extract_csv_path(root)
+
+    # Other writer options
     sep = extract_csv_sep(root) or ","
     quotechar = extract_csv_quotechar(root) or '"'
     header = extract_csv_header_writer(root)
@@ -48,13 +66,13 @@ def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
         header = True
 
     enc = extract_csv_encoding(root) or "utf-8"
-    na_rep = extract_csv_na_rep(root)  # keep '' if present
+    na_rep = extract_csv_na_rep(root)           # keep '' if present
     include_index = extract_csv_include_index(root)
     if include_index is None:
         include_index = False
 
     return CSVWriterSettings(
-        path=path,
+        path=out_path,
         sep=sep,
         quotechar=quotechar,
         header=header,
@@ -62,6 +80,7 @@ def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
         na_rep=na_rep,
         include_index=include_index,
     )
+
 
 
 # ----------------------------
