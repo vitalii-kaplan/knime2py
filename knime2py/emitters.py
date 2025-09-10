@@ -255,6 +255,11 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
 
 
 def write_workbook_py(g, out_dir: Path) -> Path:
+    """
+    Emit a single, linear Python script (no per-node functions). Each node becomes a
+    commented section header followed by its generated code. Results are still stored
+    in `context` for debugging/inspection, but code reads from local vars directly.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.py"
 
@@ -270,40 +275,41 @@ def write_workbook_py(g, out_dir: Path) -> Path:
         lines.extend(imports)
         lines.append("")
 
-    lines.append("# Simple shared context to pass tabular data between sections")
-    lines.append("context = {}  # e.g., {'1:output_table': df}")
+    # Shared context remains for debugging
+    lines.append("# Simple shared context to pass tabular data between sections (for debugging)")
+    lines.append("context = {}  # e.g., {'<node_id>:<port>': df}")
     lines.append("")
 
-    # functions
+    # Linear code, one section per node
     for b in blocks:
-        lines.append(f"def {b.func_name}():")
-        lines.append(f"    # state: {b.state}")
-        if b.comment_line:
-            lines.append(f"    # {b.comment_line}")
+        # Slim, notebook-like headers:
+        #   ## <Title> # `<root_id>`
+        #   #  State: `<EXECUTED|CONFIGURED|...>`
+        lines.append("################################################################################################################################################################")
+        lines.append(f"## {b.title} # `{b.root_id}`")
+        lines.append(f"#  State: `{b.state}`")
+        
+
+        # (Optional) brief pointers as comments if present
         if b.input_line:
-            lines.append(f"    # {b.input_line}")
+            lines.append(f"# {b.input_line}")
         if b.output_line:
-            lines.append(f"    # {b.output_line}")
+            lines.append(f"# {b.output_line}")
+        if b.comment_line and b.comment_line != b.title:
+            lines.append(f"# {b.comment_line}")
 
-        # body
+        # Body
         if not b.code_lines:
-            lines.append("    # TODO: implement this node")
-            lines.append("    pass")
+            lines.append("# TODO: implement this node")
+            lines.append("pass")
         else:
-            for cl in b.code_lines:
-                lines.append("    " + cl)
-        lines.append("")
+            lines.extend(b.code_lines)
 
-    # run_all
-    lines.append("def run_all():")
-    for b in blocks:
-        lines.append(f"    {b.func_name}()")
-    lines.append("")
-    lines.append("if __name__ == '__main__':")
-    lines.append("    run_all()")
+        lines.append("")  # blank line between sections
 
     fp.write_text("\n".join(lines))
     return fp
+
 
 
 def write_workbook_ipynb(g, out_dir: Path) -> Path:
