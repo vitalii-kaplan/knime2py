@@ -40,9 +40,53 @@ class CSVReaderSettings:
 # Settings.xml → CSVReaderSettings
 # ----------------------------
 
+from pathlib import Path
+from typing import Optional
+from lxml import etree as ET
+from ..xml_utils import XML_PARSER
+from .node_utils import first  # you already have this
+
+def _resolve_reader_path(root: ET._Element, node_dir: Path) -> Optional[str]:
+    """
+    Resolve the CSV path from settings.xml. Supports:
+      - LOCAL: absolute path is used as-is
+      - RELATIVE + knime.workflow: path is relative to the workflow directory
+    """
+    path_cfg = first_el(root, ".//*[local-name()='config' and @key='path']")
+    if path_cfg is None:
+        return None
+
+    raw_path = first(path_cfg, ".//*[local-name()='entry' and @key='path']/@value")
+    fs_type  = first(path_cfg, ".//*[local-name()='entry' and @key='file_system_type']/@value")
+    spec     = first(path_cfg, ".//*[local-name()='entry' and @key='file_system_specifier']/@value")
+
+    if not raw_path:
+        return None
+
+    # If parse_csv_reader_settings was given the NODE folder (has settings.xml),
+    # then the workflow folder is its parent; otherwise assume node_dir itself is the workflow folder.
+    node_has_settings = (node_dir / "settings.xml").exists()
+    workflow_dir = node_dir.parent if node_has_settings else node_dir
+
+    try:
+        p = Path(raw_path)
+        if (fs_type or "").upper() == "LOCAL" or p.is_absolute():
+            return str(p.expanduser().resolve())
+
+        if (fs_type or "").upper() == "RELATIVE" and (spec or "").lower() == "knime.workflow":
+            return str((workflow_dir / raw_path).expanduser().resolve())
+
+        # Fallback: treat as relative to workflow_dir
+        return str((workflow_dir / raw_path).expanduser().resolve())
+    except Exception:
+        # Last-ditch: just return the raw string
+        return raw_path
+
+
 def parse_csv_reader_settings(node_dir: Path) -> CSVReaderSettings:
     """
     Read <node_dir>/settings.xml and extract csv path & common options.
+    Handles absolute LOCAL paths and RELATIVE paths anchored at the workflow directory.
     """
     settings = node_dir / "settings.xml"
     if not settings.exists():
@@ -50,7 +94,10 @@ def parse_csv_reader_settings(node_dir: Path) -> CSVReaderSettings:
 
     root = ET.parse(str(settings), parser=XML_PARSER).getroot()
 
-    file_path = extract_csv_path(root)
+    # New: resolve path properly (LOCAL vs RELATIVE knime.workflow)
+    file_path = _resolve_reader_path(root, node_dir)
+
+    # Keep existing extractors for the rest
     sep = extract_csv_sep(root) or ","
     quotechar = extract_csv_quotechar(root) or '"'
     escapechar = extract_csv_escapechar(root)
@@ -69,6 +116,7 @@ def parse_csv_reader_settings(node_dir: Path) -> CSVReaderSettings:
         encoding=enc,
         pandas_dtypes=pandas_dtypes,
     )
+
 
 
 # ----------------------------
