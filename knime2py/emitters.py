@@ -8,6 +8,7 @@ from .traverse import depth_order, traverse_nodes, derive_title_and_root
 import re
 from dataclasses import dataclass
 from typing import List, Optional
+from knime2py.nodes.registry import get_handlers
 
 from .traverse import (
     traverse_nodes,         
@@ -198,30 +199,20 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
             code_lines.append("pass")
         else:
             res = None
-            if n.type and csv_reader.can_handle(n.type):
-                res = csv_reader.handle(n.type, nid, n.path, incoming, outgoing)
-            elif n.type and csv_writer.can_handle(n.type):
-                res = csv_writer.handle(n.type, nid, n.path, incoming, outgoing)
-            elif n.type and column_filter.can_handle(n.type):
-                res = column_filter.handle(n.type, nid, n.path, incoming, outgoing)
-            elif n.type and missing_value.can_handle(n.type):
-                res = missing_value.handle(n.type, nid, n.path, incoming, outgoing)
-            elif n.type and normalizer.can_handle(n.type):
-                res = normalizer.handle(n.type, nid, n.path, incoming, outgoing)
-            elif n.type and rule_engine.can_handle(n.type):
-                res = rule_engine.handle(n.type, nid, n.path, incoming, outgoing)
-            elif n.type and partitioning.can_handle(n.type):
-                res = partitioning.handle(n.type, nid, n.path, incoming, outgoing)           
-            elif n.type and equal_size_sampling.can_handle(n.type):
-                res = equal_size_sampling.handle(n.type, nid, n.path, incoming, outgoing)
-            elif n.type and logreg_learner.can_handle(n.type):
-                res = logreg_learner.handle(n.type, nid, n.path, incoming, outgoing)
-            elif n.type and logreg_predictor.can_handle(n.type):
-                res = logreg_predictor.handle(n.type, nid, n.path, incoming, outgoing)
-            elif n.type and scorer.can_handle(n.type):
-                res = scorer.handle(n.type, nid, n.path, incoming, outgoing)
-            elif n.type and roc_curve.can_handle(n.type):
-                res = roc_curve.handle(n.type, nid, n.path, incoming, outgoing)
+            handlers = get_handlers()  
+
+            if n.type:
+                for h in handlers:
+                    try:
+                        if h.can_handle(n.type):
+                            res = h.handle(n.type, nid, n.path, incoming, outgoing)
+                            break
+                    except Exception as e:
+                        # Don’t crash whole build on a single handler; continue to next
+                        print(f"[emitters] Handler {getattr(h, '__name__', h)} failed on node {nid}: {e}", file=sys.stderr)
+                        continue
+
+            # res is either (imports, body_lines) or None
 
             if res:
                 found_imports, body = res
