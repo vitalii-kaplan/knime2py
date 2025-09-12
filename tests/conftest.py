@@ -136,6 +136,13 @@ def wf_knime_pp_2022_lr() -> Path:
         pytest.fail(f"Missing functional test workflow: {wf}")
     return wf
 
+@pytest.fixture(scope="session")
+def wf_knime_pp_2022_dt() -> Path:
+    wf = _workflow_path("KNIME_PP_2022_DT")
+    if not wf.exists():
+        pytest.fail(f"Missing functional test workflow: {wf}")
+    return wf
+
 
 # --------------------------------------------------------------------
 # Node-level test data fixtures (deduplicated)
@@ -216,6 +223,33 @@ def generate_lr_workbook(k2p_script: Path, run_cli, clean_output_dir: Path):
         if len(candidates) > 1:
             # If multiple components, pick the expected LR one or just take the first deterministically
             expected = clean_output_dir / "KNIME_PP_2022_LR__g01_workbook.py"
+            return expected if expected.exists() else candidates[0]
+        return candidates[0]
+
+    return _generate
+
+@pytest.fixture()
+def generate_dt_workbook(k2p_script: Path, run_cli, clean_output_dir: Path):
+    """
+    Returns a function that runs k2p on the DT workflow and creates the Python workbook
+    with graphs disabled, writing to tests/data/!output.
+    """
+    def _generate(workflow_knime: Path) -> Path:
+        args = [
+            str(workflow_knime.parent),   # CLI accepts project dir OR workflow.knime path
+            "--out", str(clean_output_dir),
+            "--graph", "off",
+            "--workbook", "py",
+        ]
+        run_cli(k2p_script, args, cwd=REPO_ROOT, check=True)
+
+        # Locate the single generated workbook *.py
+        candidates = sorted(clean_output_dir.glob("*_workbook.py"))
+        if not candidates:
+            raise AssertionError(f"No *_workbook.py generated in {clean_output_dir}")
+        if len(candidates) > 1:
+            # If multiple components, pick the expected DT one or just take the first deterministically
+            expected = clean_output_dir / "KNIME_PP_2022_DT__g01_workbook.py"
             return expected if expected.exists() else candidates[0]
         return candidates[0]
 

@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model">
+        <entry key="generateImage" type="xboolean" value="false"/>
+        <entry key="imageFormat" type="xstring" value="SVG"/>
+        <entry key="width" type="xint" value="800"/>
+        <entry key="height" type="xint" value="600"/>
+    </config>
+    <config key="view">
+        <config key="targetColumn">
+            <entry key="selected" type="xstring" value="Dependent"/>
+            <config key="compatibleTypes_Internals">
+                <entry key="array-size" type="xint" value="3"/>
+                <entry key="0" type="xstring" value="org.knime.core.data.StringValue"/>
+                <entry key="1" type="xstring" value="org.knime.core.data.DataValue"/>
+                <entry key="2" type="xstring" value="org.knime.core.data.NominalValue"/>
+            </config>
+        </config>
+        <entry key="positiveClassValue" type="xstring" value="yes"/>
+        <config key="predictionColumns">
+            <config key="selected_Internals">
+                <entry key="array-size" type="xint" value="1"/>
+                <entry key="0" type="xstring" value="P (Dependent=yes)_DT"/>
+            </config>
+            <entry key="mode" type="xstring" value="MANUAL"/>
+            <config key="patternFilter">
+                <entry key="pattern" type="xstring" value=""/>
+                <entry key="isCaseSensitive" type="xboolean" value="false"/>
+                <entry key="isInverted" type="xboolean" value="false"/>
+            </config>
+            <config key="manualFilter">
+                <config key="manuallySelected">
+                    <entry key="array-size" type="xint" value="1"/>
+                    <entry key="0" type="xstring" value="P (Dependent=yes)_DT"/>
+                </config>
+                <config key="manuallyDeselected">
+                    <entry key="array-size" type="xint" value="12"/>
+                    <entry key="0" type="xstring" value="uc_loyalty"/>
+                    <entry key="1" type="xstring" value="uc_welcome"/>
+                    <entry key="2" type="xstring" value="as_duration"/>
+                    <entry key="3" type="xstring" value="as_result"/>
+                    <entry key="4" type="xstring" value="as_pass"/>
+                    <entry key="5" type="xstring" value="as_partner"/>
+                    <entry key="6" type="xstring" value="ol_visits"/>
+                    <entry key="7" type="xstring" value="in_partner"/>
+                    <entry key="8" type="xstring" value="in_promo"/>
+                    <entry key="9" type="xstring" value="is_count_try"/>
+                    <entry key="10" type="xstring" value="ir_amount"/>
+                    <entry key="11" type="xstring" value="P (Dependent=no)_DT"/>
+                </config>
+                <entry key="includeUnknownColumns" type="xboolean" value="false"/>
+            </config>
+            <config key="typeFilter">
+                <config key="selectedTypes">
+                    <entry key="array-size" type="xint" value="0"/>
+                </config>
+            </config>
+        </config>
+        <entry key="maxPoints" type="xint" value="2500"/>
+        <entry key="title" type="xstring" value="ROC Curve"/>
+        <entry key="xAxisLabel" type="xstring" value="False positive rate (1 - specificity)"/>
+        <entry key="yAxisLabel" type="xstring" value="True positive rate (sensitivity)"/>
+        <entry key="lineSize" type="xint" value="2"/>
+        <entry key="legendPosition" type="xstring" value="INSIDE_PLOT"/>
+        <entry key="allowImageDownload" type="xboolean" value="true"/>
+        <entry key="enableAnimation" type="xboolean" value="true"/>
+        <entry key="enableDataZoom" type="xboolean" value="true"/>
+        <entry key="showTooltip" type="xboolean" value="true"/>
+    </config>
+    <config key="view_variables"/>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="EXECUTED"/>
+    <entry key="factory" type="xstring" value="org.knime.base.views.node.roccurve.ROCCurveNodeFactory"/>
+    <entry key="node-name" type="xstring" value="ROC Curve"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME Views"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.base.views"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.4.4.v202504301443"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Views"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.base.views.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.4.4.v202504301443"/>
+    <config key="factory_settings"/>
+    <config key="node_creation_config">
+        <config key="Input Table"/>
+        <config key="Output Image"/>
+    </config>
+    <entry key="name" type="xstring" value="ROC Curve"/>
+    <entry key="hasContent" type="xboolean" value="true"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports"/>
+    <config key="internalObjects">
+        <entry key="location" type="xstring" value="internalTables"/>
+        <config key="content">
+            <config key="object_0">
+                <entry key="index" type="xint" value="0"/>
+                <entry key="type" type="xstring" value="table"/>
+                <entry key="table_dir_location" type="xstring" value="object_0"/>
+            </config>
+        </config>
+    </config>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" value="331e0738-a7bb-493f-80bb-402bee819219"/>
+    </config>
+</config>

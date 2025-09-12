@@ -5,11 +5,11 @@ import sys
 from pathlib import Path
 
 
-def test_end_to_end_logreg_scorer():
+def test_end_to_end_dt_scorer():
     # Paths
     repo_root = Path(__file__).resolve().parents[1]
     cli = repo_root / "k2p.py"
-    knime_proj = repo_root / "tests" / "data" / "KNIME_PP_2022_LR"
+    knime_proj = repo_root / "tests" / "data" / "KNIME_PP_2022_DT"
     out_dir = repo_root / "tests" / "data" / "!output"
 
     # Fresh output dir
@@ -37,10 +37,10 @@ def test_end_to_end_logreg_scorer():
 
     # 2) Ensure the expected workbook script exists
     #    You asked for this exact filename:
-    expected_script = out_dir / "KNIME_PP_2022_LR__g01_workbook.py"
+    expected_script = out_dir / "KNIME_PP_2022_DT__g01_workbook.py"
     if not expected_script.exists():
         # fall back to any workbook if the suffix differs (keeps test resilient)
-        candidates = sorted(out_dir.glob("KNIME_PP_2022_LR*workbook.py"))
+        candidates = sorted(out_dir.glob("KNIME_PP_2022_DT*workbook.py"))
         assert candidates, (
             "No generated workbook script found in output dir. "
             f"Contents: {[p.name for p in out_dir.iterdir()]}"
@@ -68,9 +68,9 @@ def test_end_to_end_logreg_scorer():
 
     # Expected table:
     # no,yes
-    # 497,151
-    # 398,557
+    # 526  122
+    # 374  581
     assert len(rows) >= 3, f"Unexpected CSV shape: {rows}"
     assert rows[0] == ["no", "yes"], f"Header mismatch: {rows[0]}"
-    assert rows[1] == ["497", "151"], f"First data row mismatch: {rows[1]}"
-    assert rows[2] == ["398", "557"], f"Second data row mismatch: {rows[2]}"
+    assert rows[1] == ["526", "122"], f"First data row mismatch: {rows[1]}"
+    assert rows[2] == ["373", "582"], f"Second data row mismatch: {rows[2]}"
