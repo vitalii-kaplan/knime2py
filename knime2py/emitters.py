@@ -276,7 +276,7 @@ def write_workbook_py(g, out_dir: Path) -> Path:
     for b in blocks:
         lines.append("################################################################################################################################################################")
         lines.append(f"## {b.title} # `{b.root_id}`")
-        lines.append(f"#  State: `{b.state}`")
+        lines.append(f"# Node state: `{b.state}`")
         if b.input_line:
             lines.append(f"# {b.input_line}")
         if b.output_line:
@@ -338,7 +338,7 @@ def write_workbook_ipynb(g, out_dir: Path) -> Path:
 
     # Per-node cells
     for b in blocks:
-        md_lines = [f"## {b.title} \\# `{b.root_id}`", f" State: `{b.state}`  "]
+        md_lines = [f"## {b.title} \\# `{b.root_id}`", f" Node state: `{b.state}`  "]
         if b.comment_line:
             md_lines.append(f" {b.comment_line}  ")
         if b.input_line:
