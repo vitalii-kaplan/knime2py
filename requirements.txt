@@ -1,6 +1,7 @@
-lxml>=4.9            # XML parsing (settings.xml, workflow.knime)
-pandas>=1.5          # dataframes for all nodes
-numpy>=1.23          # pandas/sklearn base
-scipy>=1.9           # sklearn dependency
-scikit-learn>=1.2    # partitioning (train_test_split), logistic regression
-matplotlib>=3.6      # ROC curve plotting
+lxml>=4.9                       # XML parsing (settings.xml, workflow.knime)
+pandas>=1.5,<3.0                # 2.x OK; cap to avoid future breaking changes
+numpy>=1.23,<2.0                # sklearn 1.4.x doesn't support NumPy 2.0
+scipy>=1.10,<1.13               # fits sklearn 1.4.x on Py3.11
+scikit-learn>=1.4.2,<1.6        # tested well; avoids future API removals
+imbalanced-learn>=0.12.3,<0.13  # SMOTE; compatible with sklearn 1.4.x
+matplotlib>=3.6                 # Curve plotting
