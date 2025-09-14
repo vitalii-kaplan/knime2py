@@ -1,4 +1,25 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# ROC Curve
+#
+# Renders ROC curves from a scored table based on settings.xml. Reads ground-truth and positive
+# class, resolves one or more probability columns, computes FPR/TPR and AUC, and saves an image
+# (PNG/SVG) plus a CSV of ROC points. This view node does not write to context ports.
+#
+# - Inputs: one table with a truth column and per-class probability columns.
+# - Column binding: uses configured target/positive class and selected probability columns; if none
+#   are set, attempts to auto-detect KNIME-style columns like "P (<target>=<class>)_LR". Configure
+#   explicitly if your suffix differs (e.g., _RF, _GB).
+# - Output artifacts: saves "roc_<node_id>.(png|svg)" and "roc_table_<node_id>.csv" in CWD; figure
+#   size from width/height (pixels at 100 DPI). Title/axis labels are honored from settings.
+# - Implementation: sklearn.metrics.roc_curve/auc for each probability series; matplotlib for
+#   plotting; pandas/numpy for data handling.
+# 
+####################################################################################################
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

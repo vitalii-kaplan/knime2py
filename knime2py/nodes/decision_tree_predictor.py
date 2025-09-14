@@ -1,4 +1,20 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# Decision Tree Predictor
+#
+# Applies a fitted Decision Tree model bundle to an input table to produce predictions and, when
+# available, class probability columns. The estimator and metadata are taken from the upstream
+# learner bundle (scikit-learn compatible). Features are resolved from the bundle; if absent,
+# the code falls back to all columns except the target.
+#
+# The estimator itself must be scikit-learn-like.
+# Scope: classification predictor only. Multi-output and regression variants are not handled
+#
+####################################################################################################
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass

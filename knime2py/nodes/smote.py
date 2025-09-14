@@ -1,4 +1,25 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# SMOTE
+#
+# Oversamples minority classes using imbalanced-learn’s SMOTE based on KNIME settings.xml, then
+# writes the resampled table to this node’s context. Selects numeric/boolean features (excludes
+# the target), builds a sampling strategy from the chosen method/rate, and honors k-neighbors and
+# seed. Falls back to passthrough when configuration is insufficient.
+#
+# - Feature/target: uses all numeric/bool columns as features and the configured class/target.
+# - Methods: 
+#   • oversample_equal → sampling_strategy='auto' (minorities up to majority)  
+#   • otherwise uses rate: (0,1] → target_n ≈ rate * majority_n; >1 → target_n ≈ rate * minority_n
+# - kNN: k_neighbors is clamped to ≤ (minority_count - 1) to avoid imblearn errors.
+# - Fallbacks: if no target, no numeric features, single-class, or SMOTE raises, the original df
+#   is returned unchanged.
+# 
+####################################################################################################
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass

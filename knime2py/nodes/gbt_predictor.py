@@ -1,4 +1,24 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# Gradient Boosted Trees (Classification) Predictor
+#
+# Scores an input table using a GradientBoostingClassifier produced by the GBT Learner. Consumes a
+# model bundle (or bare estimator), writes a prediction column, and optionally appends class
+# probabilities and a confidence column. Outputs the scored table to the node's context.
+#
+# - Bundle keys (if present): {'estimator','features','target','classes',...}; falls back gracefully
+#   to bare estimator and infers features if needed (raises KeyError if required columns are missing).
+# - Prediction column name: custom if configured, else "Prediction (<target>)".
+# - Probabilities: adds per-class "P (<target>=<class>)<suffix>" when predict_proba is available; may
+#   also append "<prediction> (confidence)" as max probability.
+# - Optional: append number of boosted estimators as "<prediction> (models)".
+# - Ignored flag: 'useSoftVoting' (not applicable to sklearn GBT).
+#
+####################################################################################################
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass

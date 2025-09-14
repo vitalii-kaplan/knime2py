@@ -41,6 +41,16 @@
           "PYTHONPATH": "${workspaceFolder}",
           "PYTEST_ADDOPTS": ""   // ensure nothing from env re-adds coverage
         }
+      },
+      {
+        "name": "implemented: debug CLI",
+        "type": "debugpy",
+        "request": "launch",
+        "program": "${workspaceFolder}/implemented.py",
+        "args": [],
+        "cwd": "${workspaceFolder}",
+        "console": "integratedTerminal",
+        "justMyCode": true
       }
     ]
   }

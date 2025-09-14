@@ -1,4 +1,23 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# Logistic Regression Predictor
+#
+# Scores an input table using a LogisticRegression estimator produced by the LR Learner. Consumes a
+# model bundle (or bare estimator), writes a prediction column, and optionally appends per-class
+# probability columns. Outputs the scored table to this node's context.
+#
+# - Bundle keys (if present): {'estimator','features','target','classes',...}; falls back to a bare
+#   estimator and infers features if absent (raises KeyError if required columns are missing).
+# - Prediction column name: custom if configured; otherwise "Prediction (<target>)".
+# - Probabilities: when predict_proba exists, adds "P (<target>=<class>)<suffix>" columns.
+# - XML quirks: reads KNIME’s misspelled keys verbatim
+#   (has_custom_predicition_name, include_probabilites, propability_columns_suffix).
+# 
+####################################################################################################
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass

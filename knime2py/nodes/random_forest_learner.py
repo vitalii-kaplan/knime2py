@@ -1,4 +1,25 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# Random Forest (Classification) Learner
+#
+# Trains a scikit-learn RandomForestClassifier from KNIME settings.xml, selecting features/target,
+# then publishes three outputs: (3) a model bundle for downstream prediction, (1) a feature-
+# importance table, and (2) a compact training summary. Reads the first input table from context.
+#
+# - Feature selection: use included_names if provided; otherwise all numeric/boolean columns except
+#   the target; excluded_names are removed afterward.
+# - Hyperparameter mapping: nrModels→n_estimators; maxLevels>0→max_depth else None; minNodeSize→min_samples_split;
+#   minChildSize→min_samples_leaf; isDataSelectionWithReplacement→bootstrap; dataFraction→max_samples
+#   (only when bootstrap=True); columnSamplingMode/columnFractionPerTree/columnAbsolutePerTree plus
+#   isUseDifferentAttributesAtEachNode→max_features ('sqrt'/'log2'/1.0/fraction/int); seed→random_state.
+# - Info-only flags (not applied in sklearn RF): splitCriterion, missingValueHandling,
+#   useAverageSplitPoints, useBinaryNominalSplits; noted and ignored.
+# 
+####################################################################################################
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

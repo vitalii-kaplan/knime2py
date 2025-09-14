@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# Logistic Regression Learner
+#
+# Trains a scikit-learn LogisticRegression from KNIME settings.xml, selecting X/y and publishing
+# three outputs: (1) a model bundle for downstream prediction, (2) a coefficients table (with
+# odds ratios), and (3) a compact training summary. Reads the first input table from context.
+#
+# - Feature selection: use included_names if set; otherwise all numeric/boolean columns minus the
+#   target; then remove excluded_names.
+# - Hyperparameter mapping: solver(KNIME→sklearn), maxEpoch→max_iter, epsilon→tol, seed→random_state.
+#   Target reference category is recorded as metadata only (no sklearn equivalent).
+#
+####################################################################################################
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

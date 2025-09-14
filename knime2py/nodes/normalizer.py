@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# Normalizer
+#
+# Normalizes selected columns using Min–Max or Z-Score according to settings.xml, then writes the
+# result to this node's context. Includes/excludes are honored; if no columns are selected the node
+# is a passthrough.
+#
+# - Column selection: use included_names if set; else all numeric dtypes (Int*/int*/Float*/float*);
+#   drop excluded_names afterward.
+# - Modes: MINMAX uses new-min/new-max (constant/empty columns map to new_min);
+#   ZSCORE uses (x-mean)/std (zero std → 0.0).
+#
+####################################################################################################
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

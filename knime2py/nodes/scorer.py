@@ -1,4 +1,20 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# Scorer
+#
+# Computes classification metrics from a scored table based on settings.xml: builds a confusion
+# matrix and a summary table with Accuracy, Error, #Correct, #False, and Cohen’s kappa. Reads the
+# truth and prediction columns, optionally drops rows with missing values, and writes two outputs.
+#
+# - Columns: 'first' → truth column, 'second' → prediction column (default "Prediction (<truth>)").
+#   ignore.missing.values=true drops NA before scoring; false keeps NA (sklearn metrics may fail).
+# - Confusion matrix labels: union of values from truth and prediction in order of appearance.
+# 
+####################################################################################################
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass

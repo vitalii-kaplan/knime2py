@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# Partitioning
+#
+# Splits an input table into train/test using settings.xml. Supports RELATIVE (fraction) or ABSOLUTE
+# (row count) sizing with RANDOM, LINEAR (no shuffle), or STRATIFIED sampling. Emits two outputs:
+# train_df and test_df, written to the node's context.
+#
+# - Implementation: sklearn.model_selection.train_test_split; seed honored when provided.
+# - STRATIFIED: uses class_column; NaN treated as a separate class; falls back to non-stratified if
+#   stratification is infeasible (e.g., tiny classes).
+# - RELATIVE: fraction is clamped to [0,1]. ABSOLUTE: train_size is an integer bounded by len(df).
+# 
+####################################################################################################
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass

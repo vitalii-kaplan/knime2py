@@ -1,4 +1,30 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# Gradient Boosted Trees (Classification) Learner
+#
+# Trains a scikit-learn GradientBoostingClassifier from KNIME settings.xml, selecting features and
+# target, then publishes three outputs: (1) a model bundle for downstream prediction, (2) a
+# feature-importance table, and (3) a compact training summary. Inputs are read from the first
+# table port; results are written into the node's context ports.
+#
+# - Feature selection: use included_names if present; otherwise all numeric/boolean columns except
+#   the target. Excluded_names are removed afterward. If no target is configured, the node is a
+#   passthrough: bundle=None and empty outputs with an error note in the summary.
+# - Hyperparameters mapped: nrModels→n_estimators, learningRate→learning_rate, maxLevels
+#   (-1/absent → default 3)→max_depth, minNodeSize→min_samples_split (≥2), minChildSize→min_samples_leaf (≥1),
+#   dataFraction (0<≤1)→subsample (stochastic GB), columnSamplingMode→max_features (None/'sqrt'/'log2'/fraction/int),
+#   seed→random_state. Seed defaults to 1 for deterministic output.
+# - Unsupported/orthogonal flags: splitCriterion (trees in sklearn GBT have fixed criterion),
+#   missingValueHandling (impute beforehand), useAverageSplitPoints, useBinaryNominalSplits,
+#   isUseDifferentAttributesAtEachNode (no direct sklearn analog). These are noted and ignored.
+# - Outputs: port 1=model bundle (estimator, metadata), port 2=feature_importances_, port 3=summary.
+# - Dependencies: lxml for XML parsing; pandas/numpy for data handling; scikit-learn for modeling.
+#
+####################################################################################################
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass

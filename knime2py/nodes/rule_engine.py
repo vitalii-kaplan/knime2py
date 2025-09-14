@@ -1,4 +1,23 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# Rule Engine
+#
+# Applies a subset of KNIME Rule Engine logic to an input table and writes the result to context.
+# Parses settings.xml rules and emits pandas code that evaluates them in order and assigns outcomes.
+#
+# - Supported rules: TRUE => "out"; $col$ <op> value => "out" with <, <=, >, >=, =, ==, !=;
+#   $col$ LIKE "pat" (uses * as wildcard; converted to a regex). A trailing TRUE acts as default.
+# - Column output: append to a new column if configured; otherwise replace the specified column;
+#   falls back to "RuleResult" when no name is provided.
+# - Literals: numeric strings are emitted as numbers; everything else is a quoted Python literal.
+# - Limitations: no AND/OR chaining, no between/in lists, no regex beyond LIKE→wildcard, and no
+#   type coercion beyond basic string/number handling.
+#
+####################################################################################################
+
+
 from __future__ import annotations
 
 import html

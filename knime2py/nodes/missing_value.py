@@ -1,4 +1,22 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# Missing Value Handler
+#
+# Applies KNIME Missing Value type-wide policies to an input table and writes the result to the
+# node’s context. Parses settings.xml to map Java cell types to simple dtypes and derives a fill
+# strategy per dtype, then generates pandas code to impute/propagate/drop accordingly.
+#
+# - Strategies (by dtype): fixed, mean, median, mode, ffill, bfill, drop. Fixed values are read
+#   from common keys (fixIntegerValue, fixLongValue, fixDoubleValue, fixStringValue, fixBooleanValue, fixValue)
+#   and emitted as literals when possible (with safe casting for ints/floats).
+# - Dtype mapping: IntCell/LongCell→int, DoubleCell→float, StringCell→string, BooleanCell→boolean.
+# - Scope: type-wide policies from dataTypeSettings; per-column policies are not implemented here.
+#
+####################################################################################################
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

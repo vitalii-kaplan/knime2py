@@ -1,4 +1,20 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# CSV Writer
+# 
+# Writes a pandas DataFrame to CSV using options parsed from settings.xml.#
+# Resolves LOCAL/RELATIVE (knime.workflow) paths and maps KNIME writer options to pandas.to_csv.
+#
+# pandas>=1.5 recommended for consistent NA/nullable dtype handling.
+# Path resolution supports LOCAL absolute paths and RELATIVE knime.workflow; other FS types are not yet handled.
+# Directory creation is not automatic; ensure out_path.parent exists before writing.
+# Line terminator / quoting mode / doublequote / escapechar are not explicitly mapped unless present; pandas defaults apply.
+# File is overwritten by default; KNIME “append/overwrite” style flags are not implemented here.
+#
+####################################################################################################
+
 from __future__ import annotations
 
 from dataclasses import dataclass

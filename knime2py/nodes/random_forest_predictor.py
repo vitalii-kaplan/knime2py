@@ -1,4 +1,24 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# Random Forest (Classification) Predictor
+#
+# Scores an input table using a RandomForestClassifier produced by the RF Learner. Consumes a model
+# bundle (or bare estimator), writes a prediction column, and can append per-class probabilities,
+# a confidence column, and a model-count column. Outputs the scored table to the node's context.
+#
+# - Ports: In1=model bundle, In2=data table, Out1=predicted table.
+# - Bundle keys (if present): {'estimator','features','target','classes',...}; falls back to a bare
+#   estimator and infers features if absent (raises KeyError if required columns are missing).
+# - Prediction column name: custom if configured; otherwise "Prediction (<target>)".
+# - Probabilities: when available, adds "P (<target>=<class>)<suffix>"; may also append
+#   "<prediction> (confidence)" as max probability. Optional "Model Count" from n_estimators.
+# - 'useSoftVoting' is informational; sklearn RandomForest averages probabilities by design.
+# 
+####################################################################################################
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass

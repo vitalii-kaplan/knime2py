@@ -1,4 +1,19 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# CSV Reader
+# 
+# CSV Reader: reads a CSV into a pandas DataFrame using options parsed from settings.xml.
+# Resolves LOCAL/RELATIVE (knime.workflow) paths and maps KNIME options to pandas.read_csv.
+#
+# pandas>=1.5 recommended (nullable dtypes supported in dtype mapping).
+# Quote/escape are passed to pandas. If escapechar is None, pandas' default engine behavior applies.
+# Dtype mapping is derived from table_spec_config_Internals; unknown types are left to inference.
+# Path resolution supports LOCAL and RELATIVE knime.workflow only; other FS types are not yet handled.
+#
+####################################################################################################
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

@@ -1,4 +1,28 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# Decision Tree Learner
+#
+# Trains a scikit-learn DecisionTreeClassifier from parameters parsed in settings.xml and emits:
+# a model bundle (estimator + metadata), (2) a feature-importance table, and (3) a summary.
+# Mapping (KNIME → sklearn):
+#   - splitQualityMeasure ∈ {Gini, Information gain, Gain ratio} → criterion ∈ {'gini','entropy'}
+#       • 'Gain ratio' has no direct equivalent in sklearn; mapped to 'entropy'.
+#   - minNumberRecordsPerNode → min_samples_split (lower-bounded at 2).
+#   - Random seed: KNIME DT Learner does not expose a seed; generator defaults random_state=1 for
+#     reproducibility of tie-breaks and any internal randomness.
+#
+# Pruning options (e.g., pruningMethod/Reduced Error Pruning) are not available in sklearn DT;
+# consider ccp_alpha for cost-complexity pruning if needed.
+# First-split constraints and binary nominal split settings are not supported by sklearn.
+# Feature importances are impurity-based (Gini/entropy); consider permutation importances if
+# you need model-agnostic measures.
+# Library expectations: pandas>=1.5, numpy>=1.23, scikit-learn>=1.2 recommended.
+#
+####################################################################################################
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass

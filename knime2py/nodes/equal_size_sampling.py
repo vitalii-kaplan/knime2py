@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+
+####################################################################################################
+#
+# Equal Size Sampling
+#
+# Downsamples classes to the same size across a chosen class/label column using options parsed
+# from settings.xml. Implements KNIME’s “Exact” method by sampling without replacement down to the
+# minimum observed class count. Uses sklearn.utils.resample for reproducibility.
+#
+# Exact mode only: “Approximate” sampling is not implemented in this generator.
+# Requires pandas; scikit-learn is used only for resample() (no synthetic example generation).
+# Seed is used when provided; default fallback is 1 for deterministic output.
+# Order of rows after concatenation is re-sorted back to the original index.
+#
+####################################################################################################
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass
