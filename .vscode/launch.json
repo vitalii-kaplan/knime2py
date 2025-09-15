@@ -7,7 +7,7 @@
         "request": "launch",
         "program": "${workspaceFolder}/k2p.py",
         "args": [
-          "${workspaceFolder}/../../harbour/KNIME/KNIME_project_csv_sample",
+          "${workspaceFolder}/../../harbour/KNIME/HW-Churn",
           "--out", "${workspaceFolder}/output",
           "--workbook", "ipynb"
         ],

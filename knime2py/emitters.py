@@ -1,24 +1,18 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import List
-from .traverse import depth_order, traverse_nodes, derive_title_and_root
-import re
-from dataclasses import dataclass
 from typing import List, Optional
+import re
+
+from .traverse import derive_title_and_root, traverse_nodes
 from knime2py.nodes.registry import get_handlers
-
-from .traverse import (
-    traverse_nodes,         
-)
-
-from .nodes import *
 
 __all__ = [
     "write_graph_json",
     "write_graph_dot",
+    "build_workbook_blocks",
     "write_workbook_py",
     "write_workbook_ipynb",
 ]
@@ -61,7 +55,7 @@ def _safe_name_from_title(title: str) -> str:
 
 
 # ----------------------------
-# Emission helpers
+# Graph emitters
 # ----------------------------
 def write_graph_json(g, out_dir: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -118,6 +112,9 @@ def write_graph_dot(g, out_dir: Path) -> Path:
     return fp
 
 
+# ----------------------------
+# Workbook block builder (shared by .py and .ipynb writers)
+# ----------------------------
 def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
     """
     Build render-ready blocks for each node (same content used by .py and .ipynb writers).
@@ -127,8 +124,6 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
         (blocks, aggregated_imports)
     """
     blocks: List[NodeBlock] = []
-
-    # Collect unique imports across nodes
     aggregated_imports: set[str] = set()
 
     for ctx in traverse_nodes(g):
@@ -151,7 +146,7 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
             if oneliner:
                 comment_line = f"comments: {oneliner}"
 
-        # ---- input line (display this node's input port = target_port; context key = src_id:source_port)
+        # ---- input line
         input_line = None
         if incoming:
             ins = []
@@ -162,7 +157,7 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
                 ins.append(f"[Port {p_in}] {src_id}:{p_src} from {src_title} #{src_id}")
             input_line = "Input: " + "; ".join(ins)
 
-        # ---- output line (display this node's output port = source_port; context key = nid:source_port)
+        # ---- output line
         output_line = None
         if outgoing:
             outs = []
@@ -186,7 +181,7 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
             code_lines.append("pass")
         else:
             res = None
-            handlers = get_handlers()  
+            handlers = get_handlers()
 
             if n.type:
                 for h in handlers:
@@ -196,16 +191,14 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
                             break
                     except Exception as e:
                         # Don’t crash whole build on a single handler; continue to next
-                        print(f"[emitters] Handler {getattr(h, '__name__', h)} failed on node {nid}: {e}", file=sys.stderr)
+                        import sys as _sys
+                        print(f"[emitters] Handler {getattr(h, '__name__', h)} failed on node {nid}: {e}", file=_sys.stderr)
                         continue
-
-            # res is either (imports, body_lines) or None
 
             if res:
                 found_imports, body = res
                 aggregated_imports.update(found_imports)
                 code_lines.extend(body)
-
             else:
                 # fallback stub
                 if n.type:
@@ -232,16 +225,28 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
     return blocks, sorted(aggregated_imports)
 
 
-def write_workbook_py(g, out_dir: Path) -> Path:
+# ----------------------------
+# Workbook writers
+# ----------------------------
+def write_workbook_py(
+    g,
+    out_dir: Path,
+    blocks: Optional[List[NodeBlock]] = None,
+    imports: Optional[List[str]] = None,
+) -> Path:
     """
     Emit a single, linear Python script (no per-node functions). Each node becomes a
     commented section header followed by its generated code. Results are still stored
     in `context` for debugging/inspection, but code reads from local vars directly.
+
+    If `blocks`/`imports` are not provided, they are computed via build_workbook_blocks(g).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.py"
 
-    blocks, imports = build_workbook_blocks(g)
+    # Compute once if not provided
+    if blocks is None or imports is None:
+        blocks, imports = build_workbook_blocks(g)
 
     lines: List[str] = []
 
@@ -296,15 +301,24 @@ def write_workbook_py(g, out_dir: Path) -> Path:
     return fp
 
 
-def write_workbook_ipynb(g, out_dir: Path) -> Path:
+def write_workbook_ipynb(
+    g,
+    out_dir: Path,
+    blocks: Optional[List[NodeBlock]] = None,
+    imports: Optional[List[str]] = None,
+) -> Path:
     """
     Jupyter notebook: one markdown cell (header + summaries), then an imports cell,
     then a shared context cell, then one code cell per node.
+
+    If `blocks`/`imports` are not provided, they are computed via build_workbook_blocks(g).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.ipynb"
 
-    blocks, imports = build_workbook_blocks(g)
+    # Compute once if not provided
+    if blocks is None or imports is None:
+        blocks, imports = build_workbook_blocks(g)
 
     cells: List[dict] = []
 

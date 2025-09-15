@@ -79,6 +79,7 @@ from knime2py.emitters import (
     write_graph_dot,
     write_workbook_py,
     write_workbook_ipynb,
+    build_workbook_blocks,
 )
 
 def _resolve_single_workflow(path: Path) -> Path:
@@ -162,10 +163,11 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
 
         wb_py = wb_ipynb = None
         # If --workbook is omitted, create BOTH. If set, create only the requested one.
+        blocks, imports = build_workbook_blocks(g)
         if args.workbook in (None, "py"):
-            wb_py = write_workbook_py(g, out_dir)
+            wb_py = write_workbook_py(g, out_dir, blocks, imports)
         if args.workbook in (None, "ipynb"):
-            wb_ipynb = write_workbook_ipynb(g, out_dir)
+            wb_ipynb = write_workbook_ipynb(g, out_dir, blocks, imports)
 
         components.append({
             "workflow_id": g.workflow_id,
