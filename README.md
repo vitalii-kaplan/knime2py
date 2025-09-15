@@ -1,6 +1,8 @@
 # knime2py — KNIME → Python Workbook
 
-A command-line tool that parses a **KNIME workflow** and emits, for each isolated subgraph (component) inside it:
+knime2py is a code-generation and KNIME→Python exporter: it parses a KNIME workflow, reconstructs its nodes and connections, and emits runnable Python “workbooks” (Jupyter notebook or script) by translating supported KNIME nodes into idiomatic pandas / scikit-learn code via a pluggable node registry. Alongside the executable code, it also writes a machine-readable graph (JSON) and a Graphviz DOT file, preserving port wiring and execution order so the generated Python mirrors the original workflow.
+
+The project includes command-line tool that parses a **KNIME workflow** and emits, for each isolated subgraph (component) inside it:
 
 * a machine-readable graph (`<workflow_id>__gNN.json`)
 * a Graphviz DOT file (`<workflow_id>__gNN.dot`)
