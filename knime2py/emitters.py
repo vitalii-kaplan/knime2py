@@ -25,7 +25,7 @@ class NodeBlock:
     title: str
     root_id: str
 
-    not_implemented: List[str]  # list of ALL not-implemented nodes
+    not_implemented: bool 
 
     # state & summaries (already formatted one-liners)
     state: str
@@ -35,7 +35,6 @@ class NodeBlock:
 
     # final code body lines (what will go inside the function / code cell)
     code_lines: List[str]
-
 
 
 # ----------------------------
@@ -129,7 +128,6 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
     aggregated_imports: set[str] = set()
     handlers = get_handlers()  # dict: { FACTORY_ID: module }, may include "" for default
 
-    # First pass: collect per-node data and determine implemented_flag
     prepared: List[dict] = []
 
     for ctx in traverse_nodes(g):
@@ -175,7 +173,7 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
 
         # ---- code body lines (plugin-aware)
         code_lines: List[str] = []
-        implemented_flag = 0  # assume not implemented until proven otherwise
+        not_impl_flag = True  # assume not implemented until proven otherwise
 
         if state == "IDLE":
             # IDLE nodes: only a hub link (if we have a type) + warning
@@ -186,19 +184,19 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
                 code_lines.append("# Factory class unavailable")
             code_lines.append("# The node is IDLE. Codegen is not possible. Implement this node manually.")
             code_lines.append("pass")
-        
-        mod = None
-        default_mod = handlers.get("")
-
-        if getattr(n, "type", None):
-            mod = handlers.get(n.type)
-
-        if mod is None and default_mod is not None:
-            mod = default_mod
         else:
-            implemented_flag = 1
-        
-        if state != "IDLE":
+            # Try factory-specific handler; fall back to default ("")
+            mod = None
+            default_mod = handlers.get("")
+            used_default = False
+
+            if getattr(n, "type", None):
+                mod = handlers.get(n.type)
+
+            if mod is None and default_mod is not None:
+                mod = default_mod
+                used_default = True
+
             res = None
             if mod is not None:
                 try:
@@ -214,6 +212,9 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
                     aggregated_imports.update(found_imports)
                 if body:
                     code_lines.extend(body)
+                # mark implemented only if a specific handler (not default "") produced code
+                if not used_default and body:
+                    not_impl_flag = False
             else:
                 # fallback stub (no handler or handler failed)
                 if getattr(n, "type", None):
@@ -234,13 +235,10 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
             "input_line": input_line,
             "output_line": output_line,
             "code_lines": code_lines,
-            "implemented_flag": implemented_flag,
+            "not_impl_flag": not_impl_flag,
         })
 
-    # Build the consolidated list of not-implemented node names
-    not_impl_names: List[str] = [p["title"] for p in prepared if p["implemented_flag"] == 0]
-
-    # Second pass: create NodeBlock objects, injecting the consolidated list
+    # Create NodeBlock objects
     blocks: List[NodeBlock] = []
     for p in prepared:
         blocks.append(NodeBlock(
@@ -248,7 +246,7 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
             nid=p["nid"],
             title=p["title"],
             root_id=p["root_id"],
-            not_implemented=list(not_impl_names),
+            not_implemented=bool(p["not_impl_flag"]),
             state=p["state"],
             comment_line=p["comment_line"],
             input_line=p["input_line"],
@@ -256,10 +254,8 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
             code_lines=p["code_lines"],
         ))
 
-
     # Return blocks and a sorted list of unique imports
     return blocks, sorted(aggregated_imports)
-
 
 
 # ----------------------------

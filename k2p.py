@@ -1,69 +1,7 @@
 #!/usr/bin/env python3
 # -----------------------------------------------------------------------------
 # k2p.py — KNIME → Python/Notebook codegen & graph exporter (CLI entry point)
-#
-# What this tool does
-# -------------------
-# • Takes a single KNIME workflow and generates, per isolated subgraph (component):
-#     - A “Python workbook” as a Jupyter notebook (.ipynb) and/or a Python script (.py)
-#     - Graph JSON (nodes/edges/metadata)
-#     - Graphviz .dot (left-to-right)
-#
-# Input
-# -----
-# • You can pass either:
-#     1) A path to a specific `workflow.knime` file, OR
-#     2) A directory that contains exactly one `workflow.knime`
-#
-# Outputs
-# -------
-# • Files are written to the directory given by `--out` (default: ./out_graphs).
-# • If `--workbook` is omitted, BOTH notebook and script are generated.
-# • If `--graph` is omitted, BOTH JSON and DOT are generated.
-#
-# Usage (examples)
-# ----------------
-# # Generate everything (graphs + both workbooks)
-# python k2p.py /path/to/workflow.knime --out output/
-#
-# # Point at a project directory that contains exactly one workflow.knime
-# python k2p.py /path/to/KNIME_project_dir --out output/
-#
-# # Only generate a notebook workbook (skip the .py script)
-# python k2p.py /path/to/workflow.knime --out output/ --workbook ipynb
-#
-# # Only generate a Python script workbook (skip the .ipynb)
-# python k2p.py /path/to/workflow.knime --out output/ --workbook py
-#
-# # Control graph artifacts:
-# #   --graph dot   → only .dot
-# #   --graph json  → only .json
-# #   --graph off   → no graph files
-# python k2p.py /path/to/workflow.knime --out output/ --graph dot
-# python k2p.py /path/to/workflow.knime --out output/ --graph json
-# python k2p.py /path/to/workflow.knime --out output/ --graph off
-#
-# Behavior and notes
-# ------------------
-# • The tool prints a JSON summary of emitted files to STDOUT on success.
-# • The output directory is created if it does not exist.
-# • Subgraphs (weakly connected components) of the workflow are emitted separately
-#   and suffixed like `__g01`, `__g02`, etc.
-#
-# Exit codes
-# ----------
-# 0  success
-# 2  bad input path (does not exist / not a workflow / multiple workflows found)
-# 3  parsing error while reading the workflow
-# 4  empty workflow (no nodes/edges discovered)
-#
-# Requirements
-# ------------
-# • Python 3.8+
-# • `lxml`, `graphviz` (CLI optional for rendering .dot), and other libs listed in requirements.
-#
 # -----------------------------------------------------------------------------
-
 
 from __future__ import annotations
 
@@ -162,29 +100,23 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
         # args.graph == "off" → skip both
 
         wb_py = wb_ipynb = None
-        # If --workbook is omitted, create BOTH. If set, create only the requested one.
+
+        # Build blocks/imports once
         blocks, imports = build_workbook_blocks(g)
 
         # --- per-graph summaries
         idle_count = sum(1 for b in blocks if b.state == "IDLE")
 
-        # Collect list of not-implemented node IDs (supports both old int flag and new list form)
-        not_impl_ids: list[str] = []
-        if blocks:
-            first_impl = getattr(blocks[0], "not_implemented", None)
-            if isinstance(first_impl, list):
-                # New form: each block carries the same consolidated list
-                # Union across blocks just in case
-                s = set()
-                for b in blocks:
-                    val = getattr(b, "not_implemented", [])
-                    if isinstance(val, list):
-                        s.update(val)
-                not_impl_ids = sorted(s)
-            else:
-                # Old form: 0/1 per node → collect nids where implemented == 0
-                not_impl_ids = [b.nid for b in blocks if getattr(b, "not_implemented", 0) == 0]
+        # List of not-implemented node *names with factories*, e.g.
+        # "Row Filter: org.knime.base.node.preproc.filter.row3.RowFilterNodeFactory"
+        not_impl_names: set[str] = set()
+        for b in blocks:
+            if getattr(b, "not_implemented", False):
+                node = g.nodes.get(b.nid) if hasattr(g, "nodes") else None
+                factory = getattr(node, "type", None) or getattr(node, "factory", None) or "UNKNOWN"
+                not_impl_names.add(f"{b.title} ({factory})")
 
+        # Workbooks
         if args.workbook in (None, "py"):
             wb_py = write_workbook_py(g, out_dir, blocks, imports)
         if args.workbook in (None, "ipynb"):
@@ -199,10 +131,9 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
             "nodes": len(g.nodes),
             "edges": len(g.edges),
             "idle": idle_count,
-            "not_implemented_count": len(not_impl_ids),
-            "not_implemented_names": not_impl_ids,            
+            "not_implemented_count": len(not_impl_names),
+            "not_implemented_names": sorted(not_impl_names),
         })
-
 
     summary = {
         "workflow": str(wf),
