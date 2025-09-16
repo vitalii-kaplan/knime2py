@@ -8,9 +8,15 @@
 # Resolves LOCAL/RELATIVE (knime.workflow) paths and maps KNIME options to pandas.read_csv.
 #
 # pandas>=1.5 recommended (nullable dtypes supported in dtype mapping).
-# Quote/escape are passed to pandas. If escapechar is None, pandas' default engine behavior applies.
+# Quote/escape are passed to pandas. If escapechar equals quotechar, we omit escapechar and rely
+# on double-quote parsing (avoids C-engine "EOF inside string" errors).
 # Dtype mapping is derived from table_spec_config_Internals; unknown types are left to inference.
 # Path resolution supports LOCAL and RELATIVE knime.workflow only; other FS types are not yet handled.
+# Robust NA/dtype handling:
+# - Treat '' and ' ' as missing on read (na_values=['', ' '], keep_default_na=True, skipinitialspace=True)
+# - Read WITHOUT dtype=..., then coerce per-column:
+#     * numeric targets ('Int64', 'Float64') via pd.to_numeric(..., errors='coerce').astype(target)
+#     * other types via .astype(target)
 #
 ####################################################################################################
 
@@ -20,7 +26,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 from lxml import etree as ET
-from ..xml_utils import XML_PARSER  # project helper (ok)
+from ..xml_utils import XML_PARSER
 from .node_utils import *
 
 FACTORY = "org.knime.base.node.io.filehandling.csv.reader.CSVTableReaderNodeFactory"
@@ -49,13 +55,6 @@ class CSVReaderSettings:
 # Settings.xml → CSVReaderSettings
 # ----------------------------
 
-from pathlib import Path
-from typing import Optional
-from lxml import etree as ET
-from ..xml_utils import XML_PARSER
-from .node_utils import first  # you already have this
-
-
 def parse_csv_reader_settings(node_dir: Path) -> CSVReaderSettings:
     """
     Read <node_dir>/settings.xml and extract csv path & common options.
@@ -67,10 +66,10 @@ def parse_csv_reader_settings(node_dir: Path) -> CSVReaderSettings:
 
     root = ET.parse(str(settings), parser=XML_PARSER).getroot()
 
-    # New: resolve path properly (LOCAL vs RELATIVE knime.workflow)
+    # Resolve path properly (LOCAL vs RELATIVE knime.workflow)
     file_path = resolve_reader_path(root, node_dir)
 
-    # Keep existing extractors for the rest
+    # Extractors
     sep = extract_csv_sep(root) or ","
     quotechar = extract_csv_quotechar(root) or '"'
     escapechar = extract_csv_escapechar(root)
@@ -129,18 +128,38 @@ def generate_py_body(node_id: str, node_dir: Optional[str], out_ports: List[str]
     header_has = True if settings.header is None else bool(settings.header)
     header_arg = "0" if header_has else "None"
 
-    # dtype mapping (optional)
-    dtype_arg = None
-    if getattr(settings, "pandas_dtypes", None):
-        # literal dict is fine here; we rely on small sets of columns
-        dtype_arg = repr(settings.pandas_dtypes)
+    # escapechar: omit when it equals quotechar to avoid C-engine EOF-in-string errors
+    esc_kw = ""
+    if settings.escapechar is not None:
+        if settings.quotechar is not None and settings.escapechar == settings.quotechar:
+            lines.append("# Note: escapechar equals quotechar; omitting escapechar and relying on double-quoted escapes.")
+            # Optional: if you still see quoting errors, uncomment to force python engine:
+            # engine_kw = ", engine='python'"
+            # but we keep engine default to preserve performance/compat
+        else:
+            esc_kw = f", escapechar={repr(settings.escapechar)}"
 
-    # Assemble call
-    kwargs = [f"sep={sep_arg}", f"quotechar={quote_arg}", f"header={header_arg}", f"encoding={enc_arg}"]
-    if dtype_arg:
-        kwargs.append(f"dtype={dtype_arg}")
+    # Always treat blanks as NA; keep pandas defaults; trim spaces after delimiters
+    na_kw = ", na_values=['', ' '], keep_default_na=True, skipinitialspace=True"
 
-    lines.append(f"df = pd.read_csv(csv_path, {', '.join(kwargs)})")
+    # Read WITHOUT dtype=... (we’ll coerce below)
+    lines.append(
+        f"df = pd.read_csv(csv_path, sep={sep_arg}, quotechar={quote_arg}, header={header_arg}, "
+        f"encoding={enc_arg}{esc_kw}{na_kw})"
+    )
+
+    # Post-parse dtype coercion (mirrors KNIME table spec intent, but robust to stray spaces)
+    lines.append("_pd_dtypes = " + repr(settings.pandas_dtypes or {}))
+    lines.append("for _col, _dt in _pd_dtypes.items():")
+    lines.append("    if _col not in df.columns:")
+    lines.append("        continue")
+    lines.append("    try:")
+    lines.append("        if _dt in ('Int64', 'Float64'):")
+    lines.append("            df[_col] = pd.to_numeric(df[_col], errors='coerce').astype(_dt)")
+    lines.append("        else:")
+    lines.append("            df[_col] = df[_col].astype(_dt)")
+    lines.append("    except Exception:  # leave column as-is on failure")
+    lines.append("        pass")
 
     # Publish to context
     for line in context_assignment_lines(node_id, out_ports):
@@ -162,6 +181,6 @@ def handle(ntype, nid, npath, incoming, outgoing):
     node_lines = generate_py_body(nid, npath, out_ports)
 
     found, body = split_out_imports(node_lines)
-    explicit = collect_module_imports(generate_imports) 
+    explicit = collect_module_imports(generate_imports)
     imports = sorted(set(found).union(explicit))
     return imports, body
