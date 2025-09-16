@@ -25,16 +25,17 @@ class NodeBlock:
     title: str
     root_id: str
 
-    implemented: int
+    not_implemented: List[str]  # list of ALL not-implemented nodes
 
     # state & summaries (already formatted one-liners)
-    state: str                      # upper-cased, e.g. "EXECUTED" / "IDLE"
-    comment_line: Optional[str]     # e.g. "comments: Remove Ids and time"
-    input_line: Optional[str]       # e.g. "Input: [Port 1] 1:1 from CSV Reader #1"
-    output_line: Optional[str]      # e.g. "Output: [Port 1] 1350:1 to 4 Missing Value #4"
+    state: str
+    comment_line: Optional[str]
+    input_line: Optional[str]
+    output_line: Optional[str]
 
     # final code body lines (what will go inside the function / code cell)
     code_lines: List[str]
+
 
 
 # ----------------------------
@@ -125,10 +126,11 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
     Returns:
         (blocks, aggregated_imports)
     """
-    blocks: List[NodeBlock] = []
     aggregated_imports: set[str] = set()
-
     handlers = get_handlers()  # dict: { FACTORY_ID: module }, may include "" for default
+
+    # First pass: collect per-node data and determine implemented_flag
+    prepared: List[dict] = []
 
     for ctx in traverse_nodes(g):
         nid = ctx["nid"]
@@ -155,8 +157,8 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
         if incoming:
             ins = []
             for src_id, e in incoming:
-                p_in = str(getattr(e, "target_port", "") or "?")    # this node's port number
-                p_src = str(getattr(e, "source_port", "") or "?")   # upstream output index (context key)
+                p_in = str(getattr(e, "target_port", "") or "?")
+                p_src = str(getattr(e, "source_port", "") or "?")
                 src_title = _title_for_neighbor(g, src_id)
                 ins.append(f"[Port {p_in}] {src_id}:{p_src} from {src_title} #{src_id}")
             input_line = "Input: " + "; ".join(ins)
@@ -171,11 +173,9 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
                 outs.append(f"[Port {p_out}] {nid}:{p_out} to {dst_id} {dst_title} #{dst_id}")
             output_line = "Output: " + "; ".join(outs)
 
-        # status flag
-        implemented_flag = 0
-
         # ---- code body lines (plugin-aware)
         code_lines: List[str] = []
+        implemented_flag = 0  # assume not implemented until proven otherwise
 
         if state == "IDLE":
             # IDLE nodes: only a hub link (if we have a type) + warning
@@ -186,10 +186,7 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
                 code_lines.append("# Factory class unavailable")
             code_lines.append("# The node is IDLE. Codegen is not possible. Implement this node manually.")
             code_lines.append("pass")
-
-
-
-        # Try factory-specific handler; fall back to default ("")
+        
         mod = None
         default_mod = handlers.get("")
 
@@ -227,18 +224,38 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
                 code_lines.append("# TODO: implement this node")
                 code_lines.append("pass")
 
+        prepared.append({
+            "func_name": func_name,
+            "nid": nid,
+            "title": title,
+            "root_id": root_id,
+            "state": state,
+            "comment_line": comment_line,
+            "input_line": input_line,
+            "output_line": output_line,
+            "code_lines": code_lines,
+            "implemented_flag": implemented_flag,
+        })
+
+    # Build the consolidated list of not-implemented node names
+    not_impl_names: List[str] = [p["title"] for p in prepared if p["implemented_flag"] == 0]
+
+    # Second pass: create NodeBlock objects, injecting the consolidated list
+    blocks: List[NodeBlock] = []
+    for p in prepared:
         blocks.append(NodeBlock(
-            func_name=func_name,
-            nid=nid,
-            title=title,
-            root_id=root_id,
-            implemented=implemented_flag,
-            state=state,
-            comment_line=comment_line,
-            input_line=input_line,
-            output_line=output_line,
-            code_lines=code_lines,
+            func_name=p["func_name"],
+            nid=p["nid"],
+            title=p["title"],
+            root_id=p["root_id"],
+            not_implemented=list(not_impl_names),
+            state=p["state"],
+            comment_line=p["comment_line"],
+            input_line=p["input_line"],
+            output_line=p["output_line"],
+            code_lines=p["code_lines"],
         ))
+
 
     # Return blocks and a sorted list of unique imports
     return blocks, sorted(aggregated_imports)

@@ -165,9 +165,25 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
         # If --workbook is omitted, create BOTH. If set, create only the requested one.
         blocks, imports = build_workbook_blocks(g)
 
-        # --- new: per-graph summaries derived from NodeBlock fields
+        # --- per-graph summaries
         idle_count = sum(1 for b in blocks if b.state == "IDLE")
-        not_impl_count = sum(1 for b in blocks if b.implemented == 0)
+
+        # Collect list of not-implemented node IDs (supports both old int flag and new list form)
+        not_impl_ids: list[str] = []
+        if blocks:
+            first_impl = getattr(blocks[0], "not_implemented", None)
+            if isinstance(first_impl, list):
+                # New form: each block carries the same consolidated list
+                # Union across blocks just in case
+                s = set()
+                for b in blocks:
+                    val = getattr(b, "not_implemented", [])
+                    if isinstance(val, list):
+                        s.update(val)
+                not_impl_ids = sorted(s)
+            else:
+                # Old form: 0/1 per node → collect nids where implemented == 0
+                not_impl_ids = [b.nid for b in blocks if getattr(b, "not_implemented", 0) == 0]
 
         if args.workbook in (None, "py"):
             wb_py = write_workbook_py(g, out_dir, blocks, imports)
@@ -182,11 +198,11 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
             "workbook_ipynb": str(wb_ipynb) if wb_ipynb else None,
             "nodes": len(g.nodes),
             "edges": len(g.edges),
-            # --- new fields
             "idle": idle_count,
-            "not_implemented": not_impl_count,
-            # "configured": configured_count,  # uncomment if you decide to report it
+            "not_implemented_count": len(not_impl_ids),
+            "not_implemented_names": not_impl_ids,            
         })
+
 
     summary = {
         "workflow": str(wf),
