@@ -65,4 +65,4 @@ def test_writer_nodeblock_uses_settings_and_correct_context_key(
     assert re.search(r"na_rep\s*=\s*''", code), "Expected na_rep='' from settings"
 
     # Sanity: writer hub link comment present
-    assert csv_writer.CSV_WRITER_FACTORY in code
+    assert csv_writer.FACTORY in code

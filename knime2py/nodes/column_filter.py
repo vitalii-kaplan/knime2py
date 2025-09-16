@@ -33,17 +33,7 @@ from lxml import etree as ET
 from ..xml_utils import XML_PARSER
 from .node_utils import * 
 
-
-# Support multiple Column Filter factories across KNIME versions
-COLUMN_FILTER_FACTORIES = (
-    "org.knime.base.node.preproc.filter.column2.ColumnFilter2NodeFactory",   # newer
-    "org.knime.base.node.preproc.colfilter.ColumnFilterNodeFactory",         # classic
-    "org.knime.base.node.preproc.filter.column.DataColumnSpecFilterNodeFactory",  # legacy/alt
-)
-
-def can_handle(node_type: Optional[str]) -> bool:
-    return bool(node_type and any(node_type.endswith(sfx) for sfx in COLUMN_FILTER_FACTORIES))
-
+FACTORY = "org.knime.base.node.preproc.filter.column.DataColumnSpecFilterNodeFactory"
 
 # ---------------------------------------------------------------------
 # settings.xml → ColumnFilterSettings
@@ -198,8 +188,6 @@ def generate_ipynb_code(
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
-    if not (ntype and can_handle(ntype)):
-        return None
 
     # explicit imports declared by this node module
     explicit_imports = collect_module_imports(generate_imports)

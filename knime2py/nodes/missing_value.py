@@ -28,13 +28,7 @@ from ..xml_utils import XML_PARSER
 from .node_utils import * 
 
 # KNIME factory for this node
-MISSING_VALUE_FACTORY = (
-    "org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory"
-)
-
-def can_handle(node_type: Optional[str]) -> bool:
-    return bool(node_type and node_type.endswith(MISSING_VALUE_FACTORY))
-
+FACTORY = "org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory"
 
 # ---------------------------------------------------------------------
 # settings.xml → MissingValueSettings
@@ -277,8 +271,6 @@ def generate_ipynb_code(
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
-    if not (ntype and can_handle(ntype)):
-        return None
 
     # explicit imports declared by this node module
     explicit_imports = collect_module_imports(generate_imports)

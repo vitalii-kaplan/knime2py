@@ -164,6 +164,11 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
         wb_py = wb_ipynb = None
         # If --workbook is omitted, create BOTH. If set, create only the requested one.
         blocks, imports = build_workbook_blocks(g)
+
+        # --- new: per-graph summaries derived from NodeBlock fields
+        idle_count = sum(1 for b in blocks if b.state == "IDLE")
+        not_impl_count = sum(1 for b in blocks if b.implemented == 0)
+
         if args.workbook in (None, "py"):
             wb_py = write_workbook_py(g, out_dir, blocks, imports)
         if args.workbook in (None, "ipynb"):
@@ -177,6 +182,10 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
             "workbook_ipynb": str(wb_ipynb) if wb_ipynb else None,
             "nodes": len(g.nodes),
             "edges": len(g.edges),
+            # --- new fields
+            "idle": idle_count,
+            "not_implemented": not_impl_count,
+            # "configured": configured_count,  # uncomment if you decide to report it
         })
 
     summary = {

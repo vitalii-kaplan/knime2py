@@ -28,11 +28,7 @@ from .node_utils import *  # normalize_in_ports, first/first_el, iter_entries, c
 
 
 # KNIME factory for Equal Size Sampling
-EQUAL_SIZE_SAMPLING_FACTORY = "org.knime.base.node.preproc.equalsizesampling.EqualSizeSamplingNodeFactory"
-
-def can_handle(node_type: Optional[str]) -> bool:
-    return bool(node_type and node_type.endswith(EQUAL_SIZE_SAMPLING_FACTORY))
-
+FACTORY = "org.knime.base.node.preproc.equalsizesampling.EqualSizeSamplingNodeFactory"
 
 # ---------------------------------------------------------------------
 # settings.xml → EqualSizeSamplingSettings
@@ -165,8 +161,6 @@ def handle(ntype, nid, npath, incoming, outgoing):
       - returns (imports, body_lines) if this module can handle the node type
       - returns None otherwise
     """
-    if not (ntype and can_handle(ntype)):
-        return None
 
     explicit_imports = collect_module_imports(generate_imports)
 

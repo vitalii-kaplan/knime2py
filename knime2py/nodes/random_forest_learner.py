@@ -31,12 +31,7 @@ from ..xml_utils import XML_PARSER
 from .node_utils import *  # first, first_el, iter_entries, normalize_in_ports, collect_module_imports, split_out_imports
 
 # KNIME factory for Random Forest Classification Learner (Tree Ensembles v2)
-RF_FACTORY = "org.knime.base.node.mine.treeensemble2.node.randomforest.learner.classification.RandomForestClassificationLearnerNodeFactory2"
-
-
-def can_handle(node_type: Optional[str]) -> bool:
-    return bool(node_type and node_type.endswith(RF_FACTORY))
-
+FACTORY = "org.knime.base.node.mine.treeensemble2.node.randomforest.learner.classification.RandomForestClassificationLearnerNodeFactory2"
 
 # ---------------------------------------------------------------------
 # settings.xml → RandomForestSettings
@@ -392,8 +387,6 @@ def handle(ntype, nid, npath, incoming, outgoing):
     """
     Returns (imports, body_lines) if this module can handle the node; None otherwise.
     """
-    if not (ntype and can_handle(ntype)):
-        return None
 
     explicit_imports = collect_module_imports(generate_imports)
 

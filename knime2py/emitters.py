@@ -25,6 +25,8 @@ class NodeBlock:
     title: str
     root_id: str
 
+    implemented: int
+
     # state & summaries (already formatted one-liners)
     state: str                      # upper-cased, e.g. "EXECUTED" / "IDLE"
     comment_line: Optional[str]     # e.g. "comments: Remove Ids and time"
@@ -115,7 +117,7 @@ def write_graph_dot(g, out_dir: Path) -> Path:
 # ----------------------------
 # Workbook block builder (shared by .py and .ipynb writers)
 # ----------------------------
-def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
+def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
     """
     Build render-ready blocks for each node (same content used by .py and .ipynb writers).
     Also aggregates per-node imports into a single preamble list for the whole document.
@@ -125,6 +127,8 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
     """
     blocks: List[NodeBlock] = []
     aggregated_imports: set[str] = set()
+
+    handlers = get_handlers()  # dict: { FACTORY_ID: module }, may include "" for default
 
     for ctx in traverse_nodes(g):
         nid = ctx["nid"]
@@ -167,41 +171,55 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
                 outs.append(f"[Port {p_out}] {nid}:{p_out} to {dst_id} {dst_title} #{dst_id}")
             output_line = "Output: " + "; ".join(outs)
 
+        # status flag
+        implemented_flag = 0
+
         # ---- code body lines (plugin-aware)
         code_lines: List[str] = []
 
         if state == "IDLE":
             # IDLE nodes: only a hub link (if we have a type) + warning
-            if n.type:
+            if getattr(n, "type", None):
                 hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
                 code_lines.append(f"# {hub_url}")
             else:
                 code_lines.append("# Factory class unavailable")
             code_lines.append("# The node is IDLE. Codegen is not possible. Implement this node manually.")
             code_lines.append("pass")
-        else:
-            res = None
-            handlers = get_handlers()
 
-            if n.type:
-                for h in handlers:
-                    try:
-                        if h.can_handle(n.type):
-                            res = h.handle(n.type, nid, n.path, incoming, outgoing)
-                            break
-                    except Exception as e:
-                        # Don’t crash whole build on a single handler; continue to next
-                        import sys as _sys
-                        print(f"[emitters] Handler {getattr(h, '__name__', h)} failed on node {nid}: {e}", file=_sys.stderr)
-                        continue
+
+
+        # Try factory-specific handler; fall back to default ("")
+        mod = None
+        default_mod = handlers.get("")
+
+        if getattr(n, "type", None):
+            mod = handlers.get(n.type)
+
+        if mod is None and default_mod is not None:
+            mod = default_mod
+        else:
+            implemented_flag = 1
+        
+        if state != "IDLE":
+            res = None
+            if mod is not None:
+                try:
+                    res = mod.handle(n.type, nid, n.path, incoming, outgoing)
+                except Exception as e:
+                    import sys as _sys
+                    print(f"[emitters] Handler {getattr(mod, '__name__', mod)} failed on node {nid}: {e}", file=_sys.stderr)
+                    res = None
 
             if res:
                 found_imports, body = res
-                aggregated_imports.update(found_imports)
-                code_lines.extend(body)
+                if found_imports:
+                    aggregated_imports.update(found_imports)
+                if body:
+                    code_lines.extend(body)
             else:
-                # fallback stub
-                if n.type:
+                # fallback stub (no handler or handler failed)
+                if getattr(n, "type", None):
                     hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
                     code_lines.append(f"# {hub_url}")
                 else:
@@ -214,6 +232,7 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
             nid=nid,
             title=title,
             root_id=root_id,
+            implemented=implemented_flag,
             state=state,
             comment_line=comment_line,
             input_line=input_line,
@@ -223,6 +242,7 @@ def build_workbook_blocks(g) -> tuple[list[NodeBlock], list[str]]:
 
     # Return blocks and a sorted list of unique imports
     return blocks, sorted(aggregated_imports)
+
 
 
 # ----------------------------

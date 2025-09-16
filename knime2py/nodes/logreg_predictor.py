@@ -35,13 +35,7 @@ from .node_utils import (
 )
 
 # KNIME factory
-PREDICTOR_FACTORY = (
-    "org.knime.base.node.mine.regression.logistic.predictor.LogisticRegressionPredictorNodeFactory"
-)
-
-def can_handle(node_type: Optional[str]) -> bool:
-    return bool(node_type and node_type.endswith(PREDICTOR_FACTORY))
-
+FACTORY = "org.knime.base.node.mine.regression.logistic.predictor.LogisticRegressionPredictorNodeFactory"
 
 # ---------------------------------------------------------------------
 # settings.xml → PredictorSettings
@@ -237,8 +231,6 @@ def handle(ntype, nid, npath, incoming, outgoing):
       - **Port 1** (this node's target port 1) → model bundle key
       - **Port 2** (this node's target port 2) → data frame key
     """
-    if not (ntype and can_handle(ntype)):
-        return None
 
     explicit_imports = collect_module_imports(generate_imports)
 

@@ -23,13 +23,7 @@ from lxml import etree as ET
 from ..xml_utils import XML_PARSER  # project helper (ok)
 from .node_utils import *
 
-CSV_FACTORY = "org.knime.base.node.io.filehandling.csv.reader.CSVTableReaderNodeFactory"
-
-def can_handle(node_type: Optional[str]) -> bool:
-    """Return True if this generator supports the node factory."""
-    if not node_type:
-        return False
-    return node_type.endswith(".CSVTableReaderNodeFactory")
+FACTORY = "org.knime.base.node.io.filehandling.csv.reader.CSVTableReaderNodeFactory"
 
 def _build_pandas_dtype_map(root: ET._Element) -> dict:
     spec = extract_table_spec_types(root)
@@ -164,8 +158,6 @@ def generate_ipynb_code(node_id: str, node_dir: Optional[str], out_ports: List[s
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
-    if not (ntype and can_handle(ntype)):
-        return None
     out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing]
     node_lines = generate_py_body(nid, npath, out_ports)
 

@@ -33,12 +33,7 @@ from .node_utils import (  # project helpers
 )
 
 # KNIME factory (Column Appender 2)
-COLUMN_APPENDER_FACTORY = "org.knime.base.node.preproc.columnappend2.ColumnAppender2NodeFactory"
-
-
-def can_handle(node_type: Optional[str]) -> bool:
-    return bool(node_type and node_type.endswith(COLUMN_APPENDER_FACTORY))
-
+FACTORY = "org.knime.base.node.preproc.columnappend2.ColumnAppender2NodeFactory"
 
 # ---------------------------------------------------------------------
 # settings.xml → ColumnAppenderSettings
@@ -204,8 +199,6 @@ def handle(ntype, nid, npath, incoming, outgoing):
       - Input 2..N → right tables to append
       - Output 1 → appended table
     """
-    if not (ntype and can_handle(ntype)):
-        return None
 
     explicit_imports = collect_module_imports(generate_imports)
 

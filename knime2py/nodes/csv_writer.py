@@ -25,12 +25,7 @@ from lxml import etree as ET
 from ..xml_utils import XML_PARSER
 from .node_utils import * 
 
-CSV_WRITER_FACTORY = "org.knime.base.node.io.filehandling.csv.writer.CSVWriter2NodeFactory"
-
-
-def can_handle(node_type: Optional[str]) -> bool:
-    return bool(node_type and node_type.endswith(".CSVWriter2NodeFactory"))
-
+FACTORY = "org.knime.base.node.io.filehandling.csv.writer.CSVWriter2NodeFactory"
 
 @dataclass
 class CSVWriterSettings:
@@ -125,7 +120,7 @@ def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[objec
     settings = parse_csv_writer_settings(ndir) if ndir else CSVWriterSettings()
 
     lines: List[str] = []
-    lines.append("# https://hub.knime.com/knime/extensions/org.knime.features.base/latest/" + CSV_WRITER_FACTORY)
+    lines.append("# https://hub.knime.com/knime/extensions/org.knime.features.base/latest/" + FACTORY)
 
     # Pull input dataframe from context (CSV Writer has a single table input)
     pairs = normalize_in_ports(in_ports)
@@ -160,8 +155,6 @@ def generate_ipynb_code(node_id: str, node_dir: Optional[str], in_ports: List[ob
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
-    if not (ntype and can_handle(ntype)):
-        return None
     in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in incoming]
     node_lines = generate_py_body(nid, npath, in_ports)
 

@@ -16,16 +16,13 @@ from .node_utils import (
     split_out_imports,
 )
 
+FACTORY = ""
+
 # Fallback handler for any node type that we don't implement yet.
 # IMPORTANT: ensure this module is appended LAST in get_handlers().
 
 
 PRIORITY = 1_000_000
-
-def can_handle(node_type: Optional[str]) -> bool:
-    # Fallback handles anything that made it past all specific handlers
-    return True
-
 
 # ----------------------------
 # Helpers

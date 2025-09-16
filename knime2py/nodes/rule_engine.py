@@ -34,10 +34,7 @@ from .node_utils import *
 # Node identity
 # ---------------------------------------------------------------------
 
-RULE_ENGINE_FACTORY = "org.knime.base.node.rules.engine.RuleEngineNodeFactory"
-
-def can_handle(node_type: Optional[str]) -> bool:
-    return bool(node_type and node_type.endswith(RULE_ENGINE_FACTORY))
+FACTORY = "org.knime.base.node.rules.engine.RuleEngineNodeFactory"
 
 # ---------------------------------------------------------------------
 # settings.xml → RuleEngineSettings
@@ -236,8 +233,6 @@ def handle(ntype, nid, npath, incoming, outgoing):
     """
     Return (imports, body_lines) if we can handle this node; otherwise None.
     """
-    if not (ntype and can_handle(ntype)):
-        return None
 
     explicit_imports = collect_module_imports(generate_imports)
 

@@ -36,14 +36,7 @@ from .node_utils import (
 )
 
 # KNIME factory
-GBT_PREDICTOR_FACTORY = (
-    "org.knime.base.node.mine.treeensemble2.node.gradientboosting.predictor.classification."
-    "GradientBoostingClassificationPredictorNodeFactory3"
-)
-
-def can_handle(node_type: Optional[str]) -> bool:
-    return bool(node_type and node_type.endswith(GBT_PREDICTOR_FACTORY))
-
+FACTORY = "org.knime.base.node.mine.treeensemble2.node.gradientboosting.predictor.classification.GradientBoostingClassificationPredictorNodeFactory3"
 
 # ---------------------------------------------------------------------
 # settings.xml → PredictorSettings
@@ -256,8 +249,6 @@ def handle(ntype, nid, npath, incoming, outgoing):
       - **Input 2** → data table to score
       - **Output 1** → table with prediction (+ optional probabilities/confidence)
     """
-    if not (ntype and can_handle(ntype)):
-        return None
 
     explicit_imports = collect_module_imports(generate_imports)
 
