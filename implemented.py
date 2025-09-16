@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple, Any
 
-from knime2py.nodes.registry import get_handlers  # uses your existing registry loader
+from knime2py.nodes.registry import get_handlers, get_default_handler  # ← updated import
 
 
 # ----------------------------
@@ -106,14 +106,13 @@ def _split_paragraphs(comment_lines: List[str]) -> List[List[str]]:
 
 def _first_sentence_from_header(paras: List[List[str]]) -> str:
     """
-    "Name of the mode": use the first non-empty line from the header.
+    "Name of the node": use the first non-empty line from the header.
     If that line contains a period, cut at the first period; else return as-is.
     """
     for para in paras:
         for ln in para:
             s = ln.strip()
             if s:
-                # cut at first period if present (treat ': ' titles as whole)
                 if "." in s and ":" not in s:
                     return s.split(".", 1)[0].strip()
                 return s
@@ -175,7 +174,7 @@ def _guess_knime_node_name(mod: Any) -> str:
 
 
 # ----------------------------
-# Collect rows
+# Collect rows (updated for dict registry)
 # ----------------------------
 
 def _collect_modules() -> List[Tuple[str, str, str]]:
@@ -184,20 +183,35 @@ def _collect_modules() -> List[Tuple[str, str, str]]:
       - knime_node_name: first sentence/line from header comment (fallback to guess)
       - module_filename: basename of module __file__ (e.g., csv_reader.py)
       - notes_html: third paragraph from header (joined with <br>)
-    Skips fallback/not_implemented handlers.
+    Skips the default fallback/not_implemented handler (FACTORY == "") and
+    deduplicates modules that serve multiple FACTORY IDs.
     """
     rows: List[Tuple[str, str, str]] = []
 
-    for mod in get_handlers():
+    handlers_map = get_handlers()  # dict: FACTORY -> module
+    default_mod = get_default_handler()
+    seen_mod_ids = set()
+
+    # Iterate modules (values), skipping the default, and de-dupe
+    for fac, mod in handlers_map.items():
+        if fac == "":
+            continue  # skip the default handler by FACTORY key
+        if default_mod is not None and mod is default_mod:
+            continue  # skip if same module object was mapped
+        mod_id = id(mod)
+        if mod_id in seen_mod_ids:
+            continue
+        seen_mod_ids.add(mod_id)
+
         mod_name = getattr(mod, "__name__", "")
         if mod_name.endswith(".not_implemented") or getattr(mod, "IS_FALLBACK", False):
-            continue
+            continue  # defensive: skip any explicit fallback module
 
-        # Default/fallbacks
+        # Defaults
         kn_name = _guess_knime_node_name(mod)
         notes_html = ""
 
-        # Try to parse header from source file
+        # Header parse if source available
         mod_file = getattr(mod, "__file__", None)
         module_short = "unknown.py"
         if isinstance(mod_file, str) and mod_file:
@@ -238,8 +252,8 @@ def _render_html(rows: List[Tuple[str, str, str]]) -> str:
 </style>
 <body>
 <h1>knime2py — Implemented Nodes</h1>
-<p class="meta">This page lists the KNIME nodes currently supported for code generation. 
-For unsupported nodes, the generator produces code that initializes node parameters from settings.xml. </p>
+<p class="meta">This page lists the KNIME nodes currently supported for code generation.
+For unsupported nodes, the generator produces a best-effort stub and TODOs to guide manual implementation.</p>
 <table>
   <thead>
     <tr>
