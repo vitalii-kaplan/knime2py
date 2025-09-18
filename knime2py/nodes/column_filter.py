@@ -8,17 +8,14 @@
 # settings.xml. The generated pandas code preserves include order, applies excludes, and writes
 # the result to this node's context output port(s).
 #
-# Supports multiple KNIME factories:
-#  - org.knime.base.node.preproc.filter.column2.ColumnFilter2NodeFactory (newer)
-#  - org.knime.base.node.preproc.colfilter.ColumnFilterNodeFactory (classic)
-#  - org.knime.base.node.preproc.filter.column.DataColumnSpecFilterNodeFactory (legacy/alt)
 # Parsing heuristics: looks for <config> blocks whose keys contain "include"/"exclude", numeric
 # index entries (<entry key='0' value='Col'/> ...), or name entries (<entry key='name' value='Col'/>).
 # Falls back to generic "columns" blocks if include/exclude buckets are absent. Duplicate names are
 # de-duplicated while preserving the first occurrence. If no includes/excludes are found, the node
-# is a passthrough. Excludes are dropped with errors='ignore'. Only explicit column-name lists are
-# supported—pattern/type/regex-based selection is not implemented. Depends on lxml for parsing and
-# emits pandas-only code; relies on project utilities (iter_entries, normalize_in_ports, etc.).
+# is a passthrough. Excludes are dropped with errors='ignore'. 
+# Only explicit column-name lists are supported—pattern/type/regex-based selection is not implemented. 
+# Depends on lxml for parsing and emits pandas-only code; relies on project utilities 
+# (iter_entries, normalize_in_ports, etc.).
 #
 ####################################################################################################
 

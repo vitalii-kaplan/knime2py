@@ -249,6 +249,7 @@ def _render_html(rows: List[Tuple[str, str, str]]) -> str:
   th { background: #f6f6f6; text-align: left; }
   tr:nth-child(even) td { background: #fafafa; }
   code { background: #f3f3f3; padding: 1px 4px; border-radius: 4px; }
+  th.num, td.num { text-align: right; width: 3.25em; color: #666; }
 </style>
 <body>
 <h1>knime2py — Implemented Nodes</h1>
@@ -257,6 +258,7 @@ For unsupported nodes, the generator produces a best-effort stub and TODOs to gu
 <table>
   <thead>
     <tr>
+      <th class="num">#</th>
       <th>KNIME Node</th>
       <th>Module</th>
       <th>Notes</th>
@@ -265,9 +267,10 @@ For unsupported nodes, the generator produces a best-effort stub and TODOs to gu
   <tbody>
 """
     parts = [head]
-    for kn_name, module_short, notes_html in rows:
+    for idx, (kn_name, module_short, notes_html) in enumerate(rows, start=1):
         parts.append(
             "    <tr>"
+            f"<td class=\"num\">{idx}</td>"
             f"<td>{html.escape(kn_name)}</td>"
             f"<td><code>{html.escape(module_short)}</code></td>"
             f"<td>{notes_html}</td>"
@@ -275,6 +278,7 @@ For unsupported nodes, the generator produces a best-effort stub and TODOs to gu
         )
     parts.append("  </tbody>\n</table>\n</body>\n</html>\n")
     return "".join(parts)
+
 
 
 # ----------------------------
