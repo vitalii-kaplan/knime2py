@@ -25,7 +25,7 @@ class NodeBlock:
     title: str
     root_id: str
 
-    not_implemented: bool 
+    not_implemented: bool
 
     # state & summaries (already formatted one-liners)
     state: str
@@ -35,6 +35,9 @@ class NodeBlock:
 
     # final code body lines (what will go inside the function / code cell)
     code_lines: List[str]
+
+    # NEW: loop-aware indentation prefix, used by writers to indent banners/headers too
+    indent_prefix: str = ""
 
 
 # ----------------------------
@@ -130,6 +133,10 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
 
     prepared: List[dict] = []
 
+    # Loop-aware indentation depth for .py generation
+    # Increase AFTER a LOOP='start' node; decrease AFTER a LOOP='finish' node
+    indent_depth = 0
+
     for ctx in traverse_nodes(g):
         nid = ctx["nid"]
         n = ctx["node"]
@@ -184,21 +191,22 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
                 code_lines.append("# Factory class unavailable")
             code_lines.append("# The node is IDLE. Codegen is not possible. Implement this node manually.")
             code_lines.append("pass")
-        
+
         # Try factory-specific handler; fall back to default ("")
         mod = None
         default_mod = handlers.get("")
-        used_default = False
-
         if getattr(n, "type", None):
             mod = handlers.get(n.type)
             if mod is not None:
                 not_impl_flag = False
-
         if mod is None and default_mod is not None:
             mod = default_mod
-            used_default = True
-        
+
+        # Loop role detection for indentation (module-level attribute on handler)
+        loop_role = getattr(mod, "LOOP", None) if mod is not None else None
+        is_loop_start = (loop_role == "start")
+        is_loop_finish = (loop_role == "finish")
+
         if state != "IDLE":
             res = None
             if mod is not None:
@@ -215,7 +223,6 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
                     aggregated_imports.update(found_imports)
                 if body:
                     code_lines.extend(body)
-                    
             else:
                 # fallback stub (no handler or handler failed)
                 if getattr(n, "type", None):
@@ -225,6 +232,23 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
                     code_lines.append("# Factory class unavailable")
                 code_lines.append("# TODO: implement this node")
                 code_lines.append("pass")
+
+        # ---- apply indentation to this node (metadata + body)
+        # Start nodes themselves are NOT indented by the new level (but do inherit any outer level),
+        # so compute prefix BEFORE updating indent_depth.
+        indent_prefix = "    " * indent_depth if indent_depth > 0 else ""
+
+        # Prepend prefix to metadata lines (so writer banner + these lines align)
+        if comment_line:
+            comment_line = indent_prefix + comment_line
+        if input_line:
+            input_line = indent_prefix + input_line
+        if output_line:
+            output_line = indent_prefix + output_line
+
+        # Body lines — prefix each with the same indent
+        if code_lines and indent_prefix:
+            code_lines = [(indent_prefix + ln) if ln else ln for ln in code_lines]
 
         prepared.append({
             "func_name": func_name,
@@ -237,7 +261,14 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
             "output_line": output_line,
             "code_lines": code_lines,
             "not_impl_flag": not_impl_flag,
+            "indent_prefix": indent_prefix,  # used by writers for banner/header indentation
         })
+
+        # Update indent depth AFTER placing current node
+        if is_loop_start:
+            indent_depth += 1
+        if is_loop_finish:
+            indent_depth = max(0, indent_depth - 1)
 
     # Create NodeBlock objects
     blocks: List[NodeBlock] = []
@@ -253,6 +284,7 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
             input_line=p["input_line"],
             output_line=p["output_line"],
             code_lines=p["code_lines"],
+            indent_prefix=p.get("indent_prefix", ""),
         ))
 
     # Return blocks and a sorted list of unique imports
@@ -313,20 +345,22 @@ def write_workbook_py(
 
     # Linear code, one section per node
     for b in blocks:
-        lines.append("################################################################################################################################################################")
-        lines.append(f"## {b.title} # `{b.root_id}`")
-        lines.append(f"# Node state: `{b.state}`")
+        pref = getattr(b, "indent_prefix", "")
+        lines.append(pref + "################################################################################################################################################################")
+        lines.append(pref + f"## {b.title} # `{b.root_id}`")
+        lines.append(pref + f"# Node state: `{b.state}`")
         if b.input_line:
-            lines.append(f"# {b.input_line}")
+            lines.append(pref + f"# {b.input_line[len(pref):] if b.input_line.startswith(pref) else b.input_line}")
         if b.output_line:
-            lines.append(f"# {b.output_line}")
+            lines.append(pref + f"# {b.output_line[len(pref):] if b.output_line.startswith(pref) else b.output_line}")
         if b.comment_line and b.comment_line != b.title:
-            lines.append(f"# {b.comment_line}")
+            lines.append(pref + f"# {b.comment_line[len(pref):] if b.comment_line.startswith(pref) else b.comment_line}")
 
         if not b.code_lines:
-            lines.append("# TODO: implement this node")
-            lines.append("pass")
+            lines.append(pref + "# TODO: implement this node")
+            lines.append(pref + "pass")
         else:
+            # code_lines already carry the correct prefix
             lines.extend(b.code_lines)
 
         lines.append("")  # blank line between sections
@@ -384,10 +418,11 @@ def write_workbook_ipynb(
     context_src = "# Shared context to pass dataframes/tables between nodes (for debugging)\ncontext = {}\n"
     cells.append({"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": context_src})
 
-    # Per-node cells
+    # Per-node cells (no special indentation here yet)
     for b in blocks:
         md_lines = [f"## {b.title} \\# `{b.root_id}`", f" Node state: `{b.state}`  "]
         if b.comment_line:
+            # keep whatever prefix build_workbook_blocks added (we'll refine later if needed)
             md_lines.append(f" {b.comment_line}  ")
         if b.input_line:
             md_lines.append(f" {b.input_line}  ")
