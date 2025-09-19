@@ -184,19 +184,22 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
                 code_lines.append("# Factory class unavailable")
             code_lines.append("# The node is IDLE. Codegen is not possible. Implement this node manually.")
             code_lines.append("pass")
-        else:
-            # Try factory-specific handler; fall back to default ("")
-            mod = None
-            default_mod = handlers.get("")
-            used_default = False
+        
+        # Try factory-specific handler; fall back to default ("")
+        mod = None
+        default_mod = handlers.get("")
+        used_default = False
 
-            if getattr(n, "type", None):
-                mod = handlers.get(n.type)
+        if getattr(n, "type", None):
+            mod = handlers.get(n.type)
+            if mod is not None:
+                not_impl_flag = False
 
-            if mod is None and default_mod is not None:
-                mod = default_mod
-                used_default = True
-
+        if mod is None and default_mod is not None:
+            mod = default_mod
+            used_default = True
+        
+        if state != "IDLE":
             res = None
             if mod is not None:
                 try:
@@ -212,9 +215,7 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
                     aggregated_imports.update(found_imports)
                 if body:
                     code_lines.extend(body)
-                # mark implemented only if a specific handler (not default "") produced code
-                if not used_default and body:
-                    not_impl_flag = False
+                    
             else:
                 # fallback stub (no handler or handler failed)
                 if getattr(n, "type", None):
