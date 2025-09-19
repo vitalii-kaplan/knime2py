@@ -21,6 +21,8 @@
 #   isUseDifferentAttributesAtEachNode (no direct sklearn analog). These are noted and ignored.
 # - Outputs: port 1=model bundle (estimator, metadata), port 2=feature_importances_, port 3=summary.
 # - Dependencies: lxml for XML parsing; pandas/numpy for data handling; scikit-learn for modeling.
+# - KNIME seeds can be > 2**32-1. We now coerce to a valid sklearn seed:
+#       seed32 = None if seed is None else int(abs(int(seed)) % (2**32))
 #
 ####################################################################################################
 
@@ -35,7 +37,6 @@ from lxml import etree as ET
 from ..xml_utils import XML_PARSER
 from .node_utils import *  # first, first_el, iter_entries, normalize_in_ports, collect_module_imports, split_out_imports
 
-# KNIME factory for Gradient Boosted Trees (classification) Learner (Tree Ensembles v2)
 FACTORY = "org.knime.base.node.mine.treeensemble2.node.gradientboosting.learner.classification.GradientBoostingClassificationLearnerNodeFactory2"
 
 # ---------------------------------------------------------------------
@@ -50,11 +51,11 @@ class GradientBoostingSettings:
     max_depth: Optional[int] = 3
     min_samples_split: int = 2
     min_samples_leaf: int = 1
-    subsample: float = 1.0                 # KNIME dataFraction (0<subsample<=1 => stochastic GB)
-    max_features: Optional[object] = None  # mapped from columnSamplingMode
-    random_state: int = 1                  # KNIME seed (fallback to 1)
+    subsample: float = 1.0
+    max_features: Optional[object] = None
+    random_state: Optional[int] = 1  # may be very large in KNIME; we will coerce later
 
-    # Info-only (not directly mapped in sklearn GBT)
+    # Info-only flags (not directly mapped)
     split_criterion_raw: Optional[str] = None
     missing_value_handling: Optional[str] = None
     use_average_split_points: bool = False
@@ -65,7 +66,7 @@ class GradientBoostingSettings:
     exclude_cols: List[str] = None
 
 
-def _to_int(s: Optional[str], default: int) -> int:
+def _to_int(s: Optional[str], default: Optional[int]) -> Optional[int]:
     try:
         return int(s) if s is not None else default
     except Exception:
@@ -97,16 +98,6 @@ def _map_max_features(mode: str,
                       frac: Optional[float],
                       absolute: Optional[int],
                       use_diff_attrs: bool) -> Optional[object]:
-    """
-    KNIME 'columnSamplingMode' → sklearn GradientBoostingClassifier(max_features)
-
-    - None/All      → None (use all features)
-    - SquareRoot    → 'sqrt'
-    - Log2          → 'log2'
-    - Fraction      → float in (0,1]
-    - Absolute      → int
-    Note: KNIME's 'isUseDifferentAttributesAtEachNode' has no sklearn analog here.
-    """
     m = (mode or "").strip().upper()
     if m in {"NONE", "ALL", "ALLCOLUMNS", "ALL_COLUMNS", ""}:
         return None
@@ -141,39 +132,34 @@ def parse_gbt_settings(node_dir: Optional[Path]) -> GradientBoostingSettings:
     target = first(model_el, ".//*[local-name()='entry' and @key='targetColumn']/@value")
 
     seed = _to_int(first(model_el, ".//*[local-name()='entry' and @key='seed']/@value"), 1)
-    n_estimators = _to_int(first(model_el, ".//*[local-name()='entry' and @key='nrModels']/@value"), 100)
+    n_estimators = _to_int(first(model_el, ".//*[local-name()='entry' and @key='nrModels']/@value"), 100) or 100
     learning_rate = _to_float(first(model_el, ".//*[local-name()='entry' and @key='learningRate']/@value"), 0.1) or 0.1
 
-    # Depth / min samples (KNIME -1 means "use default")
     max_levels = first(model_el, ".//*[local-name()='entry' and @key='maxLevels']/@value")
     max_depth = None
     if max_levels and max_levels.lstrip("-").isdigit():
         v = int(max_levels)
-        max_depth = v if v > 0 else 3  # sklearn default for GBT is 3
+        max_depth = v if v > 0 else 3
 
     min_node_size = _to_int(first(model_el, ".//*[local-name()='entry' and @key='minNodeSize']/@value"), -1)
     min_child_size = _to_int(first(model_el, ".//*[local-name()='entry' and @key='minChildSize']/@value"), -1)
-    min_samples_split = max(2, min_node_size) if min_node_size and min_node_size > 0 else 2
-    min_samples_leaf = max(1, min_child_size) if min_child_size and min_child_size > 0 else 1
+    min_samples_split = max(2, min_node_size) if (min_node_size or 0) > 0 else 2
+    min_samples_leaf = max(1, min_child_size) if (min_child_size or 0) > 0 else 1
 
-    # Row sampling → subsample (no replacement in sklearn GBT)
     data_fraction = _to_float(first(model_el, ".//*[local-name()='entry' and @key='dataFraction']/@value"), 1.0) or 1.0
     subsample = data_fraction if 0.0 < data_fraction <= 1.0 else 1.0
 
-    # Column sampling → max_features
     col_mode = first(model_el, ".//*[local-name()='entry' and @key='columnSamplingMode']/@value") or "None"
     col_frac = _to_float(first(model_el, ".//*[local-name()='entry' and @key='columnFractionPerTree']/@value"), None)
     col_abs  = _to_int(first(model_el, ".//*[local-name()='entry' and @key='columnAbsolutePerTree']/@value"), None)
     use_diff_attrs = _to_bool(first(model_el, ".//*[local-name()='entry' and @key='isUseDifferentAttributesAtEachNode']/@value"), False)
     max_features = _map_max_features(col_mode, col_frac, col_abs, use_diff_attrs)
 
-    # Informational flags
     split_criterion_raw = first(model_el, ".//*[local-name()='entry' and @key='splitCriterion']/@value")
     missing_value_handling = first(model_el, ".//*[local-name()='entry' and @key='missingValueHandling']/@value")
     use_avg_split = _to_bool(first(model_el, ".//*[local-name()='entry' and @key='useAverageSplitPoints']/@value"), False)
     use_bin_nom = _to_bool(first(model_el, ".//*[local-name()='entry' and @key='useBinaryNominalSplits']/@value"), False)
 
-    # Column filter includes/excludes
     include_cols: List[str] = []
     exclude_cols: List[str] = []
     cfc = first_el(model_el, ".//*[local-name()='config' and @key='columnFilterConfig']")
@@ -197,7 +183,7 @@ def parse_gbt_settings(node_dir: Optional[Path]) -> GradientBoostingSettings:
         min_samples_leaf=int(min_samples_leaf),
         subsample=float(subsample),
         max_features=max_features,
-        random_state=int(seed),
+        random_state=seed,  # may be > 2**32-1; will be coerced later
         split_criterion_raw=split_criterion_raw or None,
         missing_value_handling=missing_value_handling or None,
         use_average_split_points=use_avg_split,
@@ -206,7 +192,6 @@ def parse_gbt_settings(node_dir: Optional[Path]) -> GradientBoostingSettings:
         include_cols=include_cols,
         exclude_cols=exclude_cols,
     )
-
 
 # ---------------------------------------------------------------------
 # Code generators
@@ -225,29 +210,21 @@ HUB_URL = (
     "org.knime.base.node.mine.treeensemble2.node.gradientboosting.learner.classification.GradientBoostingClassificationLearnerNodeFactory2"
 )
 
-
 def _emit_train_code(cfg: GradientBoostingSettings) -> List[str]:
-    """
-    Emit code that:
-      - selects X, y (use included_names if provided; else numeric/bool excluding target)
-      - fits sklearn GradientBoostingClassifier
-      - builds feature_importances and a small summary
-      - bundles estimator + metadata for downstream Predictor
-    """
     lines: List[str] = []
     lines.append("out_df = df.copy()")
     if not cfg.target:
-        lines.append("# No target column configured; passthrough / no model.")
-        lines.append("model = None")
-        lines.append("importances_df = pd.DataFrame(columns=['feature','importance'])")
-        lines.append("summary_df = pd.DataFrame([{'error': 'no target configured'}])")
-        lines.append("bundle = {'estimator': None, 'features': [], 'feature_cols': [], 'target': None, 'classes': []}")
+        lines += [
+            "# No target column configured; passthrough / no model.",
+            "model = None",
+            "importances_df = pd.DataFrame(columns=['feature','importance'])",
+            "summary_df = pd.DataFrame([{'error': 'no target configured'}])",
+            "bundle = {'estimator': None, 'features': [], 'feature_cols': [], 'target': None, 'classes': []}",
+        ]
         return lines
 
-    # Target
+    # Target & features
     lines.append(f"_target = {repr(cfg.target)}")
-
-    # Feature selection
     if cfg.include_cols:
         inc = ", ".join(repr(c) for c in cfg.include_cols)
         lines.append(f"_include = [{inc}]")
@@ -271,9 +248,15 @@ def _emit_train_code(cfg: GradientBoostingSettings) -> List[str]:
     lines.append(f"_min_samples_leaf = int({int(cfg.min_samples_leaf)})")
     lines.append(f"_subsample = float({float(cfg.subsample)})")
     lines.append(f"_max_features = {repr(cfg.max_features)}  # mapped from KNIME columnSamplingMode (None => all features)")
-    lines.append(f"_seed = int({int(cfg.random_state)})")
 
-    # Info-only notes (not directly supported / orthogonal)
+    # >>> Seed coercion to sklearn-acceptable range <<<
+    if cfg.random_state is None:
+        lines.append("_seed = None")
+    else:
+        lines.append(f"_seed_raw = int({int(cfg.random_state)})")
+        lines.append("_seed = int(abs(_seed_raw) % (2**32))  # coerce to [0, 2**32-1] for sklearn")
+
+    # Info-only notes
     if cfg.split_criterion_raw:
         lines.append(f"# KNIME splitCriterion={repr(cfg.split_criterion_raw)} (sklearn GBT uses tree regressors internally; criterion is fixed)")
     if cfg.missing_value_handling:
@@ -286,51 +269,57 @@ def _emit_train_code(cfg: GradientBoostingSettings) -> List[str]:
         lines.append("# KNIME isUseDifferentAttributesAtEachNode=True (no direct equivalent in sklearn; ignored)")
 
     # Fit model
-    lines.append("model = GradientBoostingClassifier(")
-    lines.append("    n_estimators=_n_estimators,")
-    lines.append("    learning_rate=_learning_rate,")
-    lines.append("    max_depth=_max_depth,")
-    lines.append("    min_samples_split=_min_samples_split,")
-    lines.append("    min_samples_leaf=_min_samples_leaf,")
-    lines.append("    subsample=_subsample,")
-    lines.append("    max_features=_max_features,")
-    lines.append("    random_state=_seed,")
-    lines.append(")")
-    lines.append("model.fit(X, y)")
+    lines += [
+        "model = GradientBoostingClassifier(",
+        "    n_estimators=_n_estimators,",
+        "    learning_rate=_learning_rate,",
+        "    max_depth=_max_depth,",
+        "    min_samples_split=_min_samples_split,",
+        "    min_samples_leaf=_min_samples_leaf,",
+        "    subsample=_subsample,",
+        "    max_features=_max_features,",
+        "    random_state=_seed,",
+        ")",
+        "model.fit(X, y)",
+    ]
 
     # Feature importances
-    lines.append("fi = getattr(model, 'feature_importances_', None)")
-    lines.append("if fi is not None:")
-    lines.append("    importances_df = pd.DataFrame({'feature': feat_cols, 'importance': fi})")
-    lines.append("    importances_df = importances_df.sort_values('importance', ascending=False, kind='mergesort').reset_index(drop=True)")
-    lines.append("else:")
-    lines.append("    importances_df = pd.DataFrame(columns=['feature','importance'])")
+    lines += [
+        "fi = getattr(model, 'feature_importances_', None)",
+        "if fi is not None:",
+        "    importances_df = pd.DataFrame({'feature': feat_cols, 'importance': fi})",
+        "    importances_df = importances_df.sort_values('importance', ascending=False, kind='mergesort').reset_index(drop=True)",
+        "else:",
+        "    importances_df = pd.DataFrame(columns=['feature','importance'])",
+    ]
 
     # Summary
     lines.append(
         "summary_df = pd.DataFrame([{'n_estimators': _n_estimators, 'learning_rate': _learning_rate, "
         "'max_depth': _max_depth, 'min_samples_split': _min_samples_split, 'min_samples_leaf': _min_samples_leaf, "
-        "'subsample': _subsample, 'max_features': _max_features, "
+        "'subsample': _subsample, 'max_features': _max_features, 'random_state': _seed, "
         "'n_features': len(feat_cols), 'classes': ','.join(map(str, getattr(model, 'classes_', [])))}])"
     )
 
-    # Bundle for downstream Predictor
-    lines.append("bundle = {")
-    lines.append("    'estimator': model,")
-    lines.append("    'model': model,  # alias")
-    lines.append("    'features': list(feat_cols),")
-    lines.append("    'feature_cols': list(feat_cols),")
-    lines.append("    'target': _target,")
-    lines.append("    'classes': list(getattr(model, 'classes_', [])),")
-    lines.append("    'n_estimators': _n_estimators,")
-    lines.append("    'learning_rate': _learning_rate,")
-    lines.append("    'max_depth': _max_depth,")
-    lines.append("    'min_samples_split': _min_samples_split,")
-    lines.append("    'min_samples_leaf': _min_samples_leaf,")
-    lines.append("    'subsample': _subsample,")
-    lines.append("    'max_features': _max_features,")
-    lines.append("    'random_state': _seed,")
-    lines.append("}")
+    # Bundle
+    lines += [
+        "bundle = {",
+        "    'estimator': model,",
+        "    'model': model,",
+        "    'features': list(feat_cols),",
+        "    'feature_cols': list(feat_cols),",
+        "    'target': _target,",
+        "    'classes': list(getattr(model, 'classes_', [])),",
+        "    'n_estimators': _n_estimators,",
+        "    'learning_rate': _learning_rate,",
+        "    'max_depth': _max_depth,",
+        "    'min_samples_split': _min_samples_split,",
+        "    'min_samples_leaf': _min_samples_leaf,",
+        "    'subsample': _subsample,",
+        "    'max_features': _max_features,",
+        "    'random_state': _seed,",
+        "}",
+    ]
     return lines
 
 
@@ -346,16 +335,12 @@ def generate_py_body(
     lines: List[str] = []
     lines.append(f"# {HUB_URL}")
 
-    # Input (single table)
     pairs = normalize_in_ports(in_ports)
     src_id, in_port = pairs[0]
     lines.append(f"df = context['{src_id}:{in_port}']  # input table")
 
-    # Training + outputs
     lines.extend(_emit_train_code(cfg))
 
-    # Publish:
-    # Convention: 1=model bundle, 2=feature importances, 3=summary
     ports = [str(p or "1") for p in (out_ports or ["1", "2", "3"])]
     if not ports:
         ports = ["1", "2", "3"]
@@ -385,10 +370,6 @@ def generate_ipynb_code(
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
-    """
-    Returns (imports, body_lines) if this module can handle the node; None otherwise.
-    """
-
     explicit_imports = collect_module_imports(generate_imports)
 
     in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in (incoming or [])]
