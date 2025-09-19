@@ -17,6 +17,7 @@ __all__ = [
     "write_workbook_ipynb",
 ]
 
+
 @dataclass
 class NodeBlock:
     # identity / ordering
@@ -36,8 +37,9 @@ class NodeBlock:
     # final code body lines (what will go inside the function / code cell)
     code_lines: List[str]
 
-    # NEW: loop-aware indentation prefix, used by writers to indent banners/headers too
+    # loop metadata
     indent_prefix: str = ""
+    loop_role: Optional[str] = None  # "start" | "finish" | None
 
 
 # ----------------------------
@@ -262,6 +264,7 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
             "code_lines": code_lines,
             "not_impl_flag": not_impl_flag,
             "indent_prefix": indent_prefix,  # used by writers for banner/header indentation
+            "loop_role": loop_role,          # used by .ipynb writer to group loop cells
         })
 
         # Update indent depth AFTER placing current node
@@ -285,6 +288,7 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
             output_line=p["output_line"],
             code_lines=p["code_lines"],
             indent_prefix=p.get("indent_prefix", ""),
+            loop_role=p.get("loop_role"),
         ))
 
     # Return blocks and a sorted list of unique imports
@@ -376,10 +380,9 @@ def write_workbook_ipynb(
     imports: Optional[List[str]] = None,
 ) -> Path:
     """
-    Jupyter notebook: one markdown cell (header + summaries), then an imports cell,
-    then a shared context cell, then one code cell per node.
-
-    If `blocks`/`imports` are not provided, they are computed via build_workbook_blocks(g).
+    Jupyter notebook: one markdown cell per node; code cells are usually one-per-node
+    EXCEPT for loop regions: from LOOP='start' to LOOP='finish' (inclusive), all code
+    is combined into a single code cell. Nested loops are supported.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.ipynb"
@@ -418,19 +421,15 @@ def write_workbook_ipynb(
     context_src = "# Shared context to pass dataframes/tables between nodes (for debugging)\ncontext = {}\n"
     cells.append({"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": context_src})
 
-    # Per-node cells (no special indentation here yet)
-    for b in blocks:
-        md_lines = [f"## {b.title} \\# `{b.root_id}`", f" Node state: `{b.state}`  "]
-        if b.comment_line:
-            # keep whatever prefix build_workbook_blocks added (we'll refine later if needed)
-            md_lines.append(f" {b.comment_line}  ")
-        if b.input_line:
-            md_lines.append(f" {b.input_line}  ")
-        if b.output_line:
-            md_lines.append(f" {b.output_line}  ")
-        cells.append({"cell_type": "markdown", "metadata": {}, "source": "\n".join(md_lines) + "\n"})
+    # ---- Loop-aware emission: combine loop code blocks into one cell
+    in_loop = False
+    loop_depth = 0
+    loop_code_accum: List[str] = []
 
-        code_src = "\n".join(b.code_lines) + ("\n" if b.code_lines and not b.code_lines[-1].endswith("\n") else "")
+    def _emit_code_cell(code_lines: List[str]):
+        code_src = "\n".join(code_lines)
+        if code_src and not code_src.endswith("\n"):
+            code_src += "\n"
         cells.append({
             "cell_type": "code",
             "metadata": {},
@@ -438,6 +437,55 @@ def write_workbook_ipynb(
             "outputs": [],
             "source": code_src or "# TODO: implement this node\npass\n"
         })
+
+    for b in blocks:
+        # Markdown per node (always emitted for readability)
+        md_lines = [f"## {b.title} \\# `{b.root_id}`", f" Node state: `{b.state}`  "]
+        if b.comment_line:
+            md_lines.append(f" {b.comment_line}  ")
+        if b.input_line:
+            md_lines.append(f" {b.input_line}  ")
+        if b.output_line:
+            md_lines.append(f" {b.output_line}  ")
+        cells.append({"cell_type": "markdown", "metadata": {}, "source": "\n".join(md_lines) + "\n"})
+
+        # Loop control
+        role = getattr(b, "loop_role", None)
+        is_start = (role == "start")
+        is_finish = (role == "finish")
+
+        if is_start:
+            # Opening a (possibly nested) loop: begin/continue accumulation
+            if not in_loop:
+                in_loop = True
+                loop_depth = 1
+                loop_code_accum = []
+            else:
+                loop_depth += 1
+            # Always accumulate the start node's code
+            loop_code_accum.extend(b.code_lines or [])
+            continue
+
+        if in_loop:
+            # We are inside a loop: keep accumulating until closing the outermost loop
+            loop_code_accum.extend(b.code_lines or [])
+            if is_finish:
+                loop_depth -= 1
+                if loop_depth <= 0:
+                    # Close the loop: emit one combined code cell
+                    _emit_code_cell(loop_code_accum)
+                    in_loop = False
+                    loop_depth = 0
+                    loop_code_accum = []
+            # Do not emit a per-node code cell while inside loop
+            continue
+
+        # Outside any loop: normal one-code-cell-per-node behavior
+        _emit_code_cell(b.code_lines or [])
+
+    # Safety: if notebook ends while still "in_loop", flush what we have
+    if in_loop and loop_code_accum:
+        _emit_code_cell(loop_code_accum)
 
     nb = {
         "cells": cells,
