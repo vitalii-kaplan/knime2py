@@ -165,7 +165,7 @@ def generate_py_body(
     if right_tuples:
         lines.append("right_dfs = []")
         for _, r_src, r_in in right_tuples:
-            lines.append(f"right_dfs.append(context['{r_src}:{r_in}'])  # right table")
+            lines.append(f"right_dfs.append(context['{r_src}:{r_in}'])")
     else:
         lines.append("right_dfs = []  # no additional inputs; passthrough")
 
