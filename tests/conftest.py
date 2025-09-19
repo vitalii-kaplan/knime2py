@@ -288,6 +288,33 @@ def generate_ensemble_workbook(k2p_script: Path, run_cli, clean_output_dir: Path
 
     return _generate
 
+@pytest.fixture()
+def generate_10fcv_workbook(k2p_script: Path, run_cli, clean_output_dir: Path):
+    """
+    Returns a function that runs k2p on the Ensemble workflow and creates the Python workbook
+    with graphs disabled, writing to tests/data/!output.
+    """
+    def _generate(workflow_knime: Path) -> Path:
+        args = [
+            str(workflow_knime.parent),   # CLI accepts project dir OR workflow.knime path
+            "--out", str(clean_output_dir),
+            "--graph", "off",
+            "--workbook", "py",
+        ]
+        run_cli(k2p_script, args, cwd=REPO_ROOT, check=True)
+
+        # Locate the single generated workbook *.py
+        candidates = sorted(clean_output_dir.glob("*_workbook.py"))
+        if not candidates:
+            raise AssertionError(f"No *_workbook.py generated in {clean_output_dir}")
+        if len(candidates) > 1:
+            # If multiple components, pick the expected Ensemble one or just take the first deterministically
+            expected = clean_output_dir / "KNIME_CP_10FCV_GBT__g01_workbook.py"
+            return expected if expected.exists() else candidates[0]
+        return candidates[0]
+
+    return _generate
+
 
 @pytest.fixture()
 def run_python_script(python_exe: str):

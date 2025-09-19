@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model">
+        <config key="settings">
+            <config key="file_selection_Internals">
+                <entry key="SettingsModelID" type="xstring" value="SMID_ReaderFileChooser"/>
+                <entry key="EnabledStatus" type="xboolean" value="true"/>
+            </config>
+            <config key="file_selection">
+                <config key="file_system_chooser__Internals">
+                    <entry key="has_fs_port" type="xboolean" value="false"/>
+                    <entry key="overwritten_by_variable" type="xboolean" value="false"/>
+                    <entry key="convenience_fs_category" type="xstring" value="RELATIVE"/>
+                    <entry key="relative_to" type="xstring" value="knime.workflow"/>
+                    <entry key="mountpoint" type="xstring" value="LOCAL"/>
+                    <entry key="spaceId" type="xstring" value=""/>
+                    <entry key="spaceName" type="xstring" value=""/>
+                    <entry key="custom_url_timeout" type="xint" value="10000"/>
+                    <entry key="connected_fs" type="xboolean" value="true"/>
+                </config>
+                <config key="path">
+                    <entry key="location_present" type="xboolean" value="true"/>
+                    <entry key="file_system_type" type="xstring" value="RELATIVE"/>
+                    <entry key="file_system_specifier" type="xstring" value="knime.workflow"/>
+                    <entry key="path" type="xstring" value="../data/Churn_prediction/CutomerChurnData_Target.xlsx"/>
+                </config>
+                <config key="filter_mode_Internals">
+                    <entry key="SettingsModelID" type="xstring" value="SMID_FilterMode"/>
+                    <entry key="EnabledStatus" type="xboolean" value="true"/>
+                </config>
+                <config key="filter_mode">
+                    <entry key="filter_mode" type="xstring" value="FILE"/>
+                    <entry key="include_subfolders" type="xboolean" value="false"/>
+                    <config key="filter_options">
+                        <entry key="filter_files_extension" type="xboolean" value="false"/>
+                        <entry key="files_extension_expression" type="xstring" value=""/>
+                        <entry key="files_extension_case_sensitive" type="xboolean" value="false"/>
+                        <entry key="filter_files_name" type="xboolean" value="false"/>
+                        <entry key="files_name_expression" type="xstring" value="*"/>
+                        <entry key="files_name_case_sensitive" type="xboolean" value="false"/>
+                        <entry key="files_name_filter_type" type="xstring" value="WILDCARD"/>
+                        <entry key="include_hidden_files" type="xboolean" value="false"/>
+                        <entry key="include_special_files" type="xboolean" value="true"/>
+                        <entry key="filter_folders_name" type="xboolean" value="false"/>
+                        <entry key="folders_name_expression" type="xstring" value="*"/>
+                        <entry key="folders_name_case_sensitive" type="xboolean" value="false"/>
+                        <entry key="folders_name_filter_type" type="xstring" value="WILDCARD"/>
+                        <entry key="include_hidden_folders" type="xboolean" value="false"/>
+                        <entry key="follow_links" type="xboolean" value="true"/>
+                    </config>
+                </config>
+            </config>
+            <entry key="sheet_selection" type="xstring" value="FIRST"/>
+            <entry key="sheet_name" type="xstring" value="Target"/>
+            <entry key="sheet_index" type="xint" value="0"/>
+            <entry key="table_contains_column_names" type="xboolean" value="true"/>
+            <entry key="column_names_row_number" type="xlong" value="1"/>
+            <entry key="row_id" type="xstring" value="GENERATE"/>
+            <entry key="row_id_column" type="xstring" value="A"/>
+            <entry key="sheet_area" type="xstring" value="ENTIRE"/>
+            <entry key="read_from_column" type="xstring" value="A"/>
+            <entry key="read_to_column" type="xstring" value=""/>
+            <entry key="read_from_row" type="xstring" value="1"/>
+            <entry key="read_to_row" type="xstring" value=""/>
+            <entry key="empty_col_header_prefix" type="xstring" value="empty_"/>
+            <entry key="column_name_mode" type="xstring" value="EXCEL_COL_NAME"/>
+        </config>
+        <config key="table_spec_config_Internals">
+            <entry key="version" type="xstring" value="V4_4"/>
+            <config key="individual_specs">
+                <config key="../data/Churn_prediction/CutomerChurnData_Target.xlsx">
+                    <entry key="num_columns" type="xint" value="3"/>
+                    <config key="0">
+                        <entry key="name" type="xstring" value="CustID"/>
+                        <entry key="has_type" type="xboolean" value="true"/>
+                        <config key="type">
+                            <entry key="type" type="xstring" value="STRING"/>
+                        </config>
+                    </config>
+                    <config key="1">
+                        <entry key="name" type="xstring" value="Churn (Y/N)"/>
+                        <entry key="has_type" type="xboolean" value="true"/>
+                        <config key="type">
+                            <entry key="type" type="xstring" value="STRING"/>
+                        </config>
+                    </config>
+                    <config key="2">
+                        <entry key="name" type="xstring" value="Description (Removed)"/>
+                        <entry key="has_type" type="xboolean" value="true"/>
+                        <config key="type">
+                            <entry key="type" type="xstring" value="STRING"/>
+                        </config>
+                    </config>
+                </config>
+            </config>
+            <config key="table_transformation">
+                <config key="columns">
+                    <config key="0">
+                        <config key="external_spec">
+                            <entry key="name" type="xstring" value="CustID"/>
+                            <entry key="has_type" type="xboolean" value="true"/>
+                            <config key="type">
+                                <entry key="type" type="xstring" value="STRING"/>
+                            </config>
+                        </config>
+                        <entry key="name" type="xstring" value="CustID"/>
+                        <entry key="keep" type="xboolean" value="true"/>
+                        <entry key="position" type="xint" value="0"/>
+                        <config key="production_path">
+                            <entry key="_converter" type="xstring" value="org.knime.core.data.def.StringCell$StringCellFactory.createCell(class java.lang.String)"/>
+                            <entry key="_converter_src" type="xstring" value="java.lang.String"/>
+                            <entry key="_converter_dst" type="xstring" value="String"/>
+                            <entry key="_converter_name" type="xstring" value="String"/>
+                            <config key="_converter_config"/>
+                            <entry key="_producer" type="xstring" value="STRING-&gt;java.lang.String"/>
+                            <entry key="_producer_src" type="xstring" value="STRING"/>
+                            <entry key="_producer_dst" type="xstring" value="java.lang.String"/>
+                            <entry key="_producer_name" type="xstring" value="java.lang.String"/>
+                            <config key="_producer_config"/>
+                        </config>
+                    </config>
+                    <config key="1">
+                        <config key="external_spec">
+                            <entry key="name" type="xstring" value="Churn (Y/N)"/>
+                            <entry key="has_type" type="xboolean" value="true"/>
+                            <config key="type">
+                                <entry key="type" type="xstring" value="STRING"/>
+                            </config>
+                        </config>
+                        <entry key="name" type="xstring" value="Churn (Y/N)"/>
+                        <entry key="keep" type="xboolean" value="true"/>
+                        <entry key="position" type="xint" value="1"/>
+                        <config key="production_path">
+                            <entry key="_converter" type="xstring" value="org.knime.core.data.def.StringCell$StringCellFactory.createCell(class java.lang.String)"/>
+                            <entry key="_converter_src" type="xstring" value="java.lang.String"/>
+                            <entry key="_converter_dst" type="xstring" value="String"/>
+                            <entry key="_converter_name" type="xstring" value="String"/>
+                            <config key="_converter_config"/>
+                            <entry key="_producer" type="xstring" value="STRING-&gt;java.lang.String"/>
+                            <entry key="_producer_src" type="xstring" value="STRING"/>
+                            <entry key="_producer_dst" type="xstring" value="java.lang.String"/>
+                            <entry key="_producer_name" type="xstring" value="java.lang.String"/>
+                            <config key="_producer_config"/>
+                        </config>
+                    </config>
+                    <config key="2">
+                        <config key="external_spec">
+                            <entry key="name" type="xstring" value="Description (Removed)"/>
+                            <entry key="has_type" type="xboolean" value="true"/>
+                            <config key="type">
+                                <entry key="type" type="xstring" value="STRING"/>
+                            </config>
+                        </config>
+                        <entry key="name" type="xstring" value="Description (Removed)"/>
+                        <entry key="keep" type="xboolean" value="true"/>
+                        <entry key="position" type="xint" value="2"/>
+                        <config key="production_path">
+                            <entry key="_converter" type="xstring" value="org.knime.core.data.def.StringCell$StringCellFactory.createCell(class java.lang.String)"/>
+                            <entry key="_converter_src" type="xstring" value="java.lang.String"/>
+                            <entry key="_converter_dst" type="xstring" value="String"/>
+                            <entry key="_converter_name" type="xstring" value="String"/>
+                            <config key="_converter_config"/>
+                            <entry key="_producer" type="xstring" value="STRING-&gt;java.lang.String"/>
+                            <entry key="_producer_src" type="xstring" value="STRING"/>
+                            <entry key="_producer_dst" type="xstring" value="java.lang.String"/>
+                            <entry key="_producer_name" type="xstring" value="java.lang.String"/>
+                            <config key="_producer_config"/>
+                        </config>
+                    </config>
+                    <entry key="num_columns" type="xint" value="3"/>
+                    <config key="intersection_indices">
+                        <entry key="array-size" type="xint" value="3"/>
+                        <entry key="0" type="xint" value="0"/>
+                        <entry key="1" type="xint" value="1"/>
+                        <entry key="2" type="xint" value="2"/>
+                    </config>
+                </config>
+                <entry key="skip_empty_columns" type="xboolean" value="false"/>
+                <entry key="enforce_types" type="xboolean" value="true"/>
+                <entry key="column_filter_mode" type="xstring" value="UNION"/>
+                <config key="unknown_columns_transformation">
+                    <entry key="position" type="xint" value="3"/>
+                    <entry key="keep" type="xboolean" value="true"/>
+                    <entry key="force_type" type="xboolean" value="false"/>
+                </config>
+            </config>
+            <entry key="source_group_id" type="xstring" value="../data/Churn_prediction/CutomerChurnData_Target.xlsx"/>
+            <config key="config_id">
+                <config key="excel_reader">
+                    <config key="settings">
+                        <entry key="sheet_selection" type="xstring" value="FIRST"/>
+                        <entry key="sheet_name" type="xstring" value="Target"/>
+                        <entry key="sheet_index" type="xint" value="0"/>
+                        <entry key="table_contains_column_names" type="xboolean" value="true"/>
+                        <entry key="column_names_row_number" type="xlong" value="1"/>
+                        <entry key="row_id" type="xstring" value="GENERATE"/>
+                        <entry key="row_id_column" type="xstring" value="A"/>
+                        <entry key="sheet_area" type="xstring" value="ENTIRE"/>
+                        <entry key="read_from_column" type="xstring" value="A"/>
+                        <entry key="read_to_column" type="xstring" value=""/>
+                        <entry key="read_from_row" type="xstring" value="1"/>
+                        <entry key="read_to_row" type="xstring" value=""/>
+                        <entry key="empty_col_header_prefix" type="xstring" value="empty_"/>
+                        <entry key="column_name_mode" type="xstring" value="EXCEL_COL_NAME"/>
+                    </config>
+                    <config key="advanced_settings">
+                        <entry key="skip_hidden_columns" type="xboolean" value="true"/>
+                        <entry key="skip_empty_cols" type="xboolean" value="false"/>
+                        <entry key="skip_hidden_rows" type="xboolean" value="true"/>
+                        <entry key="formula_error_handling" type="xstring" value="PATTERN"/>
+                        <entry key="reevaluate_formulas" type="xboolean" value="false"/>
+                        <entry key="use_15_digits_precision" type="xboolean" value="true"/>
+                        <entry key="replace_empty_strings_with_missings" type="xboolean" value="true"/>
+                        <entry key="limit_data_rows_scanned" type="xboolean" value="true"/>
+                        <entry key="max_data_rows_scanned" type="xlong" value="10000"/>
+                    </config>
+                </config>
+            </config>
+        </config>
+        <config key="advanced_settings">
+            <entry key="fail_on_differing_specs" type="xboolean" value="true"/>
+            <entry key="append_path_column_Internals" type="xboolean" value="false"/>
+            <entry key="path_column_name_Internals" type="xstring" value="Path"/>
+            <entry key="skip_empty_cols" type="xboolean" value="false"/>
+            <entry key="skip_empty_rows" type="xboolean" value="true"/>
+            <entry key="limit_data_rows_scanned" type="xboolean" value="true"/>
+            <entry key="max_data_rows_scanned" type="xlong" value="10000"/>
+            <entry key="save_table_spec_config_Internals" type="xboolean" value="true"/>
+            <entry key="check_table_spec" type="xboolean" value="true"/>
+            <entry key="use_15_digits_precision" type="xboolean" value="true"/>
+            <entry key="skip_hidden_columns" type="xboolean" value="true"/>
+            <entry key="skip_hidden_rows" type="xboolean" value="true"/>
+            <entry key="replace_empty_strings_with_missings" type="xboolean" value="true"/>
+            <entry key="reevaluate_formulas" type="xboolean" value="false"/>
+            <entry key="formula_error_handling" type="xstring" value="PATTERN"/>
+            <entry key="formula_error_pattern" type="xstring" value="#XL_EVAL_ERROR#"/>
+        </config>
+        <config key="encryption">
+            <config key="password_Internals">
+                <entry key="SettingsModelID" type="xstring" value="SMID_authentication"/>
+                <entry key="EnabledStatus" type="xboolean" value="true"/>
+            </config>
+            <config key="password">
+                <entry key="credentials" type="xstring" isnull="true" value=""/>
+                <entry key="username" type="xstring" value=""/>
+                <entry key="selectedType" type="xstring" value="NONE"/>
+            </config>
+        </config>
+    </config>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="EXECUTED"/>
+    <entry key="factory" type="xstring" value="org.knime.ext.poi3.node.io.filehandling.excel.reader.ExcelTableReaderNodeFactory"/>
+    <entry key="node-name" type="xstring" value="Excel Reader"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME POI (Excel) Plug-in"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.ext.poi3"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.4.0.v202411201034"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Excel Support"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.ext.poi.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.4.0.v202411201034"/>
+    <config key="factory_settings"/>
+    <config key="node_creation_config">
+        <config key="File System Connection"/>
+        <config key="Data Table"/>
+    </config>
+    <entry key="name" type="xstring" value="Excel Reader"/>
+    <entry key="hasContent" type="xboolean" value="true"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports">
+        <config key="port_1">
+            <entry key="index" type="xint" value="1"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 1000, Cols: 3"/>
+            <entry key="port_dir_location" type="xstring" value="port_1"/>
+        </config>
+    </config>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" value="7c0335e8-e1bf-4c25-adf7-be57b8aaf1a0"/>
+    </config>
+</config>
