@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 ####################################################################################################
 #
-# X-Partitioner (loop start) — code generator
+# X-Partitioner
 #
 # Module-level contract:
 #   - LOOP = "start"  (used by emitter.py to recognize loop start nodes)
-#
 # Generated code behavior (no LOOP variable emitted into the script):
 #   - Reads input df from context and freezes it in __xpart_src_<node_id>.
 #   - Builds cross-validation folds from settings.xml:
@@ -17,9 +15,10 @@
 #       * shuffle == randomSampling; random_state honored only with shuffle=True
 #       * NaN class labels treated as "__NA__" for stratification
 #   - Saves loop state in context['__loop__:<node_id>'] and flowvars.
+#
 #   - Emits a Python `for` loop:
 #         for __fold_idx, (__tr, __te) in enumerate(folds):
-#       Inside it sets train/test and per-iteration flowvars.
+#     Inside it sets train/test and per-iteration flowvars.
 #   - The emitter will indent subsequent nodes until the X-Aggregator (LOOP="finish").
 #
 ####################################################################################################

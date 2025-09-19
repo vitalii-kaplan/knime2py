@@ -2,11 +2,10 @@
 
 ####################################################################################################
 #
-# X-Aggregator (loop finish) — code generator
+# X-Aggregator
 #
 # Module-level contract:
 #   - LOOP = "finish"  (used by emitter.py to recognize loop finish nodes)
-#
 # Generated code behavior (executed INSIDE the loop body opened by X-Partitioner):
 #   - Reads the current fold DataFrame from context.
 #   - Finds loop state context['__loop__:<xpart_id>'] (k folds, current index).
@@ -17,7 +16,8 @@
 #       * Concatenates all accumulated folds -> out_df.
 #       * Publishes out_df to this node’s outgoing ports.
 #       * Sets context['__xagg__:<loop_id>:is_complete'] = True
-#     On intermediate folds: no outputs are published (is_complete=False).
+#
+#  On intermediate folds: no outputs are published (is_complete=False).
 #
 ####################################################################################################
 
