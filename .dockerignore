@@ -7,3 +7,4 @@ build/
 .wheels/
 .venv/
 .env
+output/

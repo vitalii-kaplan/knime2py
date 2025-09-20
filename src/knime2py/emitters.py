@@ -61,6 +61,47 @@ def _safe_name_from_title(title: str) -> str:
     return re.sub(r"\W+", "_", title).strip("_") or "node"
 
 
+def _banner_lines(b: "NodeBlock") -> List[str]:
+    """
+    Produce compact, comment-style banners to separate nodes inside combined cells.
+    Respect the block's indent_prefix so banners stay inside loops.
+    """
+    pref = b.indent_prefix or ""
+    lines = [
+        pref + "################################################################################################################################################################",
+        pref + f"## {b.title} # `{b.root_id}`",
+        pref + f"# Node state: `{b.state}`",
+    ]
+    if b.input_line:
+        il = b.input_line
+        if pref and il.startswith(pref):
+            il = il[len(pref):]
+        lines.append(pref + f"# {il}")
+    if b.output_line:
+        ol = b.output_line
+        if pref and ol.startswith(pref):
+            ol = ol[len(pref):]
+        lines.append(pref + f"# {ol}")
+    if b.comment_line and b.comment_line != b.title:
+        cl = b.comment_line
+        if pref and cl.startswith(pref):
+            cl = cl[len(pref):]
+        lines.append(pref + f"# {cl}")
+    return lines
+
+
+def _node_markdown(b: "NodeBlock") -> str:
+    """One markdown chunk for a single node."""
+    md_lines = [f"## {b.title} \\# `{b.root_id}`", f"Node state: `{b.state}`  "]
+    if b.comment_line:
+        md_lines.append(f"{b.comment_line}  ")
+    if b.input_line:
+        md_lines.append(f"{b.input_line}  ")
+    if b.output_line:
+        md_lines.append(f"{b.output_line}  ")
+    return "\n".join(md_lines) + "\n"
+
+
 # ----------------------------
 # Graph emitters
 # ----------------------------
@@ -88,7 +129,7 @@ def write_graph_dot(g, out_dir: Path) -> Path:
         "IDLE": "red",
     }
 
-    # Nodes: label = "<title>\n<root_id>\n<comments?>", optional fill by state
+    # Nodes
     for nid, n in g.nodes.items():
         title, root_id = derive_title_and_root(nid, n)
         parts = [title, root_id]
@@ -126,18 +167,12 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
     """
     Build render-ready blocks for each node (same content used by .py and .ipynb writers).
     Also aggregates per-node imports into a single preamble list for the whole document.
-
-    Returns:
-        (blocks, aggregated_imports)
     """
     aggregated_imports: set[str] = set()
     handlers = get_handlers()  # dict: { FACTORY_ID: module }, may include "" for default
 
     prepared: List[dict] = []
-
-    # Loop-aware indentation depth for .py generation
-    # Increase AFTER a LOOP='start' node; decrease AFTER a LOOP='finish' node
-    indent_depth = 0
+    indent_depth = 0  # loop-aware indentation depth for .py
 
     for ctx in traverse_nodes(g):
         nid = ctx["nid"]
@@ -146,20 +181,19 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
         root_id = ctx["root_id"]
         state = (ctx["state"] or "UNKNOWN").upper()
         comments = ctx["comments"]
-        incoming = ctx["incoming"]     # list[(src_id, Edge)]
-        outgoing = ctx["outgoing"]     # list[(dst_id, Edge)]
+        incoming = ctx["incoming"]
+        outgoing = ctx["outgoing"]
 
         safe_name = _safe_name_from_title(title)
         func_name = f"node_{nid}_{safe_name}"
 
-        # ---- one-line comments
+        # one-liners
         comment_line = None
         if comments:
             oneliner = "; ".join(line for line in str(comments).splitlines() if line.strip())
             if oneliner:
                 comment_line = f"comments: {oneliner}"
 
-        # ---- input line
         input_line = None
         if incoming:
             ins = []
@@ -170,7 +204,6 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
                 ins.append(f"[Port {p_in}] {src_id}:{p_src} from {src_title} #{src_id}")
             input_line = "Input: " + "; ".join(ins)
 
-        # ---- output line
         output_line = None
         if outgoing:
             outs = []
@@ -180,12 +213,10 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
                 outs.append(f"[Port {p_out}] {nid}:{p_out} to {dst_id} {dst_title} #{dst_id}")
             output_line = "Output: " + "; ".join(outs)
 
-        # ---- code body lines (plugin-aware)
         code_lines: List[str] = []
-        not_impl_flag = True  # assume not implemented until proven otherwise
+        not_impl_flag = True
 
         if state == "IDLE":
-            # IDLE nodes: only a hub link (if we have a type) + warning
             if getattr(n, "type", None):
                 hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
                 code_lines.append(f"# {hub_url}")
@@ -194,7 +225,6 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
             code_lines.append("# The node is IDLE. Codegen is not possible. Implement this node manually.")
             code_lines.append("pass")
 
-        # Try factory-specific handler; fall back to default ("")
         mod = None
         default_mod = handlers.get("")
         if getattr(n, "type", None):
@@ -204,7 +234,6 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
         if mod is None and default_mod is not None:
             mod = default_mod
 
-        # Loop role detection for indentation (module-level attribute on handler)
         loop_role = getattr(mod, "LOOP", None) if mod is not None else None
         is_loop_start = (loop_role == "start")
         is_loop_finish = (loop_role == "finish")
@@ -218,7 +247,6 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
                     import sys as _sys
                     print(f"[emitters] Handler {getattr(mod, '__name__', mod)} failed on node {nid}: {e}", file=_sys.stderr)
                     res = None
-
             if res:
                 found_imports, body = res
                 if found_imports:
@@ -226,7 +254,6 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
                 if body:
                     code_lines.extend(body)
             else:
-                # fallback stub (no handler or handler failed)
                 if getattr(n, "type", None):
                     hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
                     code_lines.append(f"# {hub_url}")
@@ -235,20 +262,14 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
                 code_lines.append("# TODO: implement this node")
                 code_lines.append("pass")
 
-        # ---- apply indentation to this node (metadata + body)
-        # Start nodes themselves are NOT indented by the new level (but do inherit any outer level),
-        # so compute prefix BEFORE updating indent_depth.
+        # indentation (for .py)
         indent_prefix = "    " * indent_depth if indent_depth > 0 else ""
-
-        # Prepend prefix to metadata lines (so writer banner + these lines align)
         if comment_line:
             comment_line = indent_prefix + comment_line
         if input_line:
             input_line = indent_prefix + input_line
         if output_line:
             output_line = indent_prefix + output_line
-
-        # Body lines — prefix each with the same indent
         if code_lines and indent_prefix:
             code_lines = [(indent_prefix + ln) if ln else ln for ln in code_lines]
 
@@ -263,17 +284,16 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
             "output_line": output_line,
             "code_lines": code_lines,
             "not_impl_flag": not_impl_flag,
-            "indent_prefix": indent_prefix,  # used by writers for banner/header indentation
-            "loop_role": loop_role,          # used by .ipynb writer to group loop cells
+            "indent_prefix": indent_prefix,
+            "loop_role": loop_role,
         })
 
-        # Update indent depth AFTER placing current node
+        # update indent AFTER placing current node
         if is_loop_start:
             indent_depth += 1
         if is_loop_finish:
             indent_depth = max(0, indent_depth - 1)
 
-    # Create NodeBlock objects
     blocks: List[NodeBlock] = []
     for p in prepared:
         blocks.append(NodeBlock(
@@ -291,7 +311,6 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
             loop_role=p.get("loop_role"),
         ))
 
-    # Return blocks and a sorted list of unique imports
     return blocks, sorted(aggregated_imports)
 
 
@@ -305,22 +324,15 @@ def write_workbook_py(
     imports: Optional[List[str]] = None,
 ) -> Path:
     """
-    Emit a single, linear Python script (no per-node functions). Each node becomes a
-    commented section header followed by its generated code. Results are still stored
-    in `context` for debugging/inspection, but code reads from local vars directly.
-
-    If `blocks`/`imports` are not provided, they are computed via build_workbook_blocks(g).
+    Linear .py script: each node -> banner + code (with loop indentation).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.py"
 
-    # Compute once if not provided
     if blocks is None or imports is None:
         blocks, imports = build_workbook_blocks(g)
 
     lines: List[str] = []
-
-    # ---- Unified header (comments) ----
     lines += [
         "# ====================================================================================================",
         "# knime2py — KNIME → Python workbook",
@@ -337,17 +349,14 @@ def write_workbook_py(
         "",
     ]
 
-    # --- aggregated imports at module top
     if imports:
         lines.extend(imports)
         lines.append("")
 
-    # Shared context remains for debugging
     lines.append("# Simple shared context to pass tabular data between sections (for debugging)")
     lines.append("context = {}  # e.g., {'<node_id>:<port>': df}")
     lines.append("")
 
-    # Linear code, one section per node
     for b in blocks:
         pref = getattr(b, "indent_prefix", "")
         lines.append(pref + "################################################################################################################################################################")
@@ -364,10 +373,9 @@ def write_workbook_py(
             lines.append(pref + "# TODO: implement this node")
             lines.append(pref + "pass")
         else:
-            # code_lines already carry the correct prefix
             lines.extend(b.code_lines)
 
-        lines.append("")  # blank line between sections
+        lines.append("")
 
     fp.write_text("\n".join(lines))
     return fp
@@ -380,20 +388,22 @@ def write_workbook_ipynb(
     imports: Optional[List[str]] = None,
 ) -> Path:
     """
-    Jupyter notebook: one markdown cell per node; code cells are usually one-per-node
-    EXCEPT for loop regions: from LOOP='start' to LOOP='finish' (inclusive), all code
-    is combined into a single code cell. Nested loops are supported.
+    Jupyter notebook:
+      • Outside loops: one markdown cell per node + one code cell per node.
+      • Inside a loop (from LOOP='start' to LOOP='finish'): a single markdown cell is emitted
+        containing the comments for ALL nodes in the loop, followed by ONE code cell that
+        contains the combined code for the whole loop region (banners included). Nested loops
+        are supported via a stack.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.ipynb"
 
-    # Compute once if not provided
     if blocks is None or imports is None:
         blocks, imports = build_workbook_blocks(g)
 
     cells: List[dict] = []
 
-    # ---- Unified header (markdown) ----
+    # Header
     header_md = (
         "# knime2py — KNIME → Python workbook\n\n"
         f"**Workflow:** `{g.workflow_id}`  \n"
@@ -406,7 +416,7 @@ def write_workbook_ipynb(
     )
     cells.append({"cell_type": "markdown", "metadata": {}, "source": header_md})
 
-    # Aggregated imports cell (if any)
+    # Imports
     if imports:
         imports_src = "\n".join(imports) + "\n"
         cells.append({
@@ -417,75 +427,73 @@ def write_workbook_ipynb(
             "source": imports_src
         })
 
-    # Shared context
+    # Context cell
     context_src = "# Shared context to pass dataframes/tables between nodes (for debugging)\ncontext = {}\n"
     cells.append({"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": context_src})
 
-    # ---- Loop-aware emission: combine loop code blocks into one cell
-    in_loop = False
-    loop_depth = 0
-    loop_code_accum: List[str] = []
+    # Loop-aware emission using a stack for nested loops
+    loop_stack: List[dict] = []  # each: {"md": [str], "code": [str]}
 
     def _emit_code_cell(code_lines: List[str]):
-        code_src = "\n".join(code_lines)
-        if code_src and not code_src.endswith("\n"):
-            code_src += "\n"
+        src = "\n".join(code_lines)
+        if src and not src.endswith("\n"):
+            src += "\n"
         cells.append({
             "cell_type": "code",
             "metadata": {},
             "execution_count": None,
             "outputs": [],
-            "source": code_src or "# TODO: implement this node\npass\n"
+            "source": src or "# TODO: implement this node\npass\n"
         })
 
-    for b in blocks:
-        # Markdown per node (always emitted for readability)
-        md_lines = [f"## {b.title} \\# `{b.root_id}`", f" Node state: `{b.state}`  "]
-        if b.comment_line:
-            md_lines.append(f" {b.comment_line}  ")
-        if b.input_line:
-            md_lines.append(f" {b.input_line}  ")
-        if b.output_line:
-            md_lines.append(f" {b.output_line}  ")
-        cells.append({"cell_type": "markdown", "metadata": {}, "source": "\n".join(md_lines) + "\n"})
+    def _emit_md_cell(md_lines: List[str]):
+        md = "\n".join(md_lines)
+        cells.append({"cell_type": "markdown", "metadata": {}, "source": md if md.endswith("\n") else md + "\n"})
 
-        # Loop control
+    for b in blocks:
         role = getattr(b, "loop_role", None)
         is_start = (role == "start")
         is_finish = (role == "finish")
 
         if is_start:
-            # Opening a (possibly nested) loop: begin/continue accumulation
-            if not in_loop:
-                in_loop = True
-                loop_depth = 1
-                loop_code_accum = []
-            else:
-                loop_depth += 1
-            # Always accumulate the start node's code
-            loop_code_accum.extend(b.code_lines or [])
+            # push a new loop context
+            loop_stack.append({"md": [], "code": []})
+            ctx = loop_stack[-1]
+            ctx["md"].append(_node_markdown(b))
+            ctx["code"].extend(_banner_lines(b))
+            ctx["code"].extend(b.code_lines or [])
             continue
 
-        if in_loop:
-            # We are inside a loop: keep accumulating until closing the outermost loop
-            loop_code_accum.extend(b.code_lines or [])
+        if loop_stack:
+            # inside a loop (possibly nested)
+            ctx = loop_stack[-1]
+            ctx["md"].append(_node_markdown(b))
+            ctx["code"].extend(_banner_lines(b))
+            ctx["code"].extend(b.code_lines or [])
+
             if is_finish:
-                loop_depth -= 1
-                if loop_depth <= 0:
-                    # Close the loop: emit one combined code cell
-                    _emit_code_cell(loop_code_accum)
-                    in_loop = False
-                    loop_depth = 0
-                    loop_code_accum = []
-            # Do not emit a per-node code cell while inside loop
+                finished = loop_stack.pop()
+                if loop_stack:
+                    # nested: bubble up to parent loop (do not emit yet)
+                    parent = loop_stack[-1]
+                    parent["md"].extend(finished["md"])
+                    parent["code"].extend(finished["code"])
+                else:
+                    # outermost loop closed: emit one markdown cell + one code cell
+                    _emit_md_cell(finished["md"])
+                    _emit_code_cell(finished["code"])
+            # while in loop, do not emit per-node cells
             continue
 
-        # Outside any loop: normal one-code-cell-per-node behavior
-        _emit_code_cell(b.code_lines or [])
+        # outside any loop: normal per-node cells
+        _emit_md_cell([_node_markdown(b)])
+        _emit_code_cell(_banner_lines(b) + (b.code_lines or []))
 
-    # Safety: if notebook ends while still "in_loop", flush what we have
-    if in_loop and loop_code_accum:
-        _emit_code_cell(loop_code_accum)
+    # Safety: if we ended still inside a loop, flush the outermost accumulated cells
+    if loop_stack:
+        finished = loop_stack[0]
+        _emit_md_cell(finished["md"])
+        _emit_code_cell(finished["code"])
 
     nb = {
         "cells": cells,
