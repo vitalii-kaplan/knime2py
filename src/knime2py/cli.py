@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -----------------------------------------------------------------------------
-# k2p.py — KNIME → Python/Notebook codegen & graph exporter (CLI entry point)
+# knime2py.cli — KNIME → Python/Notebook codegen & graph exporter (CLI entry)
 # -----------------------------------------------------------------------------
 
 from __future__ import annotations
@@ -11,14 +11,16 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from knime2py.parse_knime import discover_workflows, parse_workflow_components
-from knime2py.emitters import (
+# NOTE: relative imports because we're now inside the package under src/
+from .parse_knime import discover_workflows, parse_workflow_components
+from .emitters import (
     write_graph_json,
     write_graph_dot,
     write_workbook_py,
     write_workbook_ipynb,
     build_workbook_blocks,
 )
+
 
 def _resolve_single_workflow(path: Path) -> Path:
     """Return a single workflow.knime path or exit with an error message."""
@@ -42,8 +44,10 @@ def _resolve_single_workflow(path: Path) -> Path:
     if len(wfs) > 1:
         sample = "\n".join(f"  - {wf}" for wf in wfs[:10])
         print(
-            f"Multiple workflow.knime files found under {p}. "
-            f"Pass the exact path to the workflow.knime you want.\nFound:\n{sample}",
+            "Multiple workflow.knime files found under {root}. "
+            "Pass the exact path to the workflow.knime you want.\nFound:\n{list}".format(
+                root=p, list=sample
+            ),
             file=sys.stderr,
         )
         raise SystemExit(2)
@@ -105,16 +109,20 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
         blocks, imports = build_workbook_blocks(g)
 
         # --- per-graph summaries
-        idle_count = sum(1 for b in blocks if b.state == "IDLE")
+        idle_count = sum(1 for b in blocks if getattr(b, "state", None) == "IDLE")
 
-        # List of not-implemented node *names with factories*, e.g.
-        # "Row Filter: org.knime.base.node.preproc.filter.row3.RowFilterNodeFactory"
+        # Collect not-implemented node names with factories
         not_impl_names: set[str] = set()
         for b in blocks:
             if getattr(b, "not_implemented", False):
-                node = g.nodes.get(b.nid) if hasattr(g, "nodes") else None
-                factory = getattr(node, "type", None) or getattr(node, "factory", None) or "UNKNOWN"
-                not_impl_names.add(f"{b.title} ({factory})")
+                node = getattr(g, "nodes", {}).get(getattr(b, "nid", None)) if hasattr(g, "nodes") else None
+                factory = (
+                    getattr(node, "type", None)
+                    or getattr(node, "factory", None)
+                    or "UNKNOWN"
+                )
+                title = getattr(b, "title", "UNKNOWN")
+                not_impl_names.add(f"{title} ({factory})")
 
         # Workbooks
         if args.workbook in (None, "py"):
@@ -122,18 +130,20 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
         if args.workbook in (None, "ipynb"):
             wb_ipynb = write_workbook_ipynb(g, out_dir, blocks, imports)
 
-        components.append({
-            "workflow_id": g.workflow_id,
-            "json": str(j) if j else None,
-            "dot": str(d) if d else None,
-            "workbook_py": str(wb_py) if wb_py else None,
-            "workbook_ipynb": str(wb_ipynb) if wb_ipynb else None,
-            "nodes": len(g.nodes),
-            "edges": len(g.edges),
-            "idle": idle_count,
-            "not_implemented_count": len(not_impl_names),
-            "not_implemented_names": sorted(not_impl_names),
-        })
+        components.append(
+            {
+                "workflow_id": getattr(g, "workflow_id", None),
+                "json": str(j) if j else None,
+                "dot": str(d) if d else None,
+                "workbook_py": str(wb_py) if wb_py else None,
+                "workbook_ipynb": str(wb_ipynb) if wb_ipynb else None,
+                "nodes": len(getattr(g, "nodes", {})),
+                "edges": len(getattr(g, "edges", [])),
+                "idle": idle_count,
+                "not_implemented_count": len(not_impl_names),
+                "not_implemented_names": sorted(not_impl_names),
+            }
+        )
 
     summary = {
         "workflow": str(wf),
@@ -144,5 +154,13 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
     return 0
 
 
+def main(argv: Optional[list[str]] = None) -> None:
+    """Console entrypoint used by `pyproject.toml`."""
+    code = run_cli(argv)
+    if code:
+        sys.exit(code)
+
+
 if __name__ == "__main__":
-    raise SystemExit(run_cli())
+    # Support direct execution: python -m knime2py or python src/knime2py/cli.py
+    main(sys.argv[1:])

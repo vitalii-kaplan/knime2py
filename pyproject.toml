@@ -1,10 +1,43 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "knime2py"
+version = "0.1.0"
+description = "KNIME → Python workbook converter (graphs, DOT, and ipynb/py emitters)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Vitaly Chibrikov", email = "vitaly.chibrikov@gmail.com" }]
+
+dependencies = [
+  "lxml>=4.9,<6",
+  "jinja2>=3.1,<4",
+  "networkx>=3.2,<4",
+  "packaging>=23,<25",
+  "graphviz>=0.20"     # keep only if you actually render via graphviz python bindings
+]
+
+[project.scripts]
+k2p = "knime2py.cli:main"
+knime2py = "knime2py.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/knime2py"]
+
+# ------------------------------
+# Test & Coverage (src layout)
+# ------------------------------
 [tool.pytest.ini_options]
-addopts = "--cov=knime2py --cov-branch --cov-report=term-missing --cov-report=xml:coverage.xml"
+# Use a filesystem path so tests work even if you forget `pip install -e .`
+addopts = "--cov=src/knime2py --cov-branch --cov-report=term-missing --cov-report=xml:coverage.xml"
 testpaths = ["tests"]
 
 [tool.coverage.run]
 branch = true
-source = ["knime2py"]
+# Point coverage at the source tree in a src layout
+source = ["src/knime2py"]
 
 [tool.coverage.report]
 show_missing = true

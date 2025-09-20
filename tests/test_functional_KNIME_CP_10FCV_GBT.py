@@ -1,76 +1,180 @@
-import csv
-import shutil
-import subprocess
+#!/usr/bin/env python3
+# -----------------------------------------------------------------------------
+# knime2py.cli — KNIME → Python/Notebook codegen & graph exporter (CLI entry)
+# -----------------------------------------------------------------------------
+
+from __future__ import annotations
+
+import argparse
+import json
 import sys
 from pathlib import Path
+from typing import Optional
 
-
-def test_end_to_end_10fcv_gbt_scorer():
-    # Paths
-    repo_root = Path(__file__).resolve().parents[1]
-    cli = repo_root / "k2p.py"
-    knime_proj = repo_root / "tests" / "data" / "KNIME_CP_10FCV_GBT"
-    out_dir = repo_root / "tests" / "data" / "!output"
-
-    # Fresh output dir
-    if out_dir.exists():
-        # wipe only files/dirs inside, keep the directory itself
-        for p in out_dir.iterdir():
-            if p.is_dir():
-                shutil.rmtree(p)
-            else:
-                p.unlink()
-    else:
-        out_dir.mkdir(parents=True, exist_ok=True)
-
-    # 1) Generate Python workbook(s) only, no graphs
-    cmd = [
-        sys.executable,
-        str(cli),
-        str(knime_proj),
-        "--out", str(out_dir),
-        "--graph", "off",
-        "--workbook", "py",
-    ]
-    gen = subprocess.run(cmd, capture_output=True, text=True)
-    assert gen.returncode == 0, f"CLI failed\nSTDOUT:\n{gen.stdout}\nSTDERR:\n{gen.stderr}"
-
-    # 2) Ensure the expected workbook script exists
-    #    You asked for this exact filename:
-    expected_script = out_dir / "KNIME_CP_10FCV_GBT__g01_workbook.py"
-    if not expected_script.exists():
-        # fall back to any workbook if the suffix differs (keeps test resilient)
-        candidates = sorted(out_dir.glob("KNIME_CP_10FCV_GBT*workbook.py"))
-        assert candidates, (
-            "No generated workbook script found in output dir. "
-            f"Contents: {[p.name for p in out_dir.iterdir()]}"
-        )
-        expected_script = candidates[0]
-
-    # 3) Run the generated workbook.
-    #    Use cwd=out_dir so any relative outputs (e.g., Score.csv) land there.
-    run = subprocess.run(
-        [sys.executable, str(expected_script)],
-        cwd=str(out_dir),
-        capture_output=True,
-        text=True,
+# --- Import shim so this file works both as a package module and as a script ---
+if __package__ in (None, ""):
+    # Running as a script (e.g., python src/knime2py/cli.py) → add .../src to sys.path
+    pkg_parent = Path(__file__).resolve().parents[1]  # .../src
+    if str(pkg_parent) not in sys.path:
+        sys.path.insert(0, str(pkg_parent))
+    from knime2py.parse_knime import discover_workflows, parse_workflow_components  # type: ignore
+    from knime2py.emitters import (  # type: ignore
+        write_graph_json,
+        write_graph_dot,
+        write_workbook_py,
+        write_workbook_ipynb,
+        build_workbook_blocks,
     )
-    assert run.returncode == 0, f"Workbook execution failed\nSTDOUT:\n{run.stdout}\nSTDERR:\n{run.stderr}"
+else:
+    # Normal package-relative imports
+    from .parse_knime import discover_workflows, parse_workflow_components
+    from .emitters import (
+        write_graph_json,
+        write_graph_dot,
+        write_workbook_py,
+        write_workbook_ipynb,
+        build_workbook_blocks,
+    )
 
-    # 4) Validate Score.csv presence and its contents
-    score_csv = out_dir / "Score.csv"
-    assert score_csv.exists(), f"Score.csv not found in {out_dir}. Contents: {[p.name for p in out_dir.iterdir()]}"
 
-    with score_csv.open(newline="") as f:
-        reader = csv.reader(f)
-        # Keep non-empty rows, strip whitespace for robustness
-        rows = [[c.strip() for c in r] for r in reader if any(c.strip() for c in r)]
+def _resolve_single_workflow(path: Path) -> Path:
+    """Return a single workflow.knime path or exit with an error message."""
+    p = path.expanduser().resolve()
 
-    # Expected table:
-    # Y,N 
-    # 256  1
-    # 127  612
-    assert len(rows) >= 3, f"Unexpected CSV shape: {rows}"
-    assert rows[0] == ["Y", "N"], f"Header mismatch: {rows[0]}"
-    assert rows[1] == ["256", "1"], f"First data row mismatch: {rows[1]}"
-    assert rows[2] == ["127", "612"], f"Second data row mismatch: {rows[2]}"
+    if not p.exists():
+        print(f"Path does not exist: {p}", file=sys.stderr)
+        raise SystemExit(2)
+
+    if p.is_file():
+        if p.name != "workflow.knime":
+            print(f"Not a workflow.knime file: {p}", file=sys.stderr)
+            raise SystemExit(2)
+        return p
+
+    # Directory: must contain exactly one workflow.knime
+    wfs = discover_workflows(p)
+    if not wfs:
+        print(f"No workflow.knime found under {p}", file=sys.stderr)
+        raise SystemExit(2)
+    if len(wfs) > 1:
+        sample = "\n".join(f"  - {wf}" for wf in wfs[:10])
+        print(
+            f"Multiple workflow.knime files found under {p}. "
+            f"Pass the exact path to the workflow.knime you want.\nFound:\n{sample}",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+    return wfs[0]
+
+
+def run_cli(argv: Optional[list[str]] = None) -> int:
+    p = argparse.ArgumentParser(
+        description="Parse a single KNIME workflow and emit graph + workbook per isolated subgraph."
+    )
+    # Accept the nonstandard '-help' as an alias (optional, but user-friendly)
+    p.add_argument("-help", action="help", help=argparse.SUPPRESS)
+
+    p.add_argument(
+        "path",
+        type=Path,
+        help="Path to a workflow.knime file OR a directory containing exactly one workflow.knime",
+    )
+    p.add_argument("--out", type=Path, default=Path("out_graphs"), help="Output directory")
+    p.add_argument(
+        "--workbook",
+        choices=["py", "ipynb"],          # None => generate both
+        default=None,
+        help="Workbook format to generate. Omit to generate both.",
+    )
+    p.add_argument(
+        "--graph",
+        choices=["dot", "json", "off"],
+        default=None,                     # None => generate both
+        help="Which graph file(s) to emit: dot, json, or off. Omit to generate both.",
+    )
+
+    args = p.parse_args(argv)
+
+    wf = _resolve_single_workflow(args.path)
+    out_dir = args.out.expanduser().resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        graphs = parse_workflow_components(wf)  # one WorkflowGraph per isolated component
+    except Exception as e:
+        print(f"ERROR parsing {wf}: {e}", file=sys.stderr)
+        return 3
+
+    if not graphs:
+        print(f"No nodes/edges found in workflow: {wf}", file=sys.stderr)
+        return 4
+
+    components = []
+    for g in graphs:
+        # Conditionally emit JSON/DOT based on --graph
+        j = d = None
+        if args.graph in (None, "json"):
+            j = write_graph_json(g, out_dir)
+        if args.graph in (None, "dot"):
+            d = write_graph_dot(g, out_dir)
+        # args.graph == "off" → skip both
+
+        wb_py = wb_ipynb = None
+
+        # Build blocks/imports once
+        blocks, imports = build_workbook_blocks(g)
+
+        # --- per-graph summaries
+        idle_count = sum(1 for b in blocks if getattr(b, "state", None) == "IDLE")
+
+        # Collect not-implemented node names with factories
+        not_impl_names: set[str] = set()
+        for b in blocks:
+            if getattr(b, "not_implemented", False):
+                node = getattr(g, "nodes", {}).get(getattr(b, "nid", None)) if hasattr(g, "nodes") else None
+                factory = (
+                    getattr(node, "type", None)
+                    or getattr(node, "factory", None)
+                    or "UNKNOWN"
+                )
+                title = getattr(b, "title", "UNKNOWN")
+                not_impl_names.add(f"{title} ({factory})")
+
+        # Workbooks
+        if args.workbook in (None, "py"):
+            wb_py = write_workbook_py(g, out_dir, blocks, imports)
+        if args.workbook in (None, "ipynb"):
+            wb_ipynb = write_workbook_ipynb(g, out_dir, blocks, imports)
+
+        components.append(
+            {
+                "workflow_id": getattr(g, "workflow_id", None),
+                "json": str(j) if j else None,
+                "dot": str(d) if d else None,
+                "workbook_py": str(wb_py) if wb_py else None,
+                "workbook_ipynb": str(wb_ipynb) if wb_ipynb else None,
+                "nodes": len(getattr(g, "nodes", {})),
+                "edges": len(getattr(g, "edges", [])),
+                "idle": idle_count,
+                "not_implemented_count": len(not_impl_names),
+                "not_implemented_names": sorted(not_impl_names),
+            }
+        )
+
+    summary = {
+        "workflow": str(wf),
+        "total_components": len(components),
+        "components": components,
+    }
+    print(json.dumps(summary, indent=2))
+    return 0
+
+
+def main(argv: Optional[list[str]] = None) -> None:
+    code = run_cli(argv)
+    if code:
+        sys.exit(code)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

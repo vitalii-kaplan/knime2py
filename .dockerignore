@@ -1,0 +1,9 @@
+.git
+.github
+__pycache__/
+*.pyc
+dist/
+build/
+.wheels/
+.venv/
+.env
