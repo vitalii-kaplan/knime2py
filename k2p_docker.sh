@@ -7,7 +7,6 @@ OUT_REL="output"
 # -------------------------------------------------------------
 
 IMAGE="${IMAGE:-ghcr.io/vitaly-chibrikov/knime2py:latest}"
-WORKBOOK="${WORKBOOK:-both}"         # override: WORKBOOK=py ./run_knime_ghcr.sh
 
 # Resolve to absolute host paths
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -25,6 +24,4 @@ docker run --rm \
 -w "$ROOT" \
 "$IMAGE" \
 "$WORKFLOW_HOST" \
---out "$OUT_HOST" \
---workbook "$WORKBOOK"
-
+--out "$OUT_HOST" 
