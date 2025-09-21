@@ -4,7 +4,9 @@
 #
 # ROC Curve
 #
-# Renders ROC curves from a scored table based on settings.xml. Reads ground-truth and positive
+# Renders ROC curves from a scored table based on settings.xml. 
+# 
+# Reads ground-truth and positive
 # class, resolves one or more probability columns, computes FPR/TPR and AUC, and saves an image
 # (PNG/SVG) plus a CSV of ROC points. This view node does not write to context ports.
 #

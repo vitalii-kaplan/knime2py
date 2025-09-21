@@ -287,8 +287,8 @@ For unsupported nodes, the generator produces a best-effort stub and TODOs to gu
 
 def run_cli(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description="Generate an HTML page listing implemented node generators (parsed from header comments).")
-    ap.add_argument("--out", type=Path, default=Path("./docs/implemented.html"),
-                    help="Output HTML file path (default: ./docs/implemented.html)")
+    ap.add_argument("--out", type=Path, default=Path("../../docs/implemented.html"),
+                    help="Output HTML file path (default: ../../docs/implemented.html)")
     args = ap.parse_args(argv)
 
     rows = _collect_modules()
