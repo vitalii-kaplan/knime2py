@@ -1,28 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# --- Config ---
+# --- Config (edit these two paths relative to this script) ---
 WORKFLOW_REL="tests/data/KNIME_CP_10FCV_GBT"
 OUT_REL="output"
-# --------------------------------
+# -------------------------------------------------------------
 
-IMAGE="${IMAGE:-knime2py:dev}" 
+IMAGE="${IMAGE:-ghcr.io/vitaly-chibrikov/knime2py:latest}"
+WORKBOOK="${WORKBOOK:-both}"         # override: WORKBOOK=py ./run_knime_ghcr.sh
 
-# Resolve to absolute paths relative to this script
+# Resolve to absolute host paths
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-WORKFLOW="$ROOT/$WORKFLOW_REL"
-OUT="$ROOT/$OUT_REL"
+WORKFLOW_HOST="$ROOT/$WORKFLOW_REL"
+OUT_HOST="$ROOT/$OUT_REL"
 
 # Clean and recreate output dir
-rm -rf "$OUT"
-mkdir -p "$OUT"
+rm -rf "$OUT_HOST"
+mkdir -p "$OUT_HOST"
 
-# Mirror host paths inside the container so generated code uses your real paths
+# Mirror host paths inside the container; embed real host paths in outputs
 docker run --rm \
-  -u "$(id -u):$(id -g)" \
-  -v "$ROOT":"$ROOT" \
-  -w "$ROOT" \
-  "$IMAGE" \
-  "$WORKFLOW" \
-  --out "$OUT" \
-  --graph off
+-u "$(id -u):$(id -g)" \
+-v "$ROOT":"$ROOT" \
+-w "$ROOT" \
+"$IMAGE" \
+"$WORKFLOW_HOST" \
+--out "$OUT_HOST" \
+--workbook "$WORKBOOK"
+
