@@ -5,6 +5,9 @@ on:
     tags: ["v*.*.*"]
   workflow_dispatch: {}
 
+permissions:
+  contents: write  # needed to create a GitHub Release
+
 jobs:
   pex:
     strategy:
@@ -13,52 +16,29 @@ jobs:
         py: ["3.11"]
     runs-on: ${{ matrix.os }}
     env:
-      PIP_DISABLE_PIP_VERSION_CHECK: "1"
-      PIP_NO_INPUT: "1"
       PEX_VERBOSE: "9"
-      PEX_PIP_VERSION: "latest"   # <- make PEX resolve with a modern pip
+      PEX_PIP_VERSION: "latest"
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.py }}
-
-      - name: Install build tools
+      - name: Build wheel
         run: |
-          python -m pip install --upgrade pip
-          pip install build pex
-
-      - name: Build project wheel
-        run: |
+          python -m pip install -U pip build pex
           python -m build --wheel
-          ls -l dist
-
       - name: Build PEX
         shell: bash
         run: |
           case "${{ runner.os }}" in
-            macOS)
-              ARCH="$(uname -m)"
-              OUT="k2p-macos-${ARCH}.pex"
-              ;;
+            macOS)   OUT="k2p-macos-$(uname -m).pex" ;;
             Windows) OUT="k2p-windows.pex" ;;
             Linux)   OUT="k2p-linux.pex" ;;
           esac
-
-          # 3.11 only, so PEX doesn’t try to resolve for the system 3.12 too
-          pex dist/*.whl \
-            -c k2p \
-            -o "dist/${OUT}" \
-            --venv prepend \
-            --strip-pex-env \
+          pex dist/*.whl -c k2p -o "dist/${OUT}" \
+            --venv prepend --strip-pex-env \
             --interpreter-constraint 'CPython==3.11.*'
-
-          echo "Produced dist/${OUT}"
-          ls -l dist
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: pex-${{ runner.os }}
           path: dist/*.pex
@@ -70,9 +50,23 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+
+      # Choose a tag: use the pushed tag, or make a nightly tag on manual run
+      - name: Compute tag
+        id: tag
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            echo "TAG=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "PRERELEASE=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "TAG=nightly-$(date +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+            echo "PRERELEASE=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ steps.tag.outputs.TAG }}
+          prerelease: ${{ steps.tag.outputs.PRERELEASE }}
           files: artifacts/**/*
-          generate_release_notes: true
+
