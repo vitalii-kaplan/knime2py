@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export DOCKER_BUILDKIT=1
+# docker build -t knime2py:dev .
+# For a clean build instead, use:
+docker build --pull --no-cache -t knime2py:dev .
 
 # --- Config ---
 WORKFLOW_REL="tests/data/KNIME_CP_10FCV_GBT"
