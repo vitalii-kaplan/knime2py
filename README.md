@@ -1,50 +1,119 @@
 # knime2py — KNIME → Python Workbook
 
-knime2py is a code-generation and KNIME→Python exporter: it parses a KNIME workflow, reconstructs its nodes and connections, and emits runnable Python “workbooks” (Jupyter notebook or script) by translating supported KNIME nodes into idiomatic pandas / scikit-learn code via a pluggable node registry. Alongside the executable code, it also writes a machine-readable graph (JSON) and a Graphviz DOT file, preserving port wiring and execution order so the generated Python mirrors the original workflow.
+**knime2py** is a code-generation and KNIME→Python exporter: it parses a KNIME workflow, reconstructs its nodes and connections, and emits runnable Python “workbooks” (Jupyter notebook or script) by translating supported KNIME nodes into idiomatic pandas / scikit-learn code via a pluggable node registry. Alongside the executable code, it also writes a machine-readable graph (JSON) and a Graphviz DOT file, preserving port wiring and execution order so the generated Python mirrors the original workflow.
 
-The project includes command-line tool that parses a **KNIME workflow** and emits, for each isolated subgraph (component) inside it:
-
-* a machine-readable graph (`<workflow_id>__gNN.json`)
-* a Graphviz DOT file (`<workflow_id>__gNN.dot`)
-* a “Python workbook” as either a **Jupyter notebook** (`<workflow_id>__gNN_workbook.ipynb`) or a **Python script** (`<workflow_id>__gNN_workbook.py`) — if you omit `--workbook`, both are generated
-
-> Status: prototype/MVP. KNIME 5.x workflows supported. Legacy (<node>/<connection>) not supported.
+> **Status:** prototype/MVP. KNIME 5.x workflows supported. Legacy exports that rely solely on `<node>` / `<connection>` aren’t supported yet.
 
 ---
 
 ## Features
 
-* **Single-workflow focus** — point at a `workflow.knime` or a directory containing exactly one `workflow.knime`.
-* **Isolated graphs detection** — splits the workflow into **unconnected graphs**; each becomes its own output set with an ID suffix like `__g01`, `__g02`, …
+- **Single-workflow focus** — point at a `workflow.knime` or a directory containing exactly one `workflow.knime`.
+- **Isolated graphs detection** — splits the workflow into **unconnected graphs**; each becomes its own output set with an ID suffix like `__g01`, `__g02`, …
 * **Depth-ready ordering** — sections are emitted by a deterministic depth-first traversal that only visits a node once all of its predecessors have been visited; in cyclic or disconnected regions it continues depth-first and then appends any remaining nodes in a stable order.
 
 ---
 
 ## Requirements
 
-* Python 3.8+
-* [`lxml`](https://lxml.de/) (XML parsing)
-* [`pandas`](https://pandas.pydata.org/) (generated code uses it)
-* [`scikit-learn`](https://scikit-learn.org/) (used by some nodes, e.g., Partitioning, Equal Size Sampling)
-* (Optional) Graphviz CLI to render `.dot` (`dot`, `neato`, etc.)
+- **For source install:** Python **3.9+** (project is developed/tested on 3.11).
+- Runtime libraries used by generated code: `pandas`, `scikit-learn` (installed automatically when using Docker/PEX; for source installs, see below).
+- Optional: Graphviz CLI (`dot`) if you want to render `.dot` files to images. The tool always writes `.dot`; rendering is up to you.
 
 ---
 
-## Quick start
+## Installation & Distribution Options
+
+You can use knime2py in three ways:
+
+### 1) Docker image (no local Python/pip needed)
+
+Pull and run the published image (GHCR):
 
 ```bash
-# From the repo root:
-# Generate BOTH notebook and script (default when --workbook is omitted)
-python k2p.py /path/to/workflow.knime --out out_dir
+docker pull ghcr.io/vitaly-chibrikov/knime2py:latest
+docker run --rm ghcr.io/vitaly-chibrikov/knime2py:latest --help
+````
+
+Typical run (simple mounts):
+
+```bash
+docker run --rm \
+  -v "$PWD/workflow":/wf:ro \
+  -v "$PWD/out":/out \
+  ghcr.io/vitaly-chibrikov/knime2py:latest \
+  /wf --out /out --workbook both
+```
+
+Preserve **host absolute paths** in generated code (mirror the path inside the container):
+
+```bash
+docker run --rm \
+  -u "$(id -u):$(id -g)" \
+  -v "$PWD":"$PWD" \
+  -w "$PWD" \
+  ghcr.io/vitaly-chibrikov/knime2py:latest \
+  "$PWD/workflow" --out "$PWD/out" --graph off
+```
+
+A helper script is available:
+`k2p_docker.sh` — [https://github.com/vitaly-chibrikov/knime2py/blob/main/k2p\_docker.sh](https://github.com/vitaly-chibrikov/knime2py/blob/main/k2p_docker.sh)
+
+### 2) PEX single-file binaries (require Python **3.11** on the user’s machine)
+
+Download OS-specific binaries from **Releases**:
+[https://github.com/vitaly-chibrikov/knime2py/releases](https://github.com/vitaly-chibrikov/knime2py/releases)
+
+* **macOS / Linux**
+
+  ```bash
+  python3 --version      # must be 3.11.x
+  chmod +x k2p-macos-<arch>.pex    # or: k2p-linux.pex
+  python3 k2p-macos-<arch>.pex --help
+
+  # Example
+  python3 k2p-macos-<arch>.pex /path/to/workflow --out /path/to/out --graph off
+  ```
+
+* **Windows (PowerShell)**
+
+  ```powershell
+  py -3.11 k2p-windows.pex --help
+  py -3.11 k2p-windows.pex C:\path\to\workflow --out C:\path\to\out --graph off
+  ```
+
+On first run, PEX materializes a managed virtualenv in `~/.pex` (or `%USERPROFILE%\.pex`); no network access is needed at runtime since dependencies are bundled.
+
+### 3) Source (developer) install
+
+```bash
+python -m pip install --upgrade pip
+pip install -e .
+# optional: run tests
+pytest -q
+```
+
+---
+
+## Quick start (CLI)
+
+The console entrypoint is **`k2p`**. You can also use `python -m knime2py`.
+
+```bash
+# Generate BOTH notebook and script (omit --workbook)
+k2p /path/to/workflow.knime --out out_dir
 
 # Or pass a directory that contains exactly one workflow.knime
-python k2p.py /path/to/knime_project_dir --out out_dir
+k2p /path/to/knime_project_dir --out out_dir
 
 # Only notebook
-python k2p.py /path/to/workflow.knime --out out_dir --workbook ipynb
+k2p /path/to/workflow.knime --out out_dir --workbook ipynb
 
 # Only script
-python k2p.py /path/to/workflow.knime --out out_dir --workbook py
+k2p /path/to/workflow.knime --out out_dir --workbook py
+
+# Disable graph files
+k2p /path/to/workflow.knime --out out_dir --graph off
 ```
 
 Outputs are written to `out_dir/` with one set **per component**:
@@ -62,10 +131,10 @@ Outputs are written to `out_dir/` with one set **per component**:
 
 ---
 
-## CLI
+## CLI reference
 
 ```
-usage: k2p.py [-h] [--out OUT] [--workbook {py,ipynb}] path
+usage: k2p [-h] [--out OUT] [--workbook {py,ipynb}] [--graph {dot,json,off}] path
 
 positional arguments:
   path                  Path to a workflow.knime file OR a directory containing exactly one workflow.knime
@@ -73,8 +142,9 @@ positional arguments:
 options:
   -h, --help            Show help message and exit
   --out OUT             Output directory (default: out_graphs)
-  --workbook {py,ipynb}
-                        Workbook format to generate. Omit to generate both.
+  --workbook {py,ipynb} Workbook format to generate. Omit to generate both.
+  --graph {dot,json,off}
+                        Which graph file(s) to emit. Omit to generate both; use "off" to skip.
 ```
 
 ---
@@ -89,7 +159,7 @@ options:
 
 ### Graphviz DOT (per component)
 
-Left-to-right graph with node labels:
+Left-to-right graph with node labels; for example:
 
 ```dot
 digraph knime {
@@ -100,7 +170,7 @@ digraph knime {
 }
 ```
 
-Render example:
+Render:
 
 ```bash
 dot -Tpng <base>__g01.dot -o component01.png
@@ -108,11 +178,8 @@ dot -Tpng <base>__g01.dot -o component01.png
 
 ### Workbooks (per component)
 
-**Notebook (`.ipynb`)**
-For each node, a markdown cell (title + port summaries) followed by a code cell that references a shared `context` dict.
-
-**Script (`.py`)**
-Functions named `node_<id>_<title>()` with the same metadata embedded as comments, a **single import preamble**, a shared `context` dict, and a `run_all()` that calls nodes in topological order.
+* **Notebook (`.ipynb`)**: one markdown cell + one code cell per node; shared `context` dict.
+* **Script (`.py`)**: `node_<id>_<title>()` functions, **single consolidated import block**, shared `context`, `run_all()`.
 
 ---
 
@@ -126,13 +193,22 @@ List of all implemented nodes is here: https://vitaly-chibrikov.github.io/knime2
 
 ## Reproducibility & randomness
 
-Some KNIME nodes involve randomness (e.g., **Partitioning**, **Equal Size Sampling**). Our generated Python uses **pandas** and **scikit-learn** RNGs. Even when the same seed value is used, **row-for-row results may differ from KNIME’s internal RNG**. What we do guarantee:
+Some KNIME nodes involve randomness (e.g., **Partitioning**, **Equal Size Sampling**). The generated Python uses pandas/scikit-learn RNGs. Even with the same seed, exact row identities can differ from KNIME’s RNG. We guarantee:
 
-* **Class proportions and train/test sizes** match the requested settings.
-* With the same inputs and seed, Python runs are reproducible within Python.
-* Stratified operations preserve target distribution; when stratification is infeasible (e.g., minuscule classes), a guarded fallback is used.
+* **Class proportions and split sizes** match the requested settings.
+* With identical inputs and seed, Python runs are reproducible **within Python**.
+* Stratification preserves target distribution; infeasible cases fall back safely.
 
-In other words, **statistics match, but exact row identities may not**. Tests should compare **sizes and distributions**, not exact row sets.
+**Compare sizes/distributions, not exact row sets.**
+
+---
+
+## Releases
+
+* **Docker image:** `ghcr.io/vitaly-chibrikov/knime2py:latest` (and versioned tags).
+* **PEX binaries:** download OS-specific files from **Releases**:
+  [https://github.com/vitaly-chibrikov/knime2py/releases](https://github.com/vitaly-chibrikov/knime2py/releases)
+  Requires Python **3.11** on the target machine.
 
 ---
 
