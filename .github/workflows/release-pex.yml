@@ -1,0 +1,55 @@
+name: release-pex
+on:
+  push:
+    tags: ["v*.*.*"]
+
+jobs:
+  pex:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        py: ["3.11"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.py }}
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pex build
+      - name: Build PEX
+        shell: bash
+        run: |
+          # Name per OS
+          case "${{ runner.os }}" in
+            macOS)   OUT="k2p-macos.pex" ;;
+            Windows) OUT="k2p-windows.pex" ;;
+            Linux)   OUT="k2p-linux.pex" ;;
+          esac
+          pex . -c k2p -o "dist/${OUT}" \
+            --venv prepend \
+            --strip-pex-env \
+            --interpreter-constraint 'CPython>=3.10,<3.13' \
+            --python-shebang='#!/usr/bin/env python3'
+          ls -l dist
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pex-${{ runner.os }}
+          path: dist/*.pex
+
+  release:
+    needs: pex
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: artifacts/**/*
+          generate_release_notes: true
