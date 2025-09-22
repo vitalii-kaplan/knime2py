@@ -15,14 +15,8 @@ The project includes command-line tool that parses a **KNIME workflow** and emit
 ## Features
 
 * **Single-workflow focus** — point at a `workflow.knime` or a directory containing exactly one `workflow.knime`.
-* **Component detection** — splits the workflow into **weakly connected components**; each becomes its own output set with an ID suffix like `__g01`, `__g02`, …
-* **KNIME 5.x parser** — reads nodes under `<config key="nodes">/config key="node_*">` and connections under `<config key="connections">/config key="connection_*">`.
+* **Isolated graphs detection** — splits the workflow into **unconnected graphs**; each becomes its own output set with an ID suffix like `__g01`, `__g02`, …
 * **Depth-ready ordering** — sections are emitted by a deterministic depth-first traversal that only visits a node once all of its predecessors have been visited; in cyclic or disconnected regions it continues depth-first and then appends any remaining nodes in a stable order.
-* **Readable workbooks**
-
-  * **Notebook cells**: markdown header like `## CSV Reader` followed by `root: \`1\`\` and **Input/Output** summaries.
-  * **Script**: functions named `node_<id>_<safe_title>()` with the same metadata in comments, plus a `run_all()` that executes nodes in order.
-* **Import preamble (scripts)** — each node declares imports via `generate_imports()`. The codegen aggregates these and **emits a single import block at the top of the `.py`** so there are no duplicate per-node imports and things like `pd` are defined before any node runs.
 
 ---
 
@@ -122,30 +116,11 @@ Functions named `node_<id>_<title>()` with the same metadata embedded as comment
 
 ---
 
-## Implemented node generators (MVP)
+## Implemented node generators
 
-* CSV Reader / CSV Writer
-* Column Filter
-* Missing Value
-* Normalizer (Min–Max, Z-Score)
-* Rule Engine (subset; see below)
-* Partitioning (relative/absolute; random, linear, stratified) — uses `sklearn.model_selection.train_test_split`
-* Equal Size Sampling (class balancing) — uses scikit-learn-based resampling
+List of all implemented nodes is here: https://vitaly-chibrikov.github.io/knime2py/implemented.html
 
-> If a node type isn’t recognized, a clear TODO stub is emitted with a link to its KNIME Hub page (when available).
-
-### Rule Engine subset
-
-We currently parse a pragmatic subset:
-
-* numeric/string comparisons like
-  `$col$ > 5 => "label"`
-* LIKE with `*` wildcards (compiled to regex) like
-  `$col$ LIKE "*blue*" => "label"`
-* default catch-all:
-  `TRUE => "fallback"`
-
-Unsupported/complex rules are skipped with a `# TODO` comment, and the rest of the rules still apply in order.
+> If a node type isn’t implemented, a clear TODO stub is emitted with all paramaters from node's settings.xml file initialized.
 
 ---
 
@@ -158,28 +133,6 @@ Some KNIME nodes involve randomness (e.g., **Partitioning**, **Equal Size Sampli
 * Stratified operations preserve target distribution; when stratification is infeasible (e.g., minuscule classes), a guarded fallback is used.
 
 In other words, **statistics match, but exact row identities may not**. Tests should compare **sizes and distributions**, not exact row sets.
-
-
----
-
-## KNIME compatibility
-
-* **Supported:** KNIME 5.x exports where `workflow.knime` stores nodes under `<config key="nodes">` and connections under `<config key="connections">`.
-* **Not supported:** older “legacy” exports using `<node>`/`<connection>` only.
-* **Components/metanodes/loops:** each discovered `workflow.knime` is parsed; nested workflows are treated independently if you run the CLI for them.
-
-If your workflow variant isn’t parsed, share a small repro and we’ll extend the XPath.
-
----
-
-## Development & Tests
-
-* Code lives under `knime2py/`. The CLI entry is `k2p.py`.
-* Tests live under `tests/`. Run from the repo root:
-
-  ```bash
-  pytest -q
-  ```
 
 ---
 
