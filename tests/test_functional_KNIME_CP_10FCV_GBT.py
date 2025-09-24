@@ -56,14 +56,6 @@ def _resolve_single_workflow(path: Path) -> Path:
     if not wfs:
         print(f"No workflow.knime found under {p}", file=sys.stderr)
         raise SystemExit(2)
-    if len(wfs) > 1:
-        sample = "\n".join(f"  - {wf}" for wf in wfs[:10])
-        print(
-            f"Multiple workflow.knime files found under {p}. "
-            f"Pass the exact path to the workflow.knime you want.\nFound:\n{sample}",
-            file=sys.stderr,
-        )
-        raise SystemExit(2)
     return wfs[0]
 
 

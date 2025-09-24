@@ -2,13 +2,11 @@
 
 **knime2py** is a code-generation and KNIME→Python exporter: it parses a KNIME workflow, reconstructs its nodes and connections, and emits runnable Python “workbooks” (Jupyter notebook or script) by translating supported KNIME nodes into idiomatic pandas / scikit-learn code via a pluggable node registry. Alongside the executable code, it also writes a machine-readable graph (JSON) and a Graphviz DOT file, preserving port wiring and execution order so the generated Python mirrors the original workflow.
 
-> **Status:** prototype/MVP. KNIME 5.x workflows supported. Legacy exports that rely solely on `<node>` / `<connection>` aren’t supported yet.
-
 ---
 
 ## Features
-
-- **Single-workflow focus** — point at a `workflow.knime` or a directory containing exactly one `workflow.knime`.
+- **Single-workflow focus** — pass either a `workflow.knime` file or a directory that directly contains `workflow.knime`. Subdirectories are not traversed.
+- **Components** — nested component workflows aren’t auto-discovered, but they are supported if you point directly at the component’s folder (it also has its own `workflow.knime`).
 - **Isolated graphs detection** — splits the workflow into **unconnected graphs**; each becomes its own output set with an ID suffix like `__g01`, `__g02`, …
 * **Depth-ready ordering** — sections are emitted by a deterministic depth-first traversal that only visits a node once all of its predecessors have been visited; in cyclic or disconnected regions it continues depth-first and then appends any remaining nodes in a stable order.
 

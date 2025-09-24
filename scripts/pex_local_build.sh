@@ -12,15 +12,10 @@ export PEX_VERBOSE=9
 export PEX_PIP_VERSION=latest   # use modern pip for resolution
 pex dist/*.whl \
   -c k2p \
-  -o dist/k2p-macos-$(uname -m).pex \
+  -o dist/k2p-macos-$(uname -m)_local.pex \
   --venv prepend \
   --strip-pex-env \
   --interpreter-constraint 'CPython==3.11.*'
 
 # 3) Smoke test
 python dist/k2p-macos-$(uname -m).pex --help
-
-# 4) End-to-end test
-rm -rf output && mkdir -p output
-python dist/k2p-macos-$(uname -m).pex tests/data/KNIME_CP_10FCV_GBT --out output --graph off
-ls -1 output

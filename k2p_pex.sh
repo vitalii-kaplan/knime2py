@@ -4,7 +4,7 @@ set -euo pipefail
 # run from repo root
 cd "$(dirname "$0")"
 
-PEX_BIN="${PEX_BIN:-./k2p-macos-arm64.pex}"
+PEX_BIN="${PEX_BIN:-./dist/k2p-macos-arm64.pex}"
 if [[ ! -f "$PEX_BIN" ]]; then
   echo "PEX not found: $PEX_BIN" >&2
   exit 1

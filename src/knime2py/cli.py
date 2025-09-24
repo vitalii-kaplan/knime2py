@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 # NOTE: relative imports because we're now inside the package under src/
-from .parse_knime import discover_workflows, parse_workflow_components
+from .parse_knime import parse_workflow_components
 from .emitters import (
     write_graph_json,
     write_graph_dot,
@@ -23,7 +23,14 @@ from .emitters import (
 
 
 def _resolve_single_workflow(path: Path) -> Path:
-    """Return a single workflow.knime path or exit with an error message."""
+    """
+    Return the path to a single workflow.knime based on the given path.
+
+    Rules:
+      - If 'path' is a file, it must be named 'workflow.knime'.
+      - If 'path' is a directory, it must contain a file named 'workflow.knime' directly
+        (no recursive search).
+    """
     p = path.expanduser().resolve()
 
     if not p.exists():
@@ -36,22 +43,12 @@ def _resolve_single_workflow(path: Path) -> Path:
             raise SystemExit(2)
         return p
 
-    # Directory: must contain exactly one workflow.knime
-    wfs = discover_workflows(p)
-    if not wfs:
-        print(f"No workflow.knime found under {p}", file=sys.stderr)
+    # Directory: only accept a workflow.knime directly inside it (no recursion)
+    wf = p / "workflow.knime"
+    if not wf.exists() or not wf.is_file():
+        print(f"No workflow.knime found in directory: {p}", file=sys.stderr)
         raise SystemExit(2)
-    if len(wfs) > 1:
-        sample = "\n".join(f"  - {wf}" for wf in wfs[:10])
-        print(
-            "Multiple workflow.knime files found under {root}. "
-            "Pass the exact path to the workflow.knime you want.\nFound:\n{list}".format(
-                root=p, list=sample
-            ),
-            file=sys.stderr,
-        )
-        raise SystemExit(2)
-    return wfs[0]
+    return wf
 
 
 def run_cli(argv: Optional[list[str]] = None) -> int:
@@ -61,7 +58,7 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
     p.add_argument(
         "path",
         type=Path,
-        help="Path to a workflow.knime file OR a directory containing exactly one workflow.knime",
+        help="Path to a workflow.knime file OR a directory that directly contains workflow.knime",
     )
     p.add_argument("--out", type=Path, default=Path("out_graphs"), help="Output directory")
     p.add_argument(
