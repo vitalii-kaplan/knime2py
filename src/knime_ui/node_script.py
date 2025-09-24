@@ -47,15 +47,6 @@ elif want_json:
 else:
     graph_args = ["--graph", "off"]
 
-# ---- Output table 1 (index 1): variables -> paths ----
-df_paths = pd.DataFrame(
-    {
-        "variable": ["k2p_bin", "input_knime", "output_py"],
-        "path": [k2p_bin, str(input_knime), str(output_py)],
-    }
-)
-knio.output_tables[1] = knio.Table.from_pandas(df_paths)
-
 # ---- Resolve PEX path and run command ----
 PEX_BIN = os.environ.get("PEX_BIN", k2p_bin)
 pex_path = Path(PEX_BIN)
@@ -78,6 +69,8 @@ else:
     stdout_str = proc.stdout or ""
     stderr_str = proc.stderr or ""
 
-# ---- Output table 0 (index 0): one row with both stdout and stderr ----
-df_io = pd.DataFrame({"stdout": [stdout_str], "stderr": [stderr_str]})
-knio.output_tables[0] = knio.Table.from_pandas(df_io)
+# ---- Output tables ----
+# 0: stdout only 
+knio.output_tables[0] = knio.Table.from_pandas(pd.DataFrame({"stdout": [stdout_str]}))
+# 1: stderr only
+knio.output_tables[1] = knio.Table.from_pandas(pd.DataFrame({"stderr": [stderr_str]}))
