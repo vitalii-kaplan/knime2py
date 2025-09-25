@@ -5,13 +5,14 @@
         "name": "k2p: debug CLI",
         "type": "debugpy",
         "request": "launch",
-        "program": "${workspaceFolder}/k2p.py",
+        "module": "knime2py.cli",
         "args": [
-          "${workspaceFolder}/../../harbour/KNIME/HW-Churn",
+          "${workspaceFolder}/../../harbour/KNIME/ISU_Master_test",
           "--out", "${workspaceFolder}/output",
           "--workbook", "ipynb"
         ],
         "cwd": "${workspaceFolder}",
+        "env": { "PYTHONPATH": "${workspaceFolder}/src" },
         "console": "integratedTerminal",
         "justMyCode": true
       },
@@ -46,7 +47,7 @@
         "name": "implemented: debug CLI",
         "type": "debugpy",
         "request": "launch",
-        "program": "${workspaceFolder}/implemented.py",
+        "program": "${workspaceFolder}/src/knime2py/implemented_cli.py",
         "args": [],
         "cwd": "${workspaceFolder}",
         "console": "integratedTerminal",

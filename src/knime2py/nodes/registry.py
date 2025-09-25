@@ -61,7 +61,18 @@ def discover_handlers() -> Dict[str, ModuleType]:
     """
     candidates: List[tuple[int, str, str, ModuleType]] = []
 
-    for spec in pkgutil.iter_modules(_nodes_pkg.__path__):
+    # --- Materialize the list of module specs first (helps debugging) ---
+    try:
+        specs = list(pkgutil.iter_modules(_nodes_pkg.__path__))
+    except Exception as e:
+        print(f"[nodes.registry] Failed to list node modules: {e}", file=sys.stderr)
+        specs = []
+
+    # Deterministic order while debugging
+    specs.sort(key=lambda s: (int(s.ispkg), s.name))
+
+    # --- Iterate over the collected specs ---
+    for spec in specs:
         if spec.ispkg:
             continue
         name = spec.name
@@ -75,10 +86,11 @@ def discover_handlers() -> Dict[str, ModuleType]:
             continue
 
         if not _has_handle(mod):
+            # No handle() function -> not a node handler
             continue
 
         factories = _iter_factories(mod)
-        if factories is None:
+        if not factories:
             continue
 
         prio = getattr(mod, "PRIORITY", 100)
@@ -103,6 +115,7 @@ def discover_handlers() -> Dict[str, ModuleType]:
         claimed_by[fac] = name
 
     return mapping
+
 
 
 _HANDLERS_MAP: Dict[str, ModuleType] | None = None
