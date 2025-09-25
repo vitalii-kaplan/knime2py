@@ -102,6 +102,22 @@ def _node_markdown(b: "NodeBlock") -> str:
     return "\n".join(md_lines) + "\n"
 
 
+def _not_impl_list_for_graph(g, blocks: List[NodeBlock]) -> List[str]:
+    """Collect display names for not-implemented nodes."""
+    names: set[str] = set()
+    for b in blocks:
+        if getattr(b, "not_implemented", False):
+            node = getattr(g, "nodes", {}).get(getattr(b, "nid", None)) if hasattr(g, "nodes") else None
+            factory = (
+                getattr(node, "type", None)
+                or getattr(node, "factory", None)
+                or "UNKNOWN"
+            )
+            title = getattr(b, "title", "UNKNOWN")
+            names.add(f"{title} ({factory})")
+    return sorted(names)
+
+
 # ----------------------------
 # Graph emitters
 # ----------------------------
@@ -332,6 +348,9 @@ def write_workbook_py(
     if blocks is None or imports is None:
         blocks, imports = build_workbook_blocks(g)
 
+    # Coverage list for header
+    not_impl_names = _not_impl_list_for_graph(g, blocks)
+
     lines: List[str] = []
     lines += [
         "# ====================================================================================================",
@@ -345,6 +364,16 @@ def write_workbook_py(
         "# Notes:",
         "# • The code below is a linear translation of KNIME nodes into Python sections.",
         "# • A lightweight `context` dict is available for debugging/inspection of intermediate tables.",
+        "#",
+        "# Export coverage:",
+    ]
+    if not_impl_names:
+        lines.append("# • The following nodes have no automatic exporter:")
+        for name in not_impl_names:
+            lines.append(f"#   - {name}")
+    else:
+        lines.append("# • All nodes successfully exported.")
+    lines += [
         "# ====================================================================================================",
         "",
     ]
@@ -401,9 +430,18 @@ def write_workbook_ipynb(
     if blocks is None or imports is None:
         blocks, imports = build_workbook_blocks(g)
 
+    # Coverage list for header (will be a separate markdown cell)
+    not_impl_names = _not_impl_list_for_graph(g, blocks)
+    if not_impl_names:
+        coverage_md = "**Export coverage**\n\n- The following nodes have no automatic exporter:\n" + "\n".join(
+            f"- {name}" for name in not_impl_names
+        ) + "\n"
+    else:
+        coverage_md = "**Export coverage**\n\n- All nodes successfully exported.\n"
+
     cells: List[dict] = []
 
-    # Header
+    # Header cell
     header_md = (
         "# knime2py — KNIME → Python workbook\n\n"
         f"**Workflow:** `{g.workflow_id}`  \n"
@@ -414,9 +452,12 @@ def write_workbook_ipynb(
         "- The code below is a linear translation of KNIME nodes into Python sections.\n"
         "- A lightweight `context` dict is available for debugging/inspection of intermediate tables.\n"
     )
-    cells.append({"cell_type": "markdown", "metadata": {}, "source": header_md})
+    cells.append({"cell_type": "markdown", "metadata": {}, "source": header_md if header_md.endswith("\n") else header_md + "\n"})
 
-    # Imports
+    # Explicit coverage cell (ensures visibility in all viewers)
+    cells.append({"cell_type": "markdown", "metadata": {}, "source": coverage_md if coverage_md.endswith("\n") else coverage_md + "\n"})
+
+    # Imports cell
     if imports:
         imports_src = "\n".join(imports) + "\n"
         cells.append({
