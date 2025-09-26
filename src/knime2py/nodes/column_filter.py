@@ -2,23 +2,20 @@
 
 ####################################################################################################
 #
-# Column Filter
+# Column Filter  (exclude-only)
 #
-# Filters columns of the input table according to include/exclude lists parsed from KNIME
-# settings.xml. The generated pandas code preserves include order, applies excludes, and writes
-# the result to this node's context output port(s).
+# This exporter intentionally ignores any "include" lists in KNIME settings.xml and only applies
+# the "exclude" list. The generated code simply drops those columns (if present) from the input df,
+# preserving all remaining columns and their order.
 #
-# Parsing heuristics: looks for <config> blocks whose keys contain "include"/"exclude", numeric
-# index entries (<entry key='0' value='Col'/> ...), or name entries (<entry key='name' value='Col'/>).
-# Falls back to generic "columns" blocks if include/exclude buckets are absent. Duplicate names are
-# de-duplicated while preserving the first occurrence. If no includes/excludes are found, the node
-# is a passthrough. Excludes are dropped with errors='ignore'. 
-# Only explicit column-name lists are supported—pattern/type/regex-based selection is not implemented. 
-# Depends on lxml for parsing and emits pandas-only code; relies on project utilities 
-# (iter_entries, normalize_in_ports, etc.).
+# - Excludes are parsed heuristically from settings.xml by scanning <config> blocks whose keys
+#   contain "exclude", collecting list entries (<entry key='0' value='Col'/> or <entry key='name'/>).
+# - Dropping uses errors='ignore' so missing columns won't fail the cell.
+# - If no excludes are found, the node is a passthrough.
+#
+# Depends on: lxml for parsing; pandas at runtime.
 #
 ####################################################################################################
-
 
 from __future__ import annotations
 
@@ -28,8 +25,9 @@ from typing import List, Optional
 
 from lxml import etree as ET
 from ..xml_utils import XML_PARSER
-from .node_utils import * 
+from .node_utils import *  # iter_entries, normalize_in_ports, collect_module_imports, split_out_imports
 
+# KNIME factory id (Column Filter / legacy)
 FACTORY = "org.knime.base.node.preproc.filter.column.DataColumnSpecFilterNodeFactory"
 
 # ---------------------------------------------------------------------
@@ -38,65 +36,46 @@ FACTORY = "org.knime.base.node.preproc.filter.column.DataColumnSpecFilterNodeFac
 
 @dataclass
 class ColumnFilterSettings:
-    includes: List[str] = field(default_factory=list)
-    excludes: List[str] = field(default_factory=list)
+    excludes: List[str] = field(default_factory=list)  # includes intentionally ignored
 
 
 def _uniq_preserve(seq: List[str]) -> List[str]:
-    # simple, fast order-preserving uniquifier
     return list(dict.fromkeys([s for s in seq if s]))
 
 
 def parse_column_filter_settings(node_dir: Optional[Path]) -> ColumnFilterSettings:
     """
-    Heuristic parser that finds include/exclude column names in Column Filter settings.xml.
-    Handles common KNIME layouts:
-      - any <config> whose key contains 'include'/'exclude'
-      - numeric entry lists (<entry key='0' value='Col'/> ...)
-      - nested blocks with <entry key='name' value='Col'/>
+    Heuristic parser that extracts only the EXCLUDE column names from settings.xml.
+    We look for <config> blocks whose @key contains 'exclude' and collect entries:
+      - <entry key='0' value='Col'/> style lists
+      - <entry key='name' value='Col'/> style lists
     """
     if not node_dir:
         return ColumnFilterSettings()
-    settings_path = node_dir / "settings.xml"
-    if not settings_path.exists():
+    sp = node_dir / "settings.xml"
+    if not sp.exists():
         return ColumnFilterSettings()
 
-    root = ET.parse(str(settings_path), parser=XML_PARSER).getroot()
+    root = ET.parse(str(sp), parser=XML_PARSER).getroot()
 
     def _collect_from_cfgs(cfgs) -> List[str]:
         out: List[str] = []
         for cfg in cfgs:
-            for k, v in iter_entries(cfg):  # from node_utils (regex-friendly)
-                lk = k.lower()
-                if (k.isdigit() or lk == "name") and v:
+            for k, v in iter_entries(cfg):  # project helper
+                if v is None:
+                    continue
+                lk = str(k).lower()
+                if k.isdigit() or lk == "name":
                     out.append(v)
         return out
 
-    # INCLUDE / EXCLUDE via config key tokens
-    include_cfgs = root.xpath(
-        ".//*[local-name()='config' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'include')]"
-    )
     exclude_cfgs = root.xpath(
         ".//*[local-name()='config' and contains(translate(@key,"
         " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'exclude')]"
     )
-
-    includes = _collect_from_cfgs(include_cfgs)
     excludes = _collect_from_cfgs(exclude_cfgs)
 
-    # Fallback: generic 'columns' blocks when include/exclude buckets aren’t explicit
-    if not includes and not excludes:
-        columns_cfgs = root.xpath(
-            ".//*[local-name()='config' and contains(translate(@key,"
-            " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'columns')]"
-        )
-        includes.extend(_collect_from_cfgs(columns_cfgs))
-
-    return ColumnFilterSettings(
-        includes=_uniq_preserve(includes),
-        excludes=_uniq_preserve(excludes),
-    )
+    return ColumnFilterSettings(excludes=_uniq_preserve(excludes))
 
 
 # ---------------------------------------------------------------------
@@ -110,37 +89,22 @@ HUB_URL = (
 
 def _emit_filter_code(settings: ColumnFilterSettings) -> List[str]:
     """
-    Return python lines that transform `df` into `out_df` using includes/excludes.
-    We preserve order for includes; excludes are removed if present.
+    Return python lines that transform `df` into `out_df` by DROPPING excludes only.
     """
     lines: List[str] = []
-
-    have_inc = bool(settings.includes)
-    have_exc = bool(settings.excludes)
-
-    if have_inc:
-        inc_list = ", ".join(repr(c) for c in settings.includes)
-        lines.append(f"include_cols = [{inc_list}]")
-        lines.append("cols_inc = [c for c in include_cols if c in df.columns]")
-        lines.append("out_df = df[cols_inc]  # keep order")
-    else:
-        lines.append("out_df = df")
-
-    if have_exc:
+    lines.append("out_df = df")
+    if settings.excludes:
         exc_list = ", ".join(repr(c) for c in settings.excludes)
         lines.append(f"exclude_cols = [{exc_list}]")
-        lines.append("cols_exc = [c for c in exclude_cols if c in out_df.columns]")
-        lines.append("out_df = out_df.drop(columns=cols_exc, errors='ignore')")
-
-    if not (have_inc or have_exc):
-        lines.append("# No explicit include/exclude columns found in settings.xml; passthrough.")
-        lines.append("out_df = df")
-
+        lines.append("out_df = out_df.drop(columns=[c for c in exclude_cols if c in out_df.columns], errors='ignore')")
+    else:
+        lines.append("# No excludes found; passthrough.")
     return lines
 
 
 def generate_imports():
     return ["import pandas as pd"]
+
 
 def generate_py_body(
     node_id: str,
@@ -149,23 +113,22 @@ def generate_py_body(
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
     """
-    Body lines for the .py workbook.
-    - Reads df from the FIRST in_port (Column Filter has a single table input).
-    - Applies includes/excludes.
-    - Publishes to this node's context key(s).
+    - Reads df from the first input port.
+    - Drops exclude columns (if any).
+    - Publishes to this node's output port(s).
     """
     ndir = Path(node_dir) if node_dir else None
     settings = parse_column_filter_settings(ndir)
 
     lines: List[str] = []
     lines.append(f"# {HUB_URL}")
+
     pairs = normalize_in_ports(in_ports)
     src_id, in_port = pairs[0]
     lines.append(f"df = context['{src_id}:{in_port}']  # input table")
 
     lines.extend(_emit_filter_code(settings))
 
-    # Publish to context (default to port '1' if not provided)
     ports = out_ports or ["1"]
     for p in sorted({(p or '1') for p in ports}):
         lines.append(f"context['{node_id}:{p}'] = out_df")
@@ -179,26 +142,20 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
-    """Single string for a notebook code cell."""
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
-
-    # explicit imports declared by this node module
+    """
+    Returns (imports, body_lines).
+    """
     explicit_imports = collect_module_imports(generate_imports)
 
-    # ports
     in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in (incoming or [])]
     out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in (outgoing or [])] or ["1"]
 
-    # single call with BOTH in/out ports
     node_lines = generate_py_body(nid, npath, in_ports, out_ports)
-
-    # split inline imports out of the body
     found_imports, body = split_out_imports(node_lines)
-
-    # merge explicit + found
     imports = sorted(set(explicit_imports) | set(found_imports))
     return imports, body
