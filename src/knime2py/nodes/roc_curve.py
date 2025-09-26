@@ -4,11 +4,21 @@
 #
 # ROC Curve
 #
-# Renders ROC curves from a scored table based on settings.xml. 
-# 
-# Reads ground-truth and positive
-# class, resolves one or more probability columns, computes FPR/TPR and AUC, and saves an image
-# (PNG/SVG) plus a CSV of ROC points. This view node does not write to context ports.
+# Renders ROC curves from a scored table based on settings.xml.
+#
+# Supports both KNIME view configuration variants:
+#   1) Newer:
+#       - view/targetColumnV3                      → truth column
+#       - view/predictionColumnsV2/manualFilter/manuallySelected → probability columns
+#   2) Older:
+#       - view/targetColumn/selected               → truth column
+#       - view/predictionColumns/selected_Internals → probability columns
+#       - (also checks view/predictionColumns/manualFilter/manuallySelected if present)
+#
+# Uses exactly the configured probability columns; no auto-detection or suffix guessing.
+# Computes FPR/TPR and AUC for each selected probability column and writes an image (PNG/SVG)
+# and a CSV of ROC points to the working directory (or a temp directory fallback).
+# This view node does not write to context ports.
 #
 ####################################################################################################
 
@@ -20,7 +30,14 @@ from typing import List, Optional
 
 from lxml import etree as ET
 from ..xml_utils import XML_PARSER
-from .node_utils import *  # first, first_el, iter_entries, normalize_in_ports, collect_module_imports, split_out_imports
+from .node_utils import (  # project helpers
+    first,
+    first_el,
+    iter_entries,
+    normalize_in_ports,
+    collect_module_imports,
+    split_out_imports,
+)
 
 FACTORY = "org.knime.base.views.node.roccurve.ROCCurveNodeFactory"
 
@@ -39,13 +56,17 @@ class ROCCurveSettings:
     width_px: int = 800
     height_px: int = 600
     image_format: str = "PNG"
+    line_size: int = 2
+
 
 def _collect_numeric_name_entries(cfg: ET._Element) -> List[str]:
+    """Collect values of <entry key='0' value='...'/>, <entry key='1' .../>, ..."""
     out: List[str] = []
     for k, v in iter_entries(cfg):
         if k.isdigit() and v:
             out.append(v.strip())
     return out
+
 
 def parse_roc_settings(node_dir: Optional[Path]) -> ROCCurveSettings:
     if not node_dir:
@@ -57,42 +78,69 @@ def parse_roc_settings(node_dir: Optional[Path]) -> ROCCurveSettings:
 
     root = ET.parse(str(settings_path), parser=XML_PARSER).getroot()
 
-    model_el  = first_el(root, ".//*[local-name()='config' and @key='model']")
+    model_el = first_el(root, ".//*[local-name()='config' and @key='model']")
+    view_el  = first_el(root, ".//*[local-name()='config' and @key='view']")
+
+    # Canvas / image settings
     width_px  = int(first(model_el, ".//*[local-name()='entry' and @key='width']/@value")  or 800) if model_el is not None else 800
     height_px = int(first(model_el, ".//*[local-name()='entry' and @key='height']/@value") or 600) if model_el is not None else 600
     img_fmt   = (first(model_el, ".//*[local-name()='entry' and @key='imageFormat']/@value") or "PNG").strip().upper() if model_el is not None else "PNG"
 
-    view_el   = first_el(root, ".//*[local-name()='config' and @key='view']")
-    truth_col = first(view_el, ".//*[local-name()='config' and @key='targetColumn']/*[local-name()='entry' and @key='selected']/@value") if view_el is not None else None
+    # Titles / labels
+    title     = first(view_el, ".//*[local-name()='entry' and @key='title']/@value") or "ROC Curve"
+    x_lab     = first(view_el, ".//*[local-name()='entry' and @key='xAxisLabel']/@value") or "False positive rate (1 - specificity)"
+    y_lab     = first(view_el, ".//*[local-name()='entry' and @key='yAxisLabel']/@value") or "True positive rate (sensitivity)"
+    line_size = int(first(view_el, ".//*[local-name()='entry' and @key='lineSize']/@value") or 2) if view_el is not None else 2
+
+    # Truth column — support both variants
+    truth_col = None
+    if view_el is not None:
+        # Newer: direct string entry
+        truth_col = first(view_el, ".//*[local-name()='entry' and @key='targetColumnV3']/@value")
+        if not truth_col:
+            # Older: nested config with 'selected'
+            truth_col = first(view_el, ".//*[local-name()='config' and @key='targetColumn']/*[local-name()='entry' and @key='selected']/@value")
+
+    # Positive class label (same in both)
     pos_label = first(view_el, ".//*[local-name()='entry' and @key='positiveClassValue']/@value") if view_el is not None else None
 
-    title = first(view_el, ".//*[local-name()='entry' and @key='title']/@value") or "ROC Curve"
-    x_lab = first(view_el, ".//*[local-name()='entry' and @key='xAxisLabel']/@value") or "False positive rate (1 - specificity)"
-    y_lab = first(view_el, ".//*[local-name()='entry' and @key='yAxisLabel']/@value") or "True positive rate (sensitivity)"
-
+    # Probability columns — support V2 and legacy
     proba_cols: List[str] = []
     if view_el is not None:
-        pred_el = first_el(view_el, ".//*[local-name()='config' and @key='predictionColumns']")
-        if pred_el is not None:
-            sel_el = first_el(pred_el, ".//*[local-name()='config' and @key='selected_Internals']")
-            if sel_el is not None:
-                proba_cols.extend(_collect_numeric_name_entries(sel_el))
-            man_sel = first_el(pred_el, ".//*[local-name()='config' and @key='manualFilter']/*[local-name()='config' and @key='manuallySelected']")
+        # Newer: predictionColumnsV2 / manualFilter / manuallySelected
+        pred_v2 = first_el(view_el, ".//*[local-name()='config' and @key='predictionColumnsV2']")
+        if pred_v2 is not None:
+            man_sel = first_el(pred_v2, ".//*[local-name()='config' and @key='manualFilter']/*[local-name()='config' and @key='manuallySelected']")
             if man_sel is not None:
                 proba_cols.extend(_collect_numeric_name_entries(man_sel))
 
-    proba_cols = list(dict.fromkeys([c for c in proba_cols if c]))
+        # Older: predictionColumns / selected_Internals
+        if not proba_cols:
+            pred = first_el(view_el, ".//*[local-name()='config' and @key='predictionColumns']")
+            if pred is not None:
+                sel_int = first_el(pred, ".//*[local-name()='config' and @key='selected_Internals']")
+                if sel_int is not None:
+                    proba_cols.extend(_collect_numeric_name_entries(sel_int))
+                # Also consider manualFilter/manuallySelected if present (older UIs sometimes put selections here too)
+                man_sel_old = first_el(pred, ".//*[local-name()='config' and @key='manualFilter']/*[local-name()='config' and @key='manuallySelected']")
+                if man_sel_old is not None:
+                    proba_cols.extend(_collect_numeric_name_entries(man_sel_old))
+
+    # Deduplicate while preserving order
+    seen = set()
+    proba_cols = [c for c in proba_cols if c and not (c in seen or seen.add(c))]
 
     return ROCCurveSettings(
         truth_col=truth_col or None,
         pos_label=pos_label or None,
         proba_cols=proba_cols,
         title=title,
-        x_label=x_lab or "False positive rate (1 - specificity)",
-        y_label=y_lab or "True positive rate (sensitivity)",
+        x_label=x_lab,
+        y_label=y_lab,
         width_px=width_px,
         height_px=height_px,
         image_format=img_fmt or "PNG",
+        line_size=line_size,
     )
 
 # -------------------------------------------------------------------------------------
@@ -109,10 +157,12 @@ def generate_imports():
         "from sklearn.metrics import roc_curve, auc",
     ]
 
+
 HUB_URL = (
     "https://hub.knime.com/knime/extensions/org.knime.features.base/latest/"
     "org.knime.base.views.node.roccurve.ROCCurveNodeFactory"
 )
+
 
 def _emit_roc_code(cfg: ROCCurveSettings, node_id: str) -> List[str]:
     lines: List[str] = []
@@ -122,33 +172,30 @@ def _emit_roc_code(cfg: ROCCurveSettings, node_id: str) -> List[str]:
         cols = ", ".join(repr(c) for c in cfg.proba_cols)
         lines.append(f"_proba_cols = [{cols}]")
     else:
-        lines.append("_proba_cols = []  # will try to auto-detect probability columns")
-
+        lines.append("_proba_cols = []  # (empty) — using exactly the configured columns; none found in settings.xml")
     lines.append(f"_title = {repr(cfg.title)}")
     lines.append(f"_x_label = {repr(cfg.x_label)}")
     lines.append(f"_y_label = {repr(cfg.y_label)}")
     lines.append(f"_width_in = {cfg.width_px} / 100.0")
     lines.append(f"_height_in = {cfg.height_px} / 100.0")
     lines.append(f"_img_fmt = {repr((cfg.image_format or 'PNG').upper())}")
+    lines.append(f"_line_width = int({cfg.line_size}) if {cfg.line_size} else 2")
     lines.append("")
     lines.append("# Validate inputs")
     lines.append("if _truth_col is None or _truth_col not in df.columns:")
     lines.append("    raise KeyError(f\"ROC: ground-truth column not found: {_truth_col!r}\")")
     lines.append("if _pos_label is None:")
     lines.append("    raise KeyError(\"ROC: positive class value is not configured in settings.xml\")")
+    lines.append("if not _proba_cols:")
+    lines.append("    raise KeyError('ROC: no probability columns configured in settings.xml.')")
     lines.append("")
-    lines.append("# Resolve probability columns")
+    lines.append("# Keep only configured probability columns that are present in the table")
     lines.append("proba_cols = [c for c in _proba_cols if c in df.columns]")
     lines.append("if not proba_cols:")
-    lines.append("    # Fallback 1: any KNIME-like prob columns ending with known suffixes (_LR, _GBT, …)")
-    lines.append("    _known_suffixes = ('_LR', '_GBT', '_RF', '_DT', '_SVM', '_NB')")
-    lines.append("    proba_cols = [c for c in df.columns if (c.startswith('P(') or c.startswith('P (')) and c.endswith(_known_suffixes)]")
-    lines.append("if not proba_cols:")
-    lines.append("    # Fallback 2: exact target/pos_label prefix regardless of suffix")
-    lines.append("    _prefix = f\"P ({_truth_col}={_pos_label})\"")
-    lines.append("    proba_cols = [c for c in df.columns if c.startswith(_prefix)]")
-    lines.append("if not proba_cols:")
-    lines.append("    raise KeyError('ROC: no probability columns found. Configure them in the node or ensure predictor added P(<class>) columns.')")
+    lines.append("    raise KeyError(f\"ROC: none of the configured probability columns are present: {_proba_cols}\")")
+    lines.append("missing = [c for c in _proba_cols if c not in df.columns]")
+    lines.append("if missing:")
+    lines.append("    print(f\"[ROC] Warning: missing probability columns ignored: {missing}\")")
     lines.append("")
     lines.append("# Prepare y and iterate curves")
     lines.append("y_true = df[_truth_col].astype('object')")
@@ -170,7 +217,7 @@ def _emit_roc_code(cfg: ROCCurveSettings, node_id: str) -> List[str]:
     lines.append("plt.figure(figsize=(_width_in, _height_in), dpi=100)")
     lines.append("for m, grp in points_df.groupby('model', sort=False):")
     lines.append("    auc_val = float(grp['auc'].iloc[0]) if not grp.empty else float('nan')")
-    lines.append("    plt.plot(grp['fpr'].values, grp['tpr'].values, label=f\"{m} (AUC={auc_val:.3f})\")")
+    lines.append("    plt.plot(grp['fpr'].values, grp['tpr'].values, linewidth=_line_width, label=f\"{m} (AUC={auc_val:.3f})\")")
     lines.append("plt.plot([0,1], [0,1], linestyle='--', linewidth=1)")
     lines.append("plt.title(_title)")
     lines.append("plt.xlabel(_x_label)")
@@ -196,6 +243,18 @@ def _emit_roc_code(cfg: ROCCurveSettings, node_id: str) -> List[str]:
     lines.append("print(f'[ROC] Wrote points to: {csv_path}')")
     return lines
 
+
+def generate_imports():
+    return [
+        "import tempfile",
+        "from pathlib import Path",
+        "import pandas as pd",
+        "import numpy as np",
+        "import matplotlib.pyplot as plt",
+        "from sklearn.metrics import roc_curve, auc",
+    ]
+
+
 def generate_py_body(
     node_id: str,
     node_dir: Optional[str],
@@ -215,6 +274,7 @@ def generate_py_body(
     lines.extend(_emit_roc_code(cfg, node_id))
     return lines
 
+
 def generate_ipynb_code(
     node_id: str,
     node_dir: Optional[str],
@@ -223,6 +283,7 @@ def generate_ipynb_code(
 ) -> str:
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
+
 
 def handle(ntype, nid, npath, incoming, outgoing):
     explicit_imports = collect_module_imports(generate_imports)
