@@ -5,16 +5,14 @@
 # K Nearest Neighbor (single-node trainer + scorer)
 #
 # Trains a scikit-learn KNeighborsClassifier from KNIME settings.xml and scores the same input
-# table. Appends a prediction column and, if configured, per-class probability columns.
+# table. Appends:
+#   • "Class [kNN]"                          ← KNIME-compatible prediction column name
+#   • "P (<target>=<class>)" per class       ← when outputClassProbabilities is true
 #
 # - Inputs: one table with a target column (classColumn) plus feature columns.
 # - Feature selection: all numeric/boolean columns except the target. Values are coerced to
 #   numeric (invalid → NaN) and filled with 0.0 to satisfy KNN distance computations.
 # - Hyperparameters: k (neighbors), weightByDistance → weights ('uniform'|'distance').
-# - Outputs: the scored table on this node’s output port, with:
-#     • "Prediction (<target>)"
-#     • "P (<target>=<class>)_KNN" per class when outputClassProbabilities is true and
-#       predict_proba is supported.
 #
 ####################################################################################################
 
@@ -22,11 +20,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from lxml import etree as ET
 from ..xml_utils import XML_PARSER
-from .node_utils import (  # first, first_el, normalize_in_ports, collect_module_imports, split_out_imports
+from .node_utils import (
     first,
     first_el,
     normalize_in_ports,
@@ -107,9 +105,8 @@ def _emit_knn_code(cfg: KNNSettings) -> List[str]:
     lines.append(f"_target = {repr(cfg.target_col) if cfg.target_col else 'None'}")
     lines.append(f"_k = int({cfg.k})")
     w = "distance" if cfg.weight_by_distance else "uniform"
-    lines.append(f"_weights = {w!r}")          # <-- fixed
+    lines.append(f"_weights = {w!r}")
     lines.append(f"_emit_probs = {('True' if cfg.output_probs else 'False')}")
-    lines.append("_prob_suffix = '_KNN'")
     lines.append("")
     lines.append("df = context[data_key]")
     lines.append("out_df = df.copy()")
@@ -134,21 +131,20 @@ def _emit_knn_code(cfg: KNNSettings) -> List[str]:
     lines.append("model = KNeighborsClassifier(n_neighbors=_k, weights=_weights)")
     lines.append("model.fit(X, y)")
     lines.append("pred = model.predict(X)")
-    lines.append("pred_col = f'Prediction ({_target})'")
-    lines.append("out_df[pred_col] = pd.Series(pred, index=out_df.index).astype('object')")
+    # KNIME-compatible prediction column name:
+    lines.append("out_df['Class [kNN]'] = pd.Series(pred, index=out_df.index).astype('object')")
     lines.append("")
     lines.append("# Probabilities (optional)")
     lines.append("if _emit_probs and hasattr(model, 'predict_proba'):")
     lines.append("    proba = model.predict_proba(X)")
-    lines.append("    classes = list(getattr(model, 'classes_', []))")
+    lines.append("    classes = list(getattr(model, 'classes_', []))  # sklearn labels")
     lines.append("    for j, cls in enumerate(classes):")
-    lines.append("        cname = f\"P ({_target}={cls}){_prob_suffix}\"")
+    lines.append("        cname = f\"P ({_target}={cls})\"")
     lines.append("        out_df[cname] = proba[:, j]")
     lines.append("")
     lines.append("# Publish scored table")
     lines.append("context[out_port_key] = out_df")
     return lines
-
 
 
 def generate_py_body(
