@@ -14,8 +14,12 @@
 #       * StratifiedKFold / KFold / LeaveOneOut
 #       * shuffle == randomSampling; random_state honored only with shuffle=True
 #       * NaN class labels treated as "__NA__" for stratification
-#   - Saves loop state in context['__loop__:<node_id>'] and flowvars.
-#
+#   - Robustness:
+#       * If k > n_samples or n_samples < 2, fallback to a single all-train/empty-test fold.
+#       * If stratification impossible (class counts < k, or errors), fallback to KFold.
+#       * If splitting still fails, fallback to a single all-train/empty-test fold.
+#   - Saves loop state in context['__loop__:<node_id>'] and flowvars, and clears any stale
+#     X-Aggregator accumulation for this loop id to avoid double-concatenation on re-runs.
 #   - Emits a Python `for` loop:
 #         for __fold_idx, (__tr, __te) in enumerate(folds):
 #     Inside it sets train/test and per-iteration flowvars.
@@ -131,32 +135,59 @@ def _emit_xpart_code(cfg: XPartSettings, node_id: str, src_var: str) -> list[str
     lines: list[str] = []
     lines.append("# Plan cross-validation folds and open the loop")
     lines.append(f"_leave_one_out = {bool(cfg.leave_one_out)}")
-    lines.append(f"_k = {('None' if cfg.leave_one_out else str(max(2, int(cfg.k))))}")
+    lines.append(f"_k_req = {('None' if cfg.leave_one_out else str(max(2, int(cfg.k))))}")
     lines.append(f"_shuffle = {bool(cfg.random_sampling)}")
     lines.append(f"_seed = {repr(cfg.seed)}")
     lines.append(f"_stratified = {bool(cfg.stratified)}")
     lines.append(f"_class_col = {repr(cfg.class_col) if cfg.class_col else 'None'}")
+    lines.append("")
+    lines.append(f"n_samples = int(len({src_var}))")
     lines.append("")
     lines.append("_y = None")
     lines.append(f"if _stratified and _class_col and _class_col in {src_var}.columns:")
     lines.append(f"    _y = {src_var}[_class_col].astype('object').where(pd.notna({src_var}[_class_col]), '__NA__')")
     lines.append("")
     lines.append("folds = []  # list of (train_idx, test_idx)")
-    lines.append("if _leave_one_out:")
-    lines.append("    splitter = LeaveOneOut()")
-    lines.append(f"    for tr, te in splitter.split({src_var}, _y if _y is not None else None):")
-    lines.append("        folds.append((tr, te))")
-    lines.append("else:")
-    lines.append("    if _stratified and _y is not None:")
-    lines.append("        splitter = StratifiedKFold(n_splits=int(_k), shuffle=_shuffle, random_state=_seed if _shuffle else None)")
-    lines.append(f"        for tr, te in splitter.split({src_var}, _y):")
-    lines.append("            folds.append((tr, te))")
-    lines.append("    else:")
-    lines.append("        splitter = KFold(n_splits=int(_k), shuffle=_shuffle, random_state=_seed if _shuffle else None)")
-    lines.append(f"        for tr, te in splitter.split({src_var}):")
-    lines.append("            folds.append((tr, te))")
     lines.append("")
-    lines.append("if not folds:")
+    # LeaveOneOut branch
+    lines.append("if _leave_one_out:")
+    lines.append("    if n_samples >= 2:")
+    lines.append("        try:")
+    lines.append("            splitter = LeaveOneOut()")
+    lines.append(f"            for tr, te in splitter.split({src_var}, _y if _y is not None else None):")
+    lines.append("                folds.append((tr, te))")
+    lines.append("        except Exception:")
+    lines.append("            folds = []")
+    lines.append("    # else: too few samples → leave folds empty (fallback below)")
+    lines.append("else:")
+    lines.append("    # KFold / StratifiedKFold branch")
+    lines.append("    if n_samples < 2:")
+    lines.append("        folds = []  # fallback below will handle")
+    lines.append("    else:")
+    lines.append("        _k_eff = int(_k_req) if _k_req is not None else 2")
+    lines.append("        _k_eff = max(2, min(_k_eff, n_samples))")
+    lines.append("        _did_strat = False")
+    lines.append("        if _stratified and _y is not None:")
+    lines.append("            try:")
+    lines.append("                # Ensure each class has at least _k_eff members for stratification")
+    lines.append("                vc = pd.Series(_y).value_counts(dropna=False)")
+    lines.append("                if (vc.min() >= _k_eff) and (len(vc) >= 2):")
+    lines.append("                    splitter = StratifiedKFold(n_splits=_k_eff, shuffle=_shuffle, random_state=_seed if _shuffle else None)")
+    lines.append(f"                    for tr, te in splitter.split({src_var}, _y):")
+    lines.append("                        folds.append((tr, te))")
+    lines.append("                    _did_strat = True")
+    lines.append("            except Exception:")
+    lines.append("                folds = []")
+    lines.append("        if not _did_strat:")
+    lines.append("            try:")
+    lines.append("                splitter = KFold(n_splits=_k_eff, shuffle=_shuffle, random_state=_seed if _shuffle else None)")
+    lines.append(f"                for tr, te in splitter.split({src_var}):")
+    lines.append("                    folds.append((tr, te))")
+    lines.append("            except Exception:")
+    lines.append("                folds = []")
+    lines.append("")
+    lines.append("# Fallback: if splitting produced no folds, emit a single all-train / empty-test fold")
+    lines.append(f"if not folds:")
     lines.append(f"    folds = [(np.arange(len({src_var})), np.array([], dtype=int))]")
     lines.append("")
     lines.append("loop_state = {")
@@ -171,6 +202,9 @@ def _emit_xpart_code(cfg: XPartSettings, node_id: str, src_var: str) -> list[str
     lines.append("}")
     lines.append(f"context['__loop__:{node_id}'] = loop_state")
     lines.append(f"context['__flowvar__:{node_id}:maxIterations'] = len(folds)")
+    # ------- IMPORTANT: clear any stale X-Aggregator accumulation for this loop id -------
+    lines.append(f"context.pop('__xagg__:{node_id}:accum', None)")
+    lines.append(f"context.pop('__xagg__:{node_id}:is_complete', None)")
     lines.append("")
     lines.append("for __fold_idx, (__tr, __te) in enumerate(folds):")
     lines.append(f"    context['__flowvar__:{node_id}:currentIteration'] = int(__fold_idx)")
