@@ -2,30 +2,43 @@
 
 ####################################################################################################
 #
-# X-Partitioner
+# X-Validation Partitioner (Loop Start)
 #
-# Module-level contract:
-#   - LOOP = "start"  (used by emitter.py to recognize loop start nodes)
-# Generated code behavior (no LOOP variable emitted into the script):
-#   - Reads input df from context and freezes it in __xpart_src_<node_id>.
-#   - Builds cross-validation folds from settings.xml:
-#       * validations (k), leaveOneOut, stratifiedSampling, randomSampling,
-#         classColumn, useRandomSeed, randomSeed
-#       * StratifiedKFold / KFold / LeaveOneOut
-#       * shuffle == randomSampling; random_state honored only with shuffle=True
-#       * NaN class labels treated as "__NA__" for stratification
-#   - Robustness:
-#       * If k > n_samples or n_samples < 2, fallback to a single all-train/empty-test fold.
-#       * If stratification impossible (class counts < k, or errors), fallback to KFold.
-#       * If splitting still fails, fallback to a single all-train/empty-test fold.
-#   - Saves loop state in context['__loop__:<node_id>'] and flowvars, and clears any stale
-#     X-Aggregator accumulation for this loop id to avoid double-concatenation on re-runs.
-#   - Emits a Python `for` loop:
-#         for __fold_idx, (__tr, __te) in enumerate(folds):
-#     Inside it sets train/test and per-iteration flowvars.
-#   - The emitter will indent subsequent nodes until the X-Aggregator (LOOP="finish").
+# Maps KNIME’s “X-Partitioner” node to Python. Plans cross-validation folds and opens a loop that
+# emits a pair of tables (train/test) per fold to this node’s output ports.
+# What it does
+# • Freezes the incoming DataFrame for the entire loop to avoid mutation across iterations.
+# • Builds folds using:
+#     – LeaveOneOut when leave_one_out=True and n_samples ≥ 2.
+#     – StratifiedKFold when stratified=True, class_col is present, and each class has ≥ k samples.
+#     – Otherwise falls back to plain KFold.
+# • Supports random (shuffled) sampling when random_sampling=True; the seed is honored only in that case.
+# • If no valid split is possible, falls back to a single fold: all rows in train, empty test.
+# Settings mapping (from settings.xml)
+# • k                ← entry key="validations" (minimum enforced: 2 when not leave-one-out)
+# • random_sampling  ← entry key="randomSampling"  → splitter.shuffle
+# • leave_one_out    ← entry key="leaveOneOut"
+# • stratified       ← entry key="stratifiedSampling"
+# • class_col        ← entry key="classColumn" (used for stratification; NaNs mapped to “__NA__”)
+# • use_seed/seed    ← entry keys "useRandomSeed"/"randomSeed" (used only when shuffle=True)
+# Loop mechanics & flow variables
+# • Persists loop state under context['__loop__:{node_id}'] with fields: k, current, folds, etc.
+# • Publishes flow variables compatible with KNIME semantics:
+#     – '__flowvar__:{node_id}:maxIterations'  (total number of folds)
+#     – '__flowvar__:{node_id}:currentIteration' (0-based index per iteration)
+# • Clears any stale X-Aggregator buffers for this loop id:
+#     – '__xagg__:{node_id}:accum', '__xagg__:{node_id}:is_complete'
+# Ports
+# • Output 1 → train_df for the current fold
+# • Output 2 → test_df  for the current fold
+#
+# Dependencies & helpers
+# • Uses scikit-learn splitters: KFold, StratifiedKFold, LeaveOneOut.
+# • Relies on lxml for settings parsing and project helpers (first, first_el, normalize_in_ports,
+#   collect_module_imports, split_out_imports, iter_entries).
 #
 ####################################################################################################
+
 
 from __future__ import annotations
 

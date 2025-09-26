@@ -2,9 +2,10 @@
 
 ####################################################################################################
 #
-# Concatenate (minimal)
+# Concatenate
 #
 # Row-binds multiple input tables in port order and publishes the result to port 1.
+#
 # - No suffixing or renaming of columns.
 # - No column intersection logic; pandas default union alignment is used.
 # - Row index is reset (0..N-1) via ignore_index=True.
