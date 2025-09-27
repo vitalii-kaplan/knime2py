@@ -2,17 +2,26 @@
 
 ####################################################################################################
 #
-# K Nearest Neighbor (single-node trainer + scorer)
+# K Nearest Neighbor (trainer + scorer)
 #
-# Trains a scikit-learn KNeighborsClassifier from KNIME settings.xml and scores the same input
-# table. Appends:
+# Behavior:
+#   • If TWO inputs are connected:
+#       Port 1 → TRAIN table (used to fit)
+#       Port 2 → TEST  table (scored output)
+#     (Mapping is done via the incoming edge's target_port; order doesn't matter.)
+#   • If ONE input is connected:
+#       It is used as both train and test (fit + in-sample score).
+#
+# Output columns:
 #   • "Class [kNN]"                          ← KNIME-compatible prediction column name
 #   • "P (<target>=<class>)" per class       ← when outputClassProbabilities is true
 #
-# - Inputs: one table with a target column (classColumn) plus feature columns.
-# - Feature selection: all numeric/boolean columns except the target. Values are coerced to
-#   numeric (invalid → NaN) and filled with 0.0 to satisfy KNN distance computations.
-# - Hyperparameters: k (neighbors), weightByDistance → weights ('uniform'|'distance').
+# Feature selection:
+#   • From the TRAIN table: all numeric/boolean columns EXCEPT the target and any prediction/prob columns.
+#   • Test is reindexed to the same feature order; missing columns are created as 0.0.
+#
+# Hyperparameters:
+#   • k (neighbors), weightByDistance → weights ('uniform'|'distance').
 #
 ####################################################################################################
 
@@ -20,7 +29,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from lxml import etree as ET
 from ..xml_utils import XML_PARSER
@@ -91,6 +100,7 @@ def parse_knn_settings(node_dir: Optional[Path]) -> KNNSettings:
 def generate_imports():
     return [
         "import pandas as pd",
+        "import numpy as np",
         "from sklearn.neighbors import KNeighborsClassifier",
     ]
 
@@ -108,57 +118,107 @@ def _emit_knn_code(cfg: KNNSettings) -> List[str]:
     lines.append(f"_weights = {w!r}")
     lines.append(f"_emit_probs = {('True' if cfg.output_probs else 'False')}")
     lines.append("")
-    lines.append("df = context[data_key]")
-    lines.append("out_df = df.copy()")
+    lines.append("# Resolve train/test tables")
+    lines.append("train_df = context[train_key]")
+    lines.append("test_df  = context[test_key] if test_key is not None else context[train_key]")
+    lines.append("out_df = test_df.copy()")
     lines.append("")
-    lines.append("# Validate target presence")
-    lines.append("if _target is None or _target not in out_df.columns:")
-    lines.append("    raise KeyError(f'KNN: target column not found: {_target!r}')")
+    lines.append("# Validate target presence in TRAIN")
+    lines.append("if _target is None or _target not in train_df.columns:")
+    lines.append("    raise KeyError(f'KNN: target column not found in train table: {_target!r}')")
     lines.append("")
-    lines.append("# Feature selection: use all numeric/boolean columns except the target")
-    lines.append("cand = [c for c in out_df.columns if c != _target]")
-    lines.append("num_like = out_df[cand].select_dtypes(include=['number','bool','boolean','Int64','Float64']).columns.tolist()")
+    lines.append("# ---- Feature selection from TRAIN ----")
+    lines.append("cand = [c for c in train_df.columns if c != _target]")
+    # Exclude obvious prediction/probability artifacts if present upstream
+    lines.append("cand = [c for c in cand if c != 'Class [kNN]' and not str(c).startswith('Prediction (') and not str(c).startswith('P (')]")
+    lines.append("num_like = train_df[cand].select_dtypes(include=['number','bool','boolean','Int64','Float64']).columns.tolist()")
     lines.append("if not num_like:")
-    lines.append("    # More permissive fallback: coerce everything to numeric and keep non-all-NaN")
-    lines.append("    X_try = out_df[cand].apply(pd.to_numeric, errors='coerce')")
+    lines.append("    X_try = train_df[cand].apply(pd.to_numeric, errors='coerce')")
     lines.append("    num_like = [c for c in cand if not X_try[c].isna().all()]")
     lines.append("    if not num_like:")
-    lines.append("        raise ValueError('KNN: no usable (numeric) feature columns found')")
-    lines.append("X = out_df[num_like].apply(pd.to_numeric, errors='coerce').fillna(0.0).astype(float)")
-    lines.append("y = out_df[_target]")
+    lines.append("        raise ValueError('KNN: no usable (numeric) feature columns found in train table')")
+    lines.append("features = list(num_like)")
     lines.append("")
-    lines.append("# Fit & score")
+    lines.append("# ---- Build TRAIN matrices ----")
+    lines.append("X_tr = train_df[features].apply(pd.to_numeric, errors='coerce').fillna(0.0).astype(float)")
+    lines.append("y_tr = train_df[_target].astype('object')")
+    lines.append("")
+    lines.append("# ---- Align TEST to TRAIN feature space ----")
+    lines.append("for c in features:")
+    lines.append("    if c not in test_df.columns:")
+    lines.append("        # create missing test columns as 0.0 (neutral for distance)")
+    lines.append("        out_df[c] = 0.0")
+    lines.append("X_te = out_df.reindex(columns=features).apply(pd.to_numeric, errors='coerce').fillna(0.0).astype(float)")
+    lines.append("")
+    lines.append("# ---- Fit & score ----")
     lines.append("model = KNeighborsClassifier(n_neighbors=_k, weights=_weights)")
-    lines.append("model.fit(X, y)")
-    lines.append("pred = model.predict(X)")
-    # KNIME-compatible prediction column name:
+    lines.append("model.fit(X_tr, y_tr)")
+    lines.append("pred = model.predict(X_te)")
     lines.append("out_df['Class [kNN]'] = pd.Series(pred, index=out_df.index).astype('object')")
     lines.append("")
     lines.append("# Probabilities (optional)")
     lines.append("if _emit_probs and hasattr(model, 'predict_proba'):")
-    lines.append("    proba = model.predict_proba(X)")
-    lines.append("    classes = list(getattr(model, 'classes_', []))  # sklearn labels")
-    lines.append("    for j, cls in enumerate(classes):")
-    lines.append("        cname = f\"P ({_target}={cls})\"")
-    lines.append("        out_df[cname] = proba[:, j]")
+    lines.append("    try:")
+    lines.append("        proba = model.predict_proba(X_te)")
+    lines.append("        classes = list(getattr(model, 'classes_', []))  # sklearn class labels")
+    lines.append("        for j, cls in enumerate(classes):")
+    lines.append("            cname = f\"P ({_target}={cls})\"")
+    lines.append("            out_df[cname] = proba[:, j]")
+    lines.append("    except Exception as _e:")
+    lines.append("        # Soft-fail on probability emission; keep predictions")
+    lines.append("        pass")
     lines.append("")
-    lines.append("# Publish scored table")
+    lines.append("# Publish scored table (TEST rows with predictions)")
     lines.append("context[out_port_key] = out_df")
     return lines
+
+
+def _order_incoming_by_target_port(in_ports) -> List[Tuple[int, str, str]]:
+    """
+    Returns a list of (target_port_index, src_id, src_port) sorted by KNIME target port number
+    when available; falls back to input order otherwise.
+    """
+    ordered: List[Tuple[int, str, str]] = []
+    for src_id, e in (in_ports or []):
+        try:
+            t_raw = getattr(e, "target_port", None)
+            t_idx = int(t_raw) if t_raw is not None and str(t_raw).strip().isdigit() else 999999
+        except Exception:
+            t_idx = 999999
+        src_port = str(getattr(e, "source_port", "") or "1")
+        ordered.append((t_idx, str(src_id), src_port))
+    if not ordered:
+        # fallback to simple normalization (no target port info)
+        pairs = normalize_in_ports(in_ports)
+        ordered = [(i + 1, sid, sp) for i, (sid, sp) in enumerate(pairs)]
+    ordered.sort(key=lambda t: (t[0], t[1], t[2]))
+    return ordered
 
 
 def generate_py_body(
     node_id: str,
     node_dir: Optional[str],
-    in_ports: List[object],        # Port 1 = data table
+    in_ports: List[object],        # may have 1 or 2 table inputs
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_knn_settings(ndir)
 
-    # Resolve the single input
-    pairs = normalize_in_ports(in_ports)
-    data_src, data_in = pairs[0] if pairs else ("UNKNOWN", "1")
+    # Determine train/test by KNIME target ports (1=train, 2=test). Order-insensitive.
+    ordered = _order_incoming_by_target_port(in_ports)
+
+    if len(ordered) >= 2:
+        # Prefer explicit port mapping when possible
+        train_tuple = next((t for t in ordered if t[0] == 1), ordered[0])
+        test_tuple  = next((t for t in ordered if t[0] == 2), ordered[1])
+    elif len(ordered) == 1:
+        train_tuple = test_tuple = ordered[0]  # fit & score on the same table
+    else:
+        # No inputs wired — defensive default keys
+        train_tuple = test_tuple = (1, "UNKNOWN", "1")
+
+    _, tr_src, tr_port = train_tuple
+    _, te_src, te_port = test_tuple
 
     # Resolve output port id(s); default to "1"
     ports = out_ports or ["1"]
@@ -166,7 +226,9 @@ def generate_py_body(
 
     lines: List[str] = []
     lines.append(f"# {HUB_URL}")
-    lines.append(f"data_key = '{data_src}:{data_in}'")
+    lines.append(f"train_key = '{tr_src}:{tr_port}'")
+    # If test is same as train, we still set test_key identically; logic above handles it.
+    lines.append(f"test_key = '{te_src}:{te_port}'")
     lines.append(f"out_port_key = '{node_id}:{out_port}'")
     lines.extend(_emit_knn_code(cfg))
     return lines
@@ -185,19 +247,18 @@ def generate_ipynb_code(
 def handle(ntype, nid, npath, incoming, outgoing):
     """
     Returns (imports, body_lines) if this module can handle the node; None otherwise.
-
     Port mapping:
-      - Input 1 → data table
-      - Output 1 → scored table (predictions and optional probabilities)
+      - Input 1 → TRAIN table
+      - Input 2 → TEST  table (optional)
+      - Output 1 → scored TEST table (predictions and optional probabilities)
     """
     explicit_imports = collect_module_imports(generate_imports)
 
-    # Normalize inputs to (src_id, src_port)
-    norm_in = [(str(src), str(getattr(e, "source_port", "") or "1")) for src, e in (incoming or [])]
-    # Gather output ports (usually just "1")
+    # Preserve incoming edge objects to read target_port reliably
+    in_ports = [(str(src), e) for src, e in (incoming or [])]
     out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in (outgoing or [])] or ["1"]
 
-    node_lines = generate_py_body(nid, npath, norm_in, out_ports)
+    node_lines = generate_py_body(nid, npath, in_ports, out_ports)
     found_imports, body = split_out_imports(node_lines)
     imports = sorted(set(explicit_imports) | set(found_imports))
     return imports, body
