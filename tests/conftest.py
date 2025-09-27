@@ -154,29 +154,3 @@ def node_missing_value_dir(node_dir: Callable[[str], Path]) -> Path:
 @pytest.fixture(scope="session")
 def node_normalizer_dir(node_dir: Callable[[str], Path]) -> Path:
     return node_dir("Node_normalizer")
-
-
-# Thin wrappers to preserve old fixture names (can be removed once tests migrate)
-@pytest.fixture()
-def generate_lr_workbook(generate_workbook, wf_knime_pp_2022_lr: Path) -> Callable[[Path], Path]:
-    def _gen(_wf: Path) -> Path:
-        return generate_workbook(_wf, expected="KNIME_PP_2022_LR__g01_workbook.py")
-    return _gen
-
-@pytest.fixture()
-def generate_dt_workbook(generate_workbook, wf_knime_pp_2022_dt: Path) -> Callable[[Path], Path]:
-    def _gen(_wf: Path) -> Path:
-        return generate_workbook(_wf, expected="KNIME_PP_2022_DT__g01_workbook.py")
-    return _gen
-
-@pytest.fixture()
-def generate_ensemble_workbook(generate_workbook, wf_knime_pp_2022_Ensemble: Path) -> Callable[[Path], Path]:
-    def _gen(_wf: Path) -> Path:
-        return generate_workbook(_wf, expected="KNIME_PP_2022_Ensemble__g01_workbook.py")
-    return _gen
-
-@pytest.fixture()
-def generate_10fcv_workbook(generate_workbook) -> Callable[[Path], Path]:
-    def _gen(_wf: Path) -> Path:
-        return generate_workbook(_wf, expected="KNIME_CP_10FCV_GBT__g01_workbook.py")
-    return _gen
