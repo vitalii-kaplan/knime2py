@@ -6,18 +6,29 @@ import sys
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Callable, Iterator, Optional
 
 import pytest
 
-# --------------------------------------------------------------------
-# Resolve repo root and make package importable in tests
-# --------------------------------------------------------------------
+# --------------------------------------------------------------------------------------
+# Repo paths
+# --------------------------------------------------------------------------------------
 REPO_ROOT = Path(__file__).resolve().parents[1]
+# Prefer: put `pythonpath = src` into pytest.ini and delete this block.
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
+
+
+# --------------------------------------------------------------------------------------
+# Small helpers
+# --------------------------------------------------------------------------------------
+def _require(p: Path, msg: str) -> Path:
+    """Assert a path exists with a concise error."""
+    if not p.exists():
+        pytest.fail(f"{msg}: {p}")
+    return p
 
 
 def _workflow_path(project_dirname: str) -> Path:
@@ -25,334 +36,147 @@ def _workflow_path(project_dirname: str) -> Path:
     return DATA_DIR / project_dirname / "workflow.knime"
 
 
-# --------------------------------------------------------------------
+# --------------------------------------------------------------------------------------
 # Common helpers / fixtures
-# --------------------------------------------------------------------
+# --------------------------------------------------------------------------------------
+@pytest.fixture(scope="session")
+def repo_root() -> Path:
+    return REPO_ROOT
+
+
+@pytest.fixture(scope="session")
+def data_dir() -> Path:
+    return DATA_DIR
+
+
 @pytest.fixture(scope="session")
 def python_exe() -> str:
     """Path to the current Python interpreter."""
     return sys.executable
 
-
-@pytest.fixture(scope="session")
-def k2p_script() -> Path:
-    """Path to k2p.py at the repo root."""
-    script = REPO_ROOT / "k2p.py"
-    if not script.exists():
-        pytest.fail(f"Cannot find k2p.py at {script}")
-    return script
-
-
 @pytest.fixture()
-def clean_output_dir() -> Iterator[Path]:
+def output_dir(data_dir: Path) -> Iterator[Path]:
     """
-    Provide a clean output directory at tests/data/!output (as requested).
-    The directory is deleted before the test and left on disk after (useful for artifacts).
+    Provide an empty output directory at tests/data/!output.
+    Directory is cleaned before each test and left on disk after (useful for artifacts).
     """
-    out_dir = DATA_DIR / "!output"
-    # nuke any prior runs
+    out_dir = data_dir / "!output"
     if out_dir.exists():
         shutil.rmtree(out_dir, ignore_errors=True)
     out_dir.mkdir(parents=True, exist_ok=True)
     yield out_dir
-    # Do not delete after test to allow inspection; uncomment to clean:
+    # Keep artifacts; uncomment to clean post-test:
     # shutil.rmtree(out_dir, ignore_errors=True)
 
-
+# --------------------------------------------------------------------------------------
+# Generic lookup fixtures (reduce duplication)
+# --------------------------------------------------------------------------------------
 @pytest.fixture(scope="session")
-def run_cli():
+def workflow() -> Callable[[str], Path]:
     """
-    Helper to run the CLI: python k2p.py <args...>
-    Returns a function that executes the command and returns CompletedProcess.
+    Resolve a workflow by KNIME project directory name.
+    Example: workflow('KNIME_single_csv')
     """
-    def _run(
-        script: Path,
-        args: list[str],
-        cwd: Optional[Path] = None,
-        check: bool = True,
-        env: Optional[dict] = None,
-    ) -> subprocess.CompletedProcess:
-        cmd = [sys.executable, str(script), *args]
-        proc = subprocess.run(
-            cmd,
-            cwd=str(cwd) if cwd else None,
-            env=env or os.environ.copy(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        if check and proc.returncode != 0:
-            raise AssertionError(
-                f"CLI failed ({proc.returncode}).\n"
-                f"CMD: {' '.join(cmd)}\n"
-                f"STDOUT:\n{proc.stdout}\n"
-                f"STDERR:\n{proc.stderr}"
-            )
-        return proc
-
-    return _run
-
-
-# --------------------------------------------------------------------
-# Workflow fixtures (existing + new)
-# --------------------------------------------------------------------
-@pytest.fixture(scope="session")
-def wf_single_csv_path() -> Path:
-    wf = _workflow_path("KNIME_single_csv")
-    if not wf.exists():
-        pytest.fail(f"Missing sample workflow: {wf}")
-    return wf
+    def _wf(name: str) -> Path:
+        return _require(_workflow_path(name), "Missing sample workflow")
+    return _wf
 
 
 @pytest.fixture(scope="session")
-def wf_io_csv_path() -> Path:
-    wf = _workflow_path("KNIME_io_csv")
-    if not wf.exists():
-        pytest.fail(f"Missing sample workflow: {wf}")
-    return wf
+def node_dir(data_dir: Path) -> Callable[[str], Path]:
+    """
+    Resolve a node directory by short name.
+    Example: node_dir('Node_csv_reader') → tests/data/Node_csv_reader
+    """
+    def _nd(name: str) -> Path:
+        ndir = data_dir / name
+        _require(ndir / "settings.xml", f"Missing node settings for {name}")
+        return ndir
+    return _nd
 
+
+# --------------------------------------------------------------------------------------
+# Back-compat named workflow fixtures
+# --------------------------------------------------------------------------------------
+@pytest.fixture(scope="session")
+def wf_single_csv_path(workflow: Callable[[str], Path]) -> Path:
+    return workflow("KNIME_single_csv")
 
 @pytest.fixture(scope="session")
-def wf_two_graphs_path() -> Path:
-    wf = _workflow_path("KNIME_two_graphs")
-    if not wf.exists():
-        pytest.fail(f"Test data missing: {wf}")
-    return wf
-
+def wf_io_csv_path(workflow: Callable[[str], Path]) -> Path:
+    return workflow("KNIME_io_csv")
 
 @pytest.fixture(scope="session")
-def wf_traverse_path() -> Path:
-    wf = _workflow_path("KNIME_traverse_order")
-    if not wf.exists():
-        pytest.fail(f"Missing sample workflow: {wf}")
-    return wf
-
-
-# New: the functional test workflow with local paths
-@pytest.fixture(scope="session")
-def wf_knime_pp_2022_lr() -> Path:
-    wf = _workflow_path("KNIME_PP_2022_LR")
-    if not wf.exists():
-        pytest.fail(f"Missing functional test workflow: {wf}")
-    return wf
+def wf_two_graphs_path(workflow: Callable[[str], Path]) -> Path:
+    return workflow("KNIME_two_graphs")
 
 @pytest.fixture(scope="session")
-def wf_knime_pp_2022_dt() -> Path:
-    wf = _workflow_path("KNIME_PP_2022_DT")
-    if not wf.exists():
-        pytest.fail(f"Missing functional test workflow: {wf}")
-    return wf
+def wf_traverse_path(workflow: Callable[[str], Path]) -> Path:
+    return workflow("KNIME_traverse_order")
+
+# Functional flows with local paths
+@pytest.fixture(scope="session")
+def wf_knime_pp_2022_lr(workflow: Callable[[str], Path]) -> Path:
+    return workflow("KNIME_PP_2022_LR")
 
 @pytest.fixture(scope="session")
-def wf_knime_pp_2022_Ensemble() -> Path:
-    wf = _workflow_path("KNIME_PP_2022_Ensemble")
-    if not wf.exists():
-        pytest.fail(f"Missing functional test workflow: {wf}")
-    return wf
+def wf_knime_pp_2022_dt(workflow: Callable[[str], Path]) -> Path:
+    return workflow("KNIME_PP_2022_DT")
 
-# --------------------------------------------------------------------
-# Node-level test data fixtures (deduplicated)
-# --------------------------------------------------------------------
 @pytest.fixture(scope="session")
-def node_csv_reader_dir() -> Path:
-    ndir = DATA_DIR / "Node_csv_reader"
-    settings = ndir / "settings.xml"
-    if not settings.exists():
-        pytest.fail(f"Missing CSV Reader node settings: {settings}")
-    return ndir
+def wf_knime_pp_2022_Ensemble(workflow: Callable[[str], Path]) -> Path:
+    return workflow("KNIME_PP_2022_Ensemble")
 
+# --------------------------------------------------------------------------------------
+# Back-compat named node fixtures
+# --------------------------------------------------------------------------------------
+@pytest.fixture(scope="session")
+def node_csv_reader_dir(node_dir: Callable[[str], Path]) -> Path:
+    return node_dir("Node_csv_reader")
 
-# Back-compat alias (if older tests use this name)
 @pytest.fixture(scope="session")
 def csv_reader_node_dir(node_csv_reader_dir: Path) -> Path:
+    # Alias kept for older tests
     return node_csv_reader_dir
 
+@pytest.fixture(scope="session")
+def node_csv_writer_dir(node_dir: Callable[[str], Path]) -> Path:
+    return node_dir("Node_csv_writer")
 
 @pytest.fixture(scope="session")
-def node_csv_writer_dir() -> Path:
-    p = DATA_DIR / "Node_csv_writer"
-    settings = p / "settings.xml"
-    if not settings.exists():
-        pytest.fail(f"Missing writer node settings at {settings}")
-    return p
-
+def node_column_filter_dir(node_dir: Callable[[str], Path]) -> Path:
+    return node_dir("Node_column_filter")
 
 @pytest.fixture(scope="session")
-def node_column_filter_dir() -> Path:
-    p = DATA_DIR / "Node_column_filter"
-    settings = p / "settings.xml"
-    if not settings.exists():
-        pytest.fail(f"Missing Column Filter node settings at {settings}")
-    return p
-
+def node_missing_value_dir(node_dir: Callable[[str], Path]) -> Path:
+    return node_dir("Node_missing_value")
 
 @pytest.fixture(scope="session")
-def node_missing_value_dir() -> Path:
-    p = DATA_DIR / "Node_missing_value"
-    settings = p / "settings.xml"
-    if not settings.exists():
-        pytest.fail(f"Missing Missing Value node settings at {settings}")
-    return p
+def node_normalizer_dir(node_dir: Callable[[str], Path]) -> Path:
+    return node_dir("Node_normalizer")
 
 
-@pytest.fixture(scope="session")
-def node_normalizer_dir() -> Path:
-    p = DATA_DIR / "Node_normalizer"
-    settings = p / "settings.xml"
-    if not settings.exists():
-        pytest.fail(f"Missing Normalizer node settings: {settings}")
-    return p
-
-
-# --------------------------------------------------------------------
-# Helpers for functional workflow tests
-# --------------------------------------------------------------------
+# Thin wrappers to preserve old fixture names (can be removed once tests migrate)
 @pytest.fixture()
-def generate_lr_workbook(k2p_script: Path, run_cli, clean_output_dir: Path):
-    """
-    Returns a function that runs k2p on the LR workflow and creates the Python workbook
-    with graphs disabled, writing to tests/data/!output.
-    """
-    def _generate(workflow_knime: Path) -> Path:
-        args = [
-            str(workflow_knime.parent),   # CLI accepts project dir OR workflow.knime path
-            "--out", str(clean_output_dir),
-            "--graph", "off",
-            "--workbook", "py",
-        ]
-        run_cli(k2p_script, args, cwd=REPO_ROOT, check=True)
-
-        # Locate the single generated workbook *.py
-        candidates = sorted(clean_output_dir.glob("*_workbook.py"))
-        if not candidates:
-            raise AssertionError(f"No *_workbook.py generated in {clean_output_dir}")
-        if len(candidates) > 1:
-            # If multiple components, pick the expected LR one or just take the first deterministically
-            expected = clean_output_dir / "KNIME_PP_2022_LR__g01_workbook.py"
-            return expected if expected.exists() else candidates[0]
-        return candidates[0]
-
-    return _generate
+def generate_lr_workbook(generate_workbook, wf_knime_pp_2022_lr: Path) -> Callable[[Path], Path]:
+    def _gen(_wf: Path) -> Path:
+        return generate_workbook(_wf, expected="KNIME_PP_2022_LR__g01_workbook.py")
+    return _gen
 
 @pytest.fixture()
-def generate_dt_workbook(k2p_script: Path, run_cli, clean_output_dir: Path):
-    """
-    Returns a function that runs k2p on the DT workflow and creates the Python workbook
-    with graphs disabled, writing to tests/data/!output.
-    """
-    def _generate(workflow_knime: Path) -> Path:
-        args = [
-            str(workflow_knime.parent),   # CLI accepts project dir OR workflow.knime path
-            "--out", str(clean_output_dir),
-            "--graph", "off",
-            "--workbook", "py",
-        ]
-        run_cli(k2p_script, args, cwd=REPO_ROOT, check=True)
-
-        # Locate the single generated workbook *.py
-        candidates = sorted(clean_output_dir.glob("*_workbook.py"))
-        if not candidates:
-            raise AssertionError(f"No *_workbook.py generated in {clean_output_dir}")
-        if len(candidates) > 1:
-            # If multiple components, pick the expected DT one or just take the first deterministically
-            expected = clean_output_dir / "KNIME_PP_2022_DT__g01_workbook.py"
-            return expected if expected.exists() else candidates[0]
-        return candidates[0]
-
-    return _generate
+def generate_dt_workbook(generate_workbook, wf_knime_pp_2022_dt: Path) -> Callable[[Path], Path]:
+    def _gen(_wf: Path) -> Path:
+        return generate_workbook(_wf, expected="KNIME_PP_2022_DT__g01_workbook.py")
+    return _gen
 
 @pytest.fixture()
-def generate_ensemble_workbook(k2p_script: Path, run_cli, clean_output_dir: Path):
-    """
-    Returns a function that runs k2p on the Ensemble workflow and creates the Python workbook
-    with graphs disabled, writing to tests/data/!output.
-    """
-    def _generate(workflow_knime: Path) -> Path:
-        args = [
-            str(workflow_knime.parent),   # CLI accepts project dir OR workflow.knime path
-            "--out", str(clean_output_dir),
-            "--graph", "off",
-            "--workbook", "py",
-        ]
-        run_cli(k2p_script, args, cwd=REPO_ROOT, check=True)
-
-        # Locate the single generated workbook *.py
-        candidates = sorted(clean_output_dir.glob("*_workbook.py"))
-        if not candidates:
-            raise AssertionError(f"No *_workbook.py generated in {clean_output_dir}")
-        if len(candidates) > 1:
-            # If multiple components, pick the expected Ensemble one or just take the first deterministically
-            expected = clean_output_dir / "KNIME_PP_2022_Ensemble__g01_workbook.py"
-            return expected if expected.exists() else candidates[0]
-        return candidates[0]
-
-    return _generate
+def generate_ensemble_workbook(generate_workbook, wf_knime_pp_2022_Ensemble: Path) -> Callable[[Path], Path]:
+    def _gen(_wf: Path) -> Path:
+        return generate_workbook(_wf, expected="KNIME_PP_2022_Ensemble__g01_workbook.py")
+    return _gen
 
 @pytest.fixture()
-def generate_10fcv_workbook(k2p_script: Path, run_cli, clean_output_dir: Path):
-    """
-    Returns a function that runs k2p on the Ensemble workflow and creates the Python workbook
-    with graphs disabled, writing to tests/data/!output.
-    """
-    def _generate(workflow_knime: Path) -> Path:
-        args = [
-            str(workflow_knime.parent),   # CLI accepts project dir OR workflow.knime path
-            "--out", str(clean_output_dir),
-            "--graph", "off",
-            "--workbook", "py",
-        ]
-        run_cli(k2p_script, args, cwd=REPO_ROOT, check=True)
-
-        # Locate the single generated workbook *.py
-        candidates = sorted(clean_output_dir.glob("*_workbook.py"))
-        if not candidates:
-            raise AssertionError(f"No *_workbook.py generated in {clean_output_dir}")
-        if len(candidates) > 1:
-            # If multiple components, pick the expected Ensemble one or just take the first deterministically
-            expected = clean_output_dir / "KNIME_CP_10FCV_GBT__g01_workbook.py"
-            return expected if expected.exists() else candidates[0]
-        return candidates[0]
-
-    return _generate
-
-
-@pytest.fixture()
-def run_python_script(python_exe: str):
-    """Execute a Python script and fail test on non-zero exit."""
-    def _run(script_path: Path, cwd: Optional[Path] = None):
-        proc = subprocess.run(
-            [python_exe, str(script_path)],
-            cwd=str(cwd) if cwd else None,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        if proc.returncode != 0:
-            raise AssertionError(
-                f"Script failed ({proc.returncode}): {script_path}\n"
-                f"STDOUT:\n{proc.stdout}\n"
-                f"STDERR:\n{proc.stderr}"
-            )
-        return proc
-    return _run
-
-@pytest.fixture()
-def empty_output_dir() -> Path:
-    """
-    Ensure tests/data/!output exists and is empty BEFORE the test runs.
-    Use this fixture in functional tests that write to that directory.
-    """
-    outdir = DATA_DIR / "!output"
-    outdir.mkdir(parents=True, exist_ok=True)
-
-    # Remove everything inside the directory (files, symlinks, subdirs)
-    for p in outdir.iterdir():
-        try:
-            if p.is_file() or p.is_symlink():
-                p.unlink()
-            elif p.is_dir():
-                shutil.rmtree(p)
-        except Exception as e:
-            pytest.fail(f"Failed to clean output path {p}: {e}")
-
-    return outdir
+def generate_10fcv_workbook(generate_workbook) -> Callable[[Path], Path]:
+    def _gen(_wf: Path) -> Path:
+        return generate_workbook(_wf, expected="KNIME_CP_10FCV_GBT__g01_workbook.py")
+    return _gen
