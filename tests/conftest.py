@@ -96,61 +96,9 @@ def node_dir(data_dir: Path) -> Callable[[str], Path]:
 
 
 # --------------------------------------------------------------------------------------
-# Back-compat named workflow fixtures
-# --------------------------------------------------------------------------------------
-@pytest.fixture(scope="session")
-def wf_single_csv_path(workflow: Callable[[str], Path]) -> Path:
-    return workflow("KNIME_single_csv")
-
-@pytest.fixture(scope="session")
-def wf_io_csv_path(workflow: Callable[[str], Path]) -> Path:
-    return workflow("KNIME_io_csv")
-
-@pytest.fixture(scope="session")
-def wf_two_graphs_path(workflow: Callable[[str], Path]) -> Path:
-    return workflow("KNIME_two_graphs")
-
-@pytest.fixture(scope="session")
-def wf_traverse_path(workflow: Callable[[str], Path]) -> Path:
-    return workflow("KNIME_traverse_order")
-
-# Functional flows with local paths
-@pytest.fixture(scope="session")
-def wf_knime_pp_2022_lr(workflow: Callable[[str], Path]) -> Path:
-    return workflow("KNIME_PP_2022_LR")
-
-@pytest.fixture(scope="session")
-def wf_knime_pp_2022_dt(workflow: Callable[[str], Path]) -> Path:
-    return workflow("KNIME_PP_2022_DT")
-
-@pytest.fixture(scope="session")
-def wf_knime_pp_2022_Ensemble(workflow: Callable[[str], Path]) -> Path:
-    return workflow("KNIME_PP_2022_Ensemble")
-
-# --------------------------------------------------------------------------------------
-# Back-compat named node fixtures
+# Common node fixtures
 # --------------------------------------------------------------------------------------
 @pytest.fixture(scope="session")
 def node_csv_reader_dir(node_dir: Callable[[str], Path]) -> Path:
     return node_dir("Node_csv_reader")
 
-@pytest.fixture(scope="session")
-def csv_reader_node_dir(node_csv_reader_dir: Path) -> Path:
-    # Alias kept for older tests
-    return node_csv_reader_dir
-
-@pytest.fixture(scope="session")
-def node_csv_writer_dir(node_dir: Callable[[str], Path]) -> Path:
-    return node_dir("Node_csv_writer")
-
-@pytest.fixture(scope="session")
-def node_column_filter_dir(node_dir: Callable[[str], Path]) -> Path:
-    return node_dir("Node_column_filter")
-
-@pytest.fixture(scope="session")
-def node_missing_value_dir(node_dir: Callable[[str], Path]) -> Path:
-    return node_dir("Node_missing_value")
-
-@pytest.fixture(scope="session")
-def node_normalizer_dir(node_dir: Callable[[str], Path]) -> Path:
-    return node_dir("Node_normalizer")

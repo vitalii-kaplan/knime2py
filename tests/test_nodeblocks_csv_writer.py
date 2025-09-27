@@ -13,6 +13,9 @@ from knime2py.parse_knime import WorkflowGraph, Node, Edge
 from knime2py.emitters import build_workbook_blocks
 from knime2py.nodes import csv_reader, csv_writer
 
+@pytest.fixture(scope="session")
+def node_csv_writer_dir(node_dir):
+    return node_dir("Node_csv_writer")
 
 def test_writer_nodeblock_uses_settings_and_correct_context_key(
     node_csv_reader_dir: Path,

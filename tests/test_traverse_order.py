@@ -4,6 +4,9 @@ import pytest
 import knime2py.parse_knime as k2p
 from knime2py.traverse import depth_order
 
+@pytest.fixture(scope="session")
+def node_csv_reader_dir(node_dir):
+    return node_dir("KNIME_traverse_orderr")
 
 def test_depth_ready_order_for_sample():
     wf = Path(__file__).resolve().parent / "data" / "KNIME_traverse_order" / "workflow.knime"

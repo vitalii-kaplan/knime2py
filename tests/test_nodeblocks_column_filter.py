@@ -12,6 +12,10 @@ import pytest
 from knime2py.parse_knime import WorkflowGraph, Node, Edge
 from knime2py.emitters import build_workbook_blocks
 
+@pytest.fixture(scope="session")
+def node_column_filter_dir(node_dir):
+    return node_dir("Node_column_filter")
+
 def test_column_filter_block_emits_expected_excludes_line(node_csv_reader_dir: Path):
     """
     Build a minimal graph: Reader(1393) -> ColumnFilter(2001),

@@ -2,6 +2,13 @@ import re
 from pathlib import Path
 import knime2py.parse_knime as k2p
 
+import pytest
+import knime2py.parse_knime as k2p
+
+
+@pytest.fixture(scope="session")
+def wf_two_graphs_path(workflow) -> Path:
+    return workflow("KNIME_two_graphs")
 
 def test_two_graphs_discovery_includes_sample(wf_two_graphs_path: Path):
     root = wf_two_graphs_path.parent

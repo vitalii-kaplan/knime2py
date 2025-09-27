@@ -1,6 +1,15 @@
+# tests/test_io_csv_workflow.py
 import re
 from pathlib import Path
+
+import pytest
 import knime2py.parse_knime as k2p
+
+
+@pytest.fixture(scope="session")
+def wf_io_csv_path(workflow) -> Path:
+    # Resolve tests/data/KNIME_io_csv/workflow.knime
+    return workflow("KNIME_io_csv")
 
 
 def test_io_csv_discovery_includes_sample(wf_io_csv_path: Path):
@@ -15,7 +24,6 @@ def test_io_csv_has_reader_writer_and_edge(wf_io_csv_path: Path):
     # exactly two nodes
     assert len(g.nodes) == 2, f"expected 2 nodes, got {len(g.nodes)}"
 
-    # classify by factory type (preferred) or fallback to name
     def label(n):
         return (n.type or "") + " " + (n.name or "")
 

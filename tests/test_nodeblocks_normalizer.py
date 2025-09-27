@@ -11,6 +11,9 @@ import pytest
 from knime2py.parse_knime import WorkflowGraph, Node, Edge
 from knime2py.emitters import build_workbook_blocks
 
+@pytest.fixture(scope="session")
+def node_normalizer_dir(node_dir):
+    return node_dir("Node_normalizer")
 
 def test_normalizer_block_minmax_defaults(node_csv_reader_dir: Path, node_normalizer_dir: Path):
     """

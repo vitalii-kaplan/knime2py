@@ -1,7 +1,21 @@
 # tests/test_csv_reader_node.py
 from pathlib import Path
+
+import pytest
 import knime2py.nodes.csv_reader as cr
-from knime2py.nodes.node_utils import looks_like_path  # public helper
+from knime2py.nodes.node_utils import looks_like_path
+
+
+# Local fixtures: derive the node path from the generic `node_dir`,
+# and provide a back-compat alias `csv_reader_node_dir`.
+@pytest.fixture(scope="session")
+def node_csv_reader_dir(node_dir) -> Path:
+    return node_dir("Node_csv_reader")
+
+@pytest.fixture(scope="session")
+def csv_reader_node_dir(node_csv_reader_dir: Path) -> Path:
+    return node_csv_reader_dir
+
 
 def test_parse_csv_reader_settings_fields_valid(csv_reader_node_dir: Path):
     """Ensure parse_csv_reader_settings fills all fields plausibly and correctly."""

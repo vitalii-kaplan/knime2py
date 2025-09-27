@@ -12,6 +12,9 @@ import pytest
 from knime2py.parse_knime import WorkflowGraph, Node, Edge
 from knime2py.emitters import build_workbook_blocks
 
+@pytest.fixture(scope="session")
+def node_missing_value_dir(node_dir):
+    return node_dir("Node_missing_value")
 
 def test_missing_value_block_imputes_integers_to_zero(node_csv_reader_dir: Path):
     """
