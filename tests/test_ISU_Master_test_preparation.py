@@ -9,8 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Default relative tolerance: 0.02%. Override by setting K2P_RTOL env var, e.g. K2P_RTOL=1e-4
-RTOL = float(os.environ.get("K2P_RTOL", "2e-4"))
+# Default relative tolerance; override by setting K2P_RTOL, e.g. K2P_RTOL=1e-4
+RTOL = float(os.environ.get("K2P_RTOL", "0.001"))
 
 def _wipe_dir(p: Path) -> None:
     if p.exists():

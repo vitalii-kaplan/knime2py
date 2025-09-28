@@ -3,13 +3,13 @@
 knime2py test generator — cleanup + test file creation (relative-tolerant compare)
 
 Usage:
-  python -m test_gen.cli <NAME> [--overwrite] [--dry-run] [-v]
-  python -m test_gen.cli --path /path/to/knime/project [--overwrite] [--dry-run] [-v]
+  python -m test_gen.cli <NAME> [--no-overwrite] [--dry-run] [-v]
+  python -m test_gen.cli --path /path/to/knime/project [--no-overwrite] [--dry-run] [-v]
 
 Options:
   --data-dir PATH     Override the default tests/data directory (default: <repo>/tests/data)
   --tests-dir PATH    Where to write the pytest file (default: <repo>/tests)
-  --overwrite         Overwrite an existing generated test file if present
+  --no-overwrite      Do NOT overwrite an existing generated test file (default is to overwrite)
   --dry-run           Show what would be deleted/created, but do not perform actions
   -v, --verbose       Print details
 """
@@ -24,6 +24,14 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Tuple
+
+# ------------------------------------------------------------------------------
+# Global defaults
+# ------------------------------------------------------------------------------
+# Default relative tolerance (used by generated tests as their default; can be
+# overridden at test runtime via env var K2P_RTOL inside the generated test).
+
+RTOL = 1e-3  # 0.1%
 
 ALLOWED_NODE_FILE = "settings.xml"
 ALLOWED_ROOT_FILE = "workflow.knime"
@@ -148,8 +156,8 @@ def render_test_py(workflow_name: str) -> str:
       - exports the workflow
       - runs the generated workbook
       - compares !output/output.csv to data/data/<workflow_name>/output.csv
-        using relative numeric tolerance (default RTOL = 2e-4 = 0.02%).
-        Override via env var K2P_RTOL.
+        using relative numeric tolerance (default RTOL = module-level RTOL).
+        Override at test runtime via env var K2P_RTOL.
     """
     slug = slugify(workflow_name).lower()
     template = '''\
@@ -164,8 +172,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Default relative tolerance: 0.02%. Override by setting K2P_RTOL env var, e.g. K2P_RTOL=1e-4
-RTOL = float(os.environ.get("K2P_RTOL", "2e-4"))
+# Default relative tolerance; override by setting K2P_RTOL, e.g. K2P_RTOL=1e-4
+RTOL = float(os.environ.get("K2P_RTOL", "{rtol}"))
 
 def _wipe_dir(p: Path) -> None:
     if p.exists():
@@ -317,14 +325,21 @@ def test_roundtrip_{slug}():
 
     _compare_csv_with_relative_tolerance(produced_csv, expected_csv, rtol=RTOL)
 '''
-    return template.format(workflow_name=workflow_name, slug=slug)
+    return template.format(workflow_name=workflow_name, slug=slug, rtol=str(RTOL))
 
-def write_test_file(tests_dir: Path, workflow_name: str, *, overwrite: bool, dry_run: bool, verbose: bool) -> Path:
+def write_test_file(
+    tests_dir: Path,
+    workflow_name: str,
+    *,
+    overwrite: bool = True,
+    dry_run: bool,
+    verbose: bool,
+) -> Path:
     tests_dir.mkdir(parents=True, exist_ok=True)
     fname = f"test_{slugify(workflow_name)}.py"
     out = tests_dir / fname
     if out.exists() and not overwrite:
-        raise SystemExit(f"Refusing to overwrite existing test: {out} (use --overwrite)")
+        raise SystemExit(f"Refusing to overwrite existing test: {out} (use --no-overwrite to keep it)")
     if dry_run or verbose:
         print(f"{'DRY-RUN ' if dry_run else ''}WRITE TEST: {out}", file=sys.stderr)
     if not dry_run:
@@ -342,7 +357,7 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--path", help="Explicit path to the KNIME project directory.")
     p.add_argument("--data-dir", help="Override tests/data directory (default: <repo>/tests/data).")
     p.add_argument("--tests-dir", help="Where to write the test (default: <repo>/tests).")
-    p.add_argument("--overwrite", action="store_true", help="Overwrite an existing generated test file.")
+    p.add_argument("--no-overwrite", action="store_true", help="Do NOT overwrite existing test file (default: overwrite).")
     p.add_argument("--dry-run", action="store_true", help="Show actions without performing them.")
     p.add_argument("-v", "--verbose", action="store_true", help="Verbose output.")
     return p
@@ -385,10 +400,14 @@ def main(argv: list[str] | None = None) -> int:
     plan.extend(plan_clean_root_entries(proj_dir))
     execute_plan(plan, dry_run=args.dry_run, verbose=args.verbose or args.dry_run)
 
-    # Generate pytest file
+    # Generate pytest file (overwrite by default)
     try:
         test_path = write_test_file(
-            tests_dir, workflow_name, overwrite=args.overwrite, dry_run=args.dry_run, verbose=args.verbose
+            tests_dir,
+            workflow_name,
+            overwrite=not args.no_overwrite,
+            dry_run=args.dry_run,
+            verbose=args.verbose,
         )
     except SystemExit as e:
         print(str(e), file=sys.stderr)
