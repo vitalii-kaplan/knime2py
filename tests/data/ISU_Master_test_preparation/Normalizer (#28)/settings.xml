@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model">
+        <config key="dataColumnFilterConfig">
+            <entry key="mode" type="xstring" value="MANUAL"/>
+            <config key="patternFilter">
+                <entry key="pattern" type="xstring" value=""/>
+                <entry key="isCaseSensitive" type="xboolean" value="true"/>
+                <entry key="isInverted" type="xboolean" value="false"/>
+            </config>
+            <config key="manualFilter">
+                <config key="manuallySelected">
+                    <entry key="array-size" type="xint" value="132"/>
+                    <entry key="0" type="xstring" value="Age"/>
+                    <entry key="1" type="xstring" value="EducationNum"/>
+                    <entry key="2" type="xstring" value="CapitalGain"/>
+                    <entry key="3" type="xstring" value="CapitalLoss"/>
+                    <entry key="4" type="xstring" value="HoursPerWeek"/>
+                    <entry key="5" type="xstring" value="State-gov_Workclass"/>
+                    <entry key="6" type="xstring" value="Self-emp-not-inc_Workclass"/>
+                    <entry key="7" type="xstring" value="Private_Workclass"/>
+                    <entry key="8" type="xstring" value="Federal-gov_Workclass"/>
+                    <entry key="9" type="xstring" value="Local-gov_Workclass"/>
+                    <entry key="10" type="xstring" value="Self-emp-inc_Workclass"/>
+                    <entry key="11" type="xstring" value="Without-pay_Workclass"/>
+                    <entry key="12" type="xstring" value="Never-worked_Workclass"/>
+                    <entry key="13" type="xstring" value="Missing_Workclass"/>
+                    <entry key="14" type="xstring" value="Never-married_MaritalStatus"/>
+                    <entry key="15" type="xstring" value="Married-civ-spouse_MaritalStatus"/>
+                    <entry key="16" type="xstring" value="Divorced_MaritalStatus"/>
+                    <entry key="17" type="xstring" value="Married-spouse-absent_MaritalStatus"/>
+                    <entry key="18" type="xstring" value="Separated_MaritalStatus"/>
+                    <entry key="19" type="xstring" value="Married-AF-spouse_MaritalStatus"/>
+                    <entry key="20" type="xstring" value="Widowed_MaritalStatus"/>
+                    <entry key="21" type="xstring" value="Adm-clerical_Occupation"/>
+                    <entry key="22" type="xstring" value="Exec-managerial_Occupation"/>
+                    <entry key="23" type="xstring" value="Handlers-cleaners_Occupation"/>
+                    <entry key="24" type="xstring" value="Prof-specialty_Occupation"/>
+                    <entry key="25" type="xstring" value="Other-service_Occupation"/>
+                    <entry key="26" type="xstring" value="Sales_Occupation"/>
+                    <entry key="27" type="xstring" value="Craft-repair_Occupation"/>
+                    <entry key="28" type="xstring" value="Transport-moving_Occupation"/>
+                    <entry key="29" type="xstring" value="Farming-fishing_Occupation"/>
+                    <entry key="30" type="xstring" value="Machine-op-inspct_Occupation"/>
+                    <entry key="31" type="xstring" value="Tech-support_Occupation"/>
+                    <entry key="32" type="xstring" value="Protective-serv_Occupation"/>
+                    <entry key="33" type="xstring" value="Armed-Forces_Occupation"/>
+                    <entry key="34" type="xstring" value="Priv-house-serv_Occupation"/>
+                    <entry key="35" type="xstring" value="Missing_Occupation"/>
+                    <entry key="36" type="xstring" value="Not-in-family_Relationship"/>
+                    <entry key="37" type="xstring" value="Husband_Relationship"/>
+                    <entry key="38" type="xstring" value="Wife_Relationship"/>
+                    <entry key="39" type="xstring" value="Own-child_Relationship"/>
+                    <entry key="40" type="xstring" value="Unmarried_Relationship"/>
+                    <entry key="41" type="xstring" value="Other-relative_Relationship"/>
+                    <entry key="42" type="xstring" value="White_Race"/>
+                    <entry key="43" type="xstring" value="Black_Race"/>
+                    <entry key="44" type="xstring" value="Asian-Pac-Islander_Race"/>
+                    <entry key="45" type="xstring" value="Amer-Indian-Eskimo_Race"/>
+                    <entry key="46" type="xstring" value="Other_Race"/>
+                    <entry key="47" type="xstring" value="Male_Gender"/>
+                    <entry key="48" type="xstring" value="Female_Gender"/>
+                    <entry key="49" type="xstring" value="United-States_NativeCountry"/>
+                    <entry key="50" type="xstring" value="Cuba_NativeCountry"/>
+                    <entry key="51" type="xstring" value="Jamaica_NativeCountry"/>
+                    <entry key="52" type="xstring" value="India_NativeCountry"/>
+                    <entry key="53" type="xstring" value="Mexico_NativeCountry"/>
+                    <entry key="54" type="xstring" value="South_NativeCountry"/>
+                    <entry key="55" type="xstring" value="Puerto-Rico_NativeCountry"/>
+                    <entry key="56" type="xstring" value="Honduras_NativeCountry"/>
+                    <entry key="57" type="xstring" value="England_NativeCountry"/>
+                    <entry key="58" type="xstring" value="Canada_NativeCountry"/>
+                    <entry key="59" type="xstring" value="Germany_NativeCountry"/>
+                    <entry key="60" type="xstring" value="Iran_NativeCountry"/>
+                    <entry key="61" type="xstring" value="Philippines_NativeCountry"/>
+                    <entry key="62" type="xstring" value="Italy_NativeCountry"/>
+                    <entry key="63" type="xstring" value="Poland_NativeCountry"/>
+                    <entry key="64" type="xstring" value="Columbia_NativeCountry"/>
+                    <entry key="65" type="xstring" value="Cambodia_NativeCountry"/>
+                    <entry key="66" type="xstring" value="Thailand_NativeCountry"/>
+                    <entry key="67" type="xstring" value="Ecuador_NativeCountry"/>
+                    <entry key="68" type="xstring" value="Laos_NativeCountry"/>
+                    <entry key="69" type="xstring" value="Taiwan_NativeCountry"/>
+                    <entry key="70" type="xstring" value="Haiti_NativeCountry"/>
+                    <entry key="71" type="xstring" value="Portugal_NativeCountry"/>
+                    <entry key="72" type="xstring" value="Dominican-Republic_NativeCountry"/>
+                    <entry key="73" type="xstring" value="El-Salvador_NativeCountry"/>
+                    <entry key="74" type="xstring" value="France_NativeCountry"/>
+                    <entry key="75" type="xstring" value="Guatemala_NativeCountry"/>
+                    <entry key="76" type="xstring" value="China_NativeCountry"/>
+                    <entry key="77" type="xstring" value="Japan_NativeCountry"/>
+                    <entry key="78" type="xstring" value="Yugoslavia_NativeCountry"/>
+                    <entry key="79" type="xstring" value="Peru_NativeCountry"/>
+                    <entry key="80" type="xstring" value="Outlying-US(Guam-USVI-etc)_NativeCountry"/>
+                    <entry key="81" type="xstring" value="Scotland_NativeCountry"/>
+                    <entry key="82" type="xstring" value="Trinadad&amp;Tobago_NativeCountry"/>
+                    <entry key="83" type="xstring" value="Greece_NativeCountry"/>
+                    <entry key="84" type="xstring" value="Nicaragua_NativeCountry"/>
+                    <entry key="85" type="xstring" value="Vietnam_NativeCountry"/>
+                    <entry key="86" type="xstring" value="Hong_NativeCountry"/>
+                    <entry key="87" type="xstring" value="Ireland_NativeCountry"/>
+                    <entry key="88" type="xstring" value="Hungary_NativeCountry"/>
+                    <entry key="89" type="xstring" value="Holand-Netherlands_NativeCountry"/>
+                    <entry key="90" type="xstring" value="Missing_NativeCountry"/>
+                    <entry key="91" type="xstring" value="inv_sum_amount"/>
+                    <entry key="92" type="xstring" value="inv_count_time_pay"/>
+                    <entry key="93" type="xstring" value="inv_count_payed"/>
+                    <entry key="94" type="xstring" value="inv_count_start"/>
+                    <entry key="95" type="xstring" value="inv_max_full_paid"/>
+                    <entry key="96" type="xstring" value="inv_sum_discount"/>
+                    <entry key="97" type="xstring" value="inv_count_distinct_partner_campaign_id"/>
+                    <entry key="98" type="xstring" value="inv_count_distinct_course_id"/>
+                    <entry key="99" type="xstring" value="inv_count_distinct_group_id"/>
+                    <entry key="100" type="xstring" value="inv_max_is_b2b"/>
+                    <entry key="101" type="xstring" value="inv_max_loyalty_applied"/>
+                    <entry key="102" type="xstring" value="inv_count_distinct_promocode_id"/>
+                    <entry key="103" type="xstring" value="as_count_distinct_course_id"/>
+                    <entry key="104" type="xstring" value="as_min_finish_start"/>
+                    <entry key="105" type="xstring" value="as_max_finish_start"/>
+                    <entry key="106" type="xstring" value="as_avg_finish_start"/>
+                    <entry key="107" type="xstring" value="as_min_result"/>
+                    <entry key="108" type="xstring" value="as_max_result"/>
+                    <entry key="109" type="xstring" value="as_avg_result"/>
+                    <entry key="110" type="xstring" value="as_count_partner_campaign_id"/>
+                    <entry key="111" type="xstring" value="OL_count_distinct_dod_id"/>
+                    <entry key="112" type="xstring" value="OL_count_distinct_source"/>
+                    <entry key="113" type="xstring" value="OL_count_distinct_content_type_id"/>
+                    <entry key="114" type="xstring" value="OL_count_distinct_object_id"/>
+                    <entry key="115" type="xstring" value="OL_confirmed"/>
+                    <entry key="116" type="xstring" value="su_min_all_answers"/>
+                    <entry key="117" type="xstring" value="su_avg_all_answers"/>
+                    <entry key="118" type="xstring" value="su_max_all_answers"/>
+                    <entry key="119" type="xstring" value="su_min_speech"/>
+                    <entry key="120" type="xstring" value="su_avg_speech"/>
+                    <entry key="121" type="xstring" value="su_max_speech"/>
+                    <entry key="122" type="xstring" value="su_min_structure"/>
+                    <entry key="123" type="xstring" value="su_avg_structure"/>
+                    <entry key="124" type="xstring" value="su_max_structure"/>
+                    <entry key="125" type="xstring" value="su_min_interaction"/>
+                    <entry key="126" type="xstring" value="su_avg_interaction"/>
+                    <entry key="127" type="xstring" value="su_max_interaction"/>
+                    <entry key="128" type="xstring" value="su_min_quality"/>
+                    <entry key="129" type="xstring" value="su_avg_quality"/>
+                    <entry key="130" type="xstring" value="su_max_quality"/>
+                    <entry key="131" type="xstring" value="su_comments"/>
+                </config>
+                <config key="manuallyDeselected">
+                    <entry key="array-size" type="xint" value="0"/>
+                </config>
+                <entry key="includeUnknownColumns" type="xboolean" value="true"/>
+            </config>
+            <config key="typeFilter">
+                <config key="selectedTypes">
+                    <entry key="array-size" type="xint" value="0"/>
+                </config>
+            </config>
+        </config>
+        <entry key="mode" type="xstring" value="MINMAX"/>
+        <entry key="new-min" type="xdouble" value="0.0"/>
+        <entry key="new-max" type="xdouble" value="1.0"/>
+    </config>
+    <config key="variables"/>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="EXECUTED"/>
+    <entry key="factory" type="xstring" value="org.knime.base.node.preproc.normalize3.Normalizer3NodeFactory"/>
+    <entry key="node-name" type="xstring" value="Normalizer"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME Base Nodes"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.base"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.5.1.v202507241550"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Base nodes"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.base.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.5.1.v202507241550"/>
+    <config key="factory_settings"/>
+    <entry key="name" type="xstring" value="Normalizer"/>
+    <entry key="hasContent" type="xboolean" value="true"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports">
+        <config key="port_1">
+            <entry key="index" type="xint" value="1"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 6131, Cols: 42"/>
+            <entry key="port_dir_location" type="xstring" value="port_1"/>
+        </config>
+        <config key="port_2">
+            <entry key="index" type="xint" value="2"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.base.data.normalize.NormalizerPortObject"/>
+            <entry key="port_object_summary" type="xstring" value="Min/Max (0.0, 1) normalization on 41 column(s)"/>
+            <entry key="port_spec_location" type="xstring" value="spec/spec.zip"/>
+            <entry key="port_object_location" type="xstring" value="object/portobject.zip"/>
+            <entry key="port_dir_location" type="xstring" value="port_2"/>
+        </config>
+    </config>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" value="080902cc-d51b-448d-9428-46429ba072ae"/>
+    </config>
+</config>

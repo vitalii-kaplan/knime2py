@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model">
+        <config key="column-filter">
+            <entry key="filter-type" type="xstring" value="STANDARD"/>
+            <config key="included_names">
+                <entry key="array-size" type="xint" value="116"/>
+                <entry key="0" type="xstring" value="U_IS_SUBSCRIBE"/>
+                <entry key="1" type="xstring" value="search_U_UTM_SOURCE"/>
+                <entry key="2" type="xstring" value="advcake_U_UTM_SOURCE"/>
+                <entry key="3" type="xstring" value="telegram_U_UTM_SOURCE"/>
+                <entry key="4" type="xstring" value="tproger_U_UTM_SOURCE"/>
+                <entry key="5" type="xstring" value="typein_U_UTM_SOURCE"/>
+                <entry key="6" type="xstring" value="internal_U_UTM_SOURCE"/>
+                <entry key="7" type="xstring" value="no_set_U_UTM_SOURCE"/>
+                <entry key="8" type="xstring" value="admitad_U_UTM_SOURCE"/>
+                <entry key="9" type="xstring" value="facebook_U_UTM_SOURCE"/>
+                <entry key="10" type="xstring" value="email_U_UTM_SOURCE"/>
+                <entry key="11" type="xstring" value="vk_U_UTM_SOURCE"/>
+                <entry key="12" type="xstring" value="habr_U_UTM_SOURCE"/>
+                <entry key="13" type="xstring" value="yandex.ru_U_UTM_SOURCE"/>
+                <entry key="14" type="xstring" value="partners_U_UTM_SOURCE"/>
+                <entry key="15" type="xstring" value="banner_course_U_UTM_SOURCE"/>
+                <entry key="16" type="xstring" value="landing_U_UTM_SOURCE"/>
+                <entry key="17" type="xstring" value="vkpost_U_UTM_SOURCE"/>
+                <entry key="18" type="xstring" value="vc_U_UTM_SOURCE"/>
+                <entry key="19" type="xstring" value="zen_U_UTM_SOURCE"/>
+                <entry key="20" type="xstring" value="telegain_U_UTM_SOURCE"/>
+                <entry key="21" type="xstring" value="hh_U_UTM_SOURCE"/>
+                <entry key="22" type="xstring" value="vk_ads_U_UTM_SOURCE"/>
+                <entry key="23" type="xstring" value="manifestus_U_UTM_SOURCE"/>
+                <entry key="24" type="xstring" value="oj_U_UTM_SOURCE"/>
+                <entry key="25" type="xstring" value="tgads_U_UTM_SOURCE"/>
+                <entry key="26" type="xstring" value="blog_U_UTM_SOURCE"/>
+                <entry key="27" type="xstring" value="banner_U_UTM_SOURCE"/>
+                <entry key="28" type="xstring" value="github_U_UTM_SOURCE"/>
+                <entry key="29" type="xstring" value="organic_U_UTM_MEDIUM"/>
+                <entry key="30" type="xstring" value="cpa_U_UTM_MEDIUM"/>
+                <entry key="31" type="xstring" value="cpm_U_UTM_MEDIUM"/>
+                <entry key="32" type="xstring" value="direct_U_UTM_MEDIUM"/>
+                <entry key="33" type="xstring" value="free_U_UTM_MEDIUM"/>
+                <entry key="34" type="xstring" value="no_set_U_UTM_MEDIUM"/>
+                <entry key="35" type="xstring" value="cpc_U_UTM_MEDIUM"/>
+                <entry key="36" type="xstring" value="email_U_UTM_MEDIUM"/>
+                <entry key="37" type="xstring" value="internal_U_UTM_MEDIUM"/>
+                <entry key="38" type="xstring" value="affilate_U_UTM_MEDIUM"/>
+                <entry key="39" type="xstring" value="youtube_U_UTM_MEDIUM"/>
+                <entry key="40" type="xstring" value="sms_U_UTM_MEDIUM"/>
+                <entry key="41" type="xstring" value="telegram_U_UTM_MEDIUM"/>
+                <entry key="42" type="xstring" value="cp%D1%81_U_UTM_MEDIUM"/>
+                <entry key="43" type="xstring" value="cpmsearchutm_sourcetelegram%26utm_campaignspec-python%26utm_termpython2day%26utm_contentlesson-27-07-2023%26utm_mediumcpm_U_UTM_MEDIUM"/>
+                <entry key="44" type="xstring" value="student_U_TYPE"/>
+                <entry key="45" type="xstring" value="no_set_U_TYPE"/>
+                <entry key="46" type="xstring" value="teacher_U_TYPE"/>
+                <entry key="47" type="xstring" value="b2b_U_TYPE"/>
+                <entry key="48" type="xstring" value="no_set_U_GENDER"/>
+                <entry key="49" type="xstring" value="f_U_GENDER"/>
+                <entry key="50" type="xstring" value="m_U_GENDER"/>
+                <entry key="51" type="xstring" value="U_USER_ID"/>
+                <entry key="52" type="xstring" value="U_UTM_CAMPAING"/>
+                <entry key="53" type="xstring" value="U_CITY_SET"/>
+                <entry key="54" type="xstring" value="U_COMPANY_SET"/>
+                <entry key="55" type="xstring" value="U_PARTNER_CAMPAIGN_SET"/>
+                <entry key="56" type="xstring" value="U_AVATAR_SET"/>
+                <entry key="57" type="xstring" value="U_WORK_SET"/>
+                <entry key="58" type="xstring" value="U_BLOG_NAME_SET"/>
+                <entry key="59" type="xstring" value="U_REAL_EMAIL_SET"/>
+                <entry key="60" type="xstring" value="U_EMAIL_CONFIRMED"/>
+                <entry key="61" type="xstring" value="U_IS_MAIL_DISABLED"/>
+                <entry key="62" type="xstring" value="U_IS_MAIL_UNSUBSCRIBE"/>
+                <entry key="63" type="xstring" value="U_BIRTH_DAY_SET"/>
+                <entry key="64" type="xstring" value="U_VERIFIED"/>
+                <entry key="65" type="xstring" value="uc_count_certificate_hash"/>
+                <entry key="66" type="xstring" value="uc_max_show_mark"/>
+                <entry key="67" type="xstring" value="OL_is_request"/>
+                <entry key="68" type="xstring" value="uc_count_project_work"/>
+                <entry key="69" type="xstring" value="inv_sum_amount"/>
+                <entry key="70" type="xstring" value="inv_count_time_pay"/>
+                <entry key="71" type="xstring" value="inv_count_payed"/>
+                <entry key="72" type="xstring" value="inv_count_start"/>
+                <entry key="73" type="xstring" value="inv_count_return"/>
+                <entry key="74" type="xstring" value="inv_max_full_paid"/>
+                <entry key="75" type="xstring" value="inv_sum_discount"/>
+                <entry key="76" type="xstring" value="inv_count_distinct_partner_campaign_id"/>
+                <entry key="77" type="xstring" value="inv_count_distinct_course_id"/>
+                <entry key="78" type="xstring" value="inv_count_distinct_group_id"/>
+                <entry key="79" type="xstring" value="inv_max_is_b2b"/>
+                <entry key="80" type="xstring" value="inv_max_loyalty_applied"/>
+                <entry key="81" type="xstring" value="inv_count_distinct_promocode_id"/>
+                <entry key="82" type="xstring" value="as_count_distinct_course_id"/>
+                <entry key="83" type="xstring" value="as_min_finish_start"/>
+                <entry key="84" type="xstring" value="as_max_finish_start"/>
+                <entry key="85" type="xstring" value="as_avg_finish_start"/>
+                <entry key="86" type="xstring" value="as_min_result"/>
+                <entry key="87" type="xstring" value="as_max_result"/>
+                <entry key="88" type="xstring" value="as_avg_result"/>
+                <entry key="89" type="xstring" value="as_count_partner_campaign_id"/>
+                <entry key="90" type="xstring" value="OL_count_distinct_dod_id"/>
+                <entry key="91" type="xstring" value="OL_count_distinct_source"/>
+                <entry key="92" type="xstring" value="OL_count_distinct_content_type_id"/>
+                <entry key="93" type="xstring" value="OL_count_distinct_object_id"/>
+                <entry key="94" type="xstring" value="OL_confirmed"/>
+                <entry key="95" type="xstring" value="vi_avg_M_1"/>
+                <entry key="96" type="xstring" value="vi_avg_M_2"/>
+                <entry key="97" type="xstring" value="vi_avg_M_3"/>
+                <entry key="98" type="xstring" value="vi_avg_M_4"/>
+                <entry key="99" type="xstring" value="vi_avg_M_5"/>
+                <entry key="100" type="xstring" value="su_min_all_answers"/>
+                <entry key="101" type="xstring" value="su_avg_all_answers"/>
+                <entry key="102" type="xstring" value="su_max_all_answers"/>
+                <entry key="103" type="xstring" value="su_min_speech"/>
+                <entry key="104" type="xstring" value="su_avg_speech"/>
+                <entry key="105" type="xstring" value="su_max_speech"/>
+                <entry key="106" type="xstring" value="su_min_structure"/>
+                <entry key="107" type="xstring" value="su_avg_structure"/>
+                <entry key="108" type="xstring" value="su_max_structure"/>
+                <entry key="109" type="xstring" value="su_min_interaction"/>
+                <entry key="110" type="xstring" value="su_avg_interaction"/>
+                <entry key="111" type="xstring" value="su_max_interaction"/>
+                <entry key="112" type="xstring" value="su_min_quality"/>
+                <entry key="113" type="xstring" value="su_avg_quality"/>
+                <entry key="114" type="xstring" value="su_max_quality"/>
+                <entry key="115" type="xstring" value="su_comments"/>
+            </config>
+            <config key="excluded_names">
+                <entry key="array-size" type="xint" value="3"/>
+                <entry key="0" type="xstring" value="U_UTM_SOURCE"/>
+                <entry key="1" type="xstring" value="U_UTM_MEDIUM"/>
+                <entry key="2" type="xstring" value="U_TYPE"/>
+            </config>
+            <entry key="enforce_option" type="xstring" value="EnforceExclusion"/>
+            <config key="name_pattern">
+                <entry key="pattern" type="xstring" value=""/>
+                <entry key="type" type="xstring" value="Wildcard"/>
+                <entry key="caseSensitive" type="xboolean" value="true"/>
+                <entry key="excludeMatching" type="xboolean" value="false"/>
+            </config>
+            <config key="datatype">
+                <config key="typelist"/>
+            </config>
+        </config>
+    </config>
+    <config key="variables"/>
+    <config key="nodeAnnotation">
+        <entry key="text" type="xstring" value="Without Marketing"/>
+        <entry key="contentType" type="xstring" value="text/plain"/>
+        <entry key="bgcolor" type="xint" value="16777215"/>
+        <entry key="x-coordinate" type="xint" value="0"/>
+        <entry key="y-coordinate" type="xint" value="0"/>
+        <entry key="width" type="xint" value="0"/>
+        <entry key="height" type="xint" value="0"/>
+        <entry key="alignment" type="xstring" value="CENTER"/>
+        <entry key="borderSize" type="xint" value="0"/>
+        <entry key="borderColor" type="xint" value="0"/>
+        <entry key="defFontSize" type="xint" value="-1"/>
+        <entry key="annotation-version" type="xint" value="20230412"/>
+        <config key="styles"/>
+    </config>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="EXECUTED"/>
+    <entry key="factory" type="xstring" value="org.knime.base.node.preproc.filter.column.DataColumnSpecFilterNodeFactory"/>
+    <entry key="node-name" type="xstring" value="Column Filter"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME Base Nodes"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.base"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.5.1.v202507241550"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Base nodes"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.base.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.5.1.v202507241550"/>
+    <config key="factory_settings"/>
+    <entry key="name" type="xstring" value="Column Filter"/>
+    <entry key="hasContent" type="xboolean" value="true"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports">
+        <config key="port_1">
+            <entry key="index" type="xint" value="1"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 6131, Cols: 48"/>
+            <entry key="port_dir_location" type="xstring" value="port_1"/>
+        </config>
+    </config>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" value="078ce755-b494-44d7-9faa-9387e7082635"/>
+    </config>
+</config>
