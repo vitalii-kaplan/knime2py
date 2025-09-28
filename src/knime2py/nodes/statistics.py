@@ -5,12 +5,16 @@
 # Statistics (Extended)
 #
 # Outputs (aligned to KNIME):
-# - Port 1: Statistics table (per-numeric column stats: Count, Missing, Unique, Mean, [Median], Std, Min, Max)
+# - Port 1: Statistics table (per-numeric column stats with KNIME-like headers)
+#           Columns:
+#           ['Column','Min','Max','Mean','Std. deviation','Variance','Skewness','Kurtosis',
+#            'Overall sum','No. missings','No. NaNs','No. +∞s','No. -∞s','Median','Row count']
 # - Port 2: Nominal Histogram Table (per nominal column; columns = Column, Values, Missing)
-# - Port 3: Occurrences Table (wide; one row per nominal column; columns are category labels with counts)
+# - Port 3: Occurrences Table (wide; one row per nominal column; columns are category labels)
 #
-# - compute_median: bool → include Median in numeric stats
-# - filter_nominal_columns/included_names: list → which columns to treat as nominal
+# Settings:
+# - compute_median: bool → whether to compute/emit Median values (column always present; blank if False)
+# - filter_nominal_columns/included_names: list → which columns to treat as nominal (fallback to object/string)
 # - num_nominal-values_output: int → cap of categories per nominal column for Port 3 (occurrence table)
 #
 ####################################################################################################
@@ -116,28 +120,72 @@ HUB_URL = (
 )
 
 def _emit_numeric_stats(df_var: str, include_median: bool) -> List[str]:
+    """
+    Emit KNIME-aligned numeric statistics for Port 1.
+    Uses Pearson kurtosis (Fisher/excess + 3) to match KNIME.
+    """
     lines: List[str] = []
-    lines.append(f"_num_cols = {df_var}.select_dtypes(include=['number', 'Int64', 'Float64']).columns.tolist()")
-    lines.append("if _num_cols:")
-    agg_list = ["'count'", "'mean'", "'std'", "'min'", "'max'"]
+    lines.append(f"_num_cols = {df_var}.select_dtypes(include=['number','Int64','Float64']).columns.tolist()")
+    lines.append("_rows = []")
+    lines.append(f"_n_rows = int(len({df_var}))")
+    lines.append("for _col in _num_cols:")
+    lines.append(f"    _s_orig = {df_var}[_col]")
+    lines.append("    # Numeric coercion to expose NaN/inf distinctly")
+    lines.append("    _s = pd.to_numeric(_s_orig, errors='coerce')")
+    lines.append("    _arr = _s.to_numpy()")
+    lines.append("    # Counts")
+    lines.append("    _missings = int(_s_orig.isna().sum())")
+    lines.append("    _nans = int(np.isnan(_arr).sum())")
+    lines.append("    _pos_inf = int(np.isposinf(_arr).sum())")
+    lines.append("    _neg_inf = int(np.isneginf(_arr).sum())")
+    lines.append("    # Finite subset for stats (exclude NaN and ±inf)")
+    lines.append("    _finite = np.isfinite(_arr)")
+    lines.append("    _s_fin = _s[_finite]")
+    lines.append("    if _s_fin.empty:")
+    lines.append("        _mn = _mx = _mean = _std = _var = _skew = _kurt = _sum = np.nan")
     if include_median:
-        agg_list.append("'median'")
-    agg_str = ", ".join(agg_list)
-    lines.append(f"    _num = {df_var}[_num_cols]")
-    lines.append(f"    _stats = _num.agg([{agg_str}]).T")
-    lines.append("    _stats['Missing'] = (_num.isna().sum()).astype('Int64')")
-    lines.append("    _stats['Unique']  = (_num.nunique(dropna=True)).astype('Int64')")
-    order = ["count", "Missing", "Unique", "mean", "std", "min", "max"]
+        lines.append("        _median = np.nan")
+    else:
+        lines.append("        _median = None")
+    lines.append("    else:")
+    lines.append("        _mn = float(_s_fin.min())")
+    lines.append("        _mx = float(_s_fin.max())")
+    lines.append("        _mean = float(_s_fin.mean())")
+    lines.append("        _std = float(_s_fin.std(ddof=0))")
+    lines.append("        _var = float(_s_fin.var(ddof=0))")
+    lines.append("        _skew = float(_s_fin.skew())")  # pandas default; no 'bias' kw in recent versions
+
+    lines.append("        _kurt = float(_s_fin.kurt())")
+    lines.append("        _sum = float(_s_fin.sum())")
     if include_median:
-        order.insert(4, "median")  # after mean
-    lines.append(f"    _order = {order!r}")
-    lines.append("    _present = [c for c in _order if c in _stats.columns]")
-    lines.append("    stats_out = _stats[_present].reset_index().rename(columns={'index': 'Column'})")
+        lines.append("        _median = float(_s_fin.median())")
+    else:
+        lines.append("        _median = None")
+    lines.append("    _row = {")
+    lines.append("        'Column': _col,")
+    lines.append("        'Min': _mn,")
+    lines.append("        'Max': _mx,")
+    lines.append("        'Mean': _mean,")
+    lines.append("        'Std. deviation': _std,")
+    lines.append("        'Variance': _var,")
+    lines.append("        'Skewness': _skew,")
+    lines.append("        'Kurtosis': _kurt,")
+    lines.append("        'Overall sum': _sum,")
+    lines.append("        'No. missings': _missings,")
+    lines.append("        'No. NaNs': _nans,")
+    lines.append("        'No. +∞s': _pos_inf,")
+    lines.append("        'No. -∞s': _neg_inf,")
+    lines.append("        'Median': _median,")
+    lines.append("        'Row count': _n_rows,")
+    lines.append("    }")
+    lines.append("    _rows.append(_row)")
+    lines.append("if _rows:")
+    lines.append("    _order = ['Column','Min','Max','Mean','Std. deviation','Variance','Skewness','Kurtosis',"
+                 "'Overall sum','No. missings','No. NaNs','No. +∞s','No. -∞s','Median','Row count']")
+    lines.append("    stats_out = pd.DataFrame(_rows)[_order]")
     lines.append("else:")
-    empty_cols = ['Column','count','Missing','Unique','mean','std','min','max']
-    if include_median:
-        empty_cols.insert(4, 'median')
-    lines.append(f"    stats_out = pd.DataFrame(columns={empty_cols!r})")
+    lines.append("    stats_out = pd.DataFrame(columns=['Column','Min','Max','Mean','Std. deviation','Variance',"
+                 "'Skewness','Kurtosis','Overall sum','No. missings','No. NaNs','No. +∞s','No. -∞s','Median','Row count'])")
     return lines
 
 def _emit_nominal_tables(df_var: str, selected_cols_expr: str, max_nom_out_expr: str) -> List[str]:
@@ -182,7 +230,7 @@ def _emit_nominal_tables(df_var: str, selected_cols_expr: str, max_nom_out_expr:
 def _emit_code(df_var: str, cfg: StatsSettings) -> List[str]:
     lines: List[str] = []
     lines.append("out_df = df.copy()  # passthrough copy (not strictly needed)")
-    # Port 1: Statistics table
+    # Port 1: Statistics table (numeric)
     lines.extend(_emit_numeric_stats(df_var, cfg.compute_median))
     # Ports 2 & 3: Nominal Histogram + Occurrences (wide)
     sel = "[" + ", ".join(repr(c) for c in (cfg.nominal_included or [])) + "]"

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model">
+        <config key="compute_median_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_boolean"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="compute_median" type="xboolean" value="false"/>
+        <config key="num_nominal-values_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_integer"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="num_nominal-values" type="xint" value="20"/>
+        <config key="num_nominal-values_output_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_integer"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="num_nominal-values_output" type="xint" value="1000"/>
+        <config key="filter_nominal_columns_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_columnfilter"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <config key="filter_nominal_columns">
+            <entry key="filter-type" type="xstring" value="STANDARD"/>
+            <config key="included_names">
+                <entry key="array-size" type="xint" value="1"/>
+                <entry key="0" type="xstring" value="Dependent"/>
+            </config>
+            <config key="excluded_names">
+                <entry key="array-size" type="xint" value="41"/>
+                <entry key="0" type="xstring" value="inv_sum_amount"/>
+                <entry key="1" type="xstring" value="inv_count_time_pay"/>
+                <entry key="2" type="xstring" value="inv_count_payed"/>
+                <entry key="3" type="xstring" value="inv_count_start"/>
+                <entry key="4" type="xstring" value="inv_max_full_paid"/>
+                <entry key="5" type="xstring" value="inv_sum_discount"/>
+                <entry key="6" type="xstring" value="inv_count_distinct_partner_campaign_id"/>
+                <entry key="7" type="xstring" value="inv_count_distinct_course_id"/>
+                <entry key="8" type="xstring" value="inv_count_distinct_group_id"/>
+                <entry key="9" type="xstring" value="inv_max_is_b2b"/>
+                <entry key="10" type="xstring" value="inv_max_loyalty_applied"/>
+                <entry key="11" type="xstring" value="inv_count_distinct_promocode_id"/>
+                <entry key="12" type="xstring" value="as_count_distinct_course_id"/>
+                <entry key="13" type="xstring" value="as_min_finish_start"/>
+                <entry key="14" type="xstring" value="as_max_finish_start"/>
+                <entry key="15" type="xstring" value="as_avg_finish_start"/>
+                <entry key="16" type="xstring" value="as_min_result"/>
+                <entry key="17" type="xstring" value="as_max_result"/>
+                <entry key="18" type="xstring" value="as_avg_result"/>
+                <entry key="19" type="xstring" value="as_count_partner_campaign_id"/>
+                <entry key="20" type="xstring" value="OL_count_distinct_dod_id"/>
+                <entry key="21" type="xstring" value="OL_count_distinct_source"/>
+                <entry key="22" type="xstring" value="OL_count_distinct_content_type_id"/>
+                <entry key="23" type="xstring" value="OL_count_distinct_object_id"/>
+                <entry key="24" type="xstring" value="OL_confirmed"/>
+                <entry key="25" type="xstring" value="su_min_all_answers"/>
+                <entry key="26" type="xstring" value="su_avg_all_answers"/>
+                <entry key="27" type="xstring" value="su_max_all_answers"/>
+                <entry key="28" type="xstring" value="su_min_speech"/>
+                <entry key="29" type="xstring" value="su_avg_speech"/>
+                <entry key="30" type="xstring" value="su_max_speech"/>
+                <entry key="31" type="xstring" value="su_min_structure"/>
+                <entry key="32" type="xstring" value="su_avg_structure"/>
+                <entry key="33" type="xstring" value="su_max_structure"/>
+                <entry key="34" type="xstring" value="su_min_interaction"/>
+                <entry key="35" type="xstring" value="su_avg_interaction"/>
+                <entry key="36" type="xstring" value="su_max_interaction"/>
+                <entry key="37" type="xstring" value="su_min_quality"/>
+                <entry key="38" type="xstring" value="su_avg_quality"/>
+                <entry key="39" type="xstring" value="su_max_quality"/>
+                <entry key="40" type="xstring" value="su_comments"/>
+            </config>
+            <entry key="enforce_option" type="xstring" value="EnforceInclusion"/>
+            <config key="name_pattern">
+                <entry key="pattern" type="xstring" value=""/>
+                <entry key="type" type="xstring" value="Wildcard"/>
+                <entry key="caseSensitive" type="xboolean" value="true"/>
+                <entry key="excludeMatching" type="xboolean" value="false"/>
+            </config>
+            <config key="datatype">
+                <config key="typelist"/>
+            </config>
+        </config>
+        <config key="image format_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_string"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="image format" type="xstring" value="SVG"/>
+        <config key="histogram width_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_integer"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="histogram width" type="xint" value="200"/>
+        <config key="histogram height_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_integer"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="histogram height" type="xint" value="100"/>
+        <config key="enable HiLite_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_boolean"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="enable HiLite" type="xboolean" value="false"/>
+        <config key="show min max_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_boolean"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="show min max" type="xboolean" value="true"/>
+    </config>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="EXECUTED"/>
+    <entry key="factory" type="xstring" value="org.knime.base.node.stats.viz.extended.ExtendedStatisticsNodeFactory"/>
+    <entry key="node-name" type="xstring" value="Statistics"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME Statistic Nodes"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.stats"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.5.0.v202412191419"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Statistics Nodes"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.stats.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.5.0.v202412191419"/>
+    <config key="factory_settings"/>
+    <entry key="name" type="xstring" value="Statistics"/>
+    <entry key="hasContent" type="xboolean" value="true"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports">
+        <config key="port_1">
+            <entry key="index" type="xint" value="1"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 41, Cols: 16"/>
+            <entry key="port_dir_location" type="xstring" value="port_1"/>
+        </config>
+        <config key="port_2">
+            <entry key="index" type="xint" value="2"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 1, Cols: 3"/>
+            <entry key="port_dir_location" type="xstring" value="port_2"/>
+        </config>
+        <config key="port_3">
+            <entry key="index" type="xint" value="3"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 2, Cols: 3"/>
+            <entry key="port_dir_location" type="xstring" value="port_3"/>
+        </config>
+    </config>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" value="b05b9170-758f-4f61-a4e6-608dae7b0290"/>
+    </config>
+</config>

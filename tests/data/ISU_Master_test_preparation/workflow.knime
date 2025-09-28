@@ -8,7 +8,7 @@
         <entry key="authored-by" type="xstring" value="vitaly"/>
         <entry key="authored-when" type="xstring" value="2024-09-24 13:55:17 +0300"/>
         <entry key="lastEdited-by" type="xstring" value="vitaly"/>
-        <entry key="lastEdited-when" type="xstring" value="2025-09-28 16:09:08 +0300"/>
+        <entry key="lastEdited-when" type="xstring" value="2025-09-28 17:29:19 +0300"/>
     </config>
     <entry key="customDescription" type="xstring" isnull="true" value=""/>
     <entry key="state" type="xstring" value="EXECUTED"/>
@@ -487,7 +487,23 @@
             <config key="ui_settings">
                 <config key="extrainfo.node.bounds">
                     <entry key="array-size" type="xint" value="4"/>
-                    <entry key="0" type="xint" value="-1495"/>
+                    <entry key="0" type="xint" value="-1375"/>
+                    <entry key="1" type="xint" value="369"/>
+                    <entry key="2" type="xint" value="-1"/>
+                    <entry key="3" type="xint" value="-1"/>
+                </config>
+            </config>
+        </config>
+        <config key="node_835">
+            <entry key="id" type="xint" value="835"/>
+            <entry key="node_settings_file" type="xstring" value="Statistics (#835)/settings.xml"/>
+            <entry key="node_is_meta" type="xboolean" value="false"/>
+            <entry key="node_type" type="xstring" value="NativeNode"/>
+            <entry key="ui_classname" type="xstring" value="org.knime.core.node.workflow.NodeUIInformation"/>
+            <config key="ui_settings">
+                <config key="extrainfo.node.bounds">
+                    <entry key="array-size" type="xint" value="4"/>
+                    <entry key="0" type="xint" value="-1505"/>
                     <entry key="1" type="xint" value="379"/>
                     <entry key="2" type="xint" value="-1"/>
                     <entry key="3" type="xint" value="-1"/>
@@ -548,7 +564,7 @@
         </config>
         <config key="connection_6">
             <entry key="sourceID" type="xint" value="28"/>
-            <entry key="destID" type="xint" value="834"/>
+            <entry key="destID" type="xint" value="835"/>
             <entry key="sourcePort" type="xint" value="1"/>
             <entry key="destPort" type="xint" value="1"/>
         </config>
@@ -767,6 +783,12 @@
         <config key="connection_32">
             <entry key="sourceID" type="xint" value="833"/>
             <entry key="destID" type="xint" value="194"/>
+            <entry key="sourcePort" type="xint" value="1"/>
+            <entry key="destPort" type="xint" value="1"/>
+        </config>
+        <config key="connection_33">
+            <entry key="sourceID" type="xint" value="835"/>
+            <entry key="destID" type="xint" value="834"/>
             <entry key="sourcePort" type="xint" value="1"/>
             <entry key="destPort" type="xint" value="1"/>
         </config>
