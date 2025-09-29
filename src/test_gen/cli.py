@@ -9,9 +9,13 @@ Usage:
 Options:
   --data-dir PATH     Override the default tests/data directory (default: <repo>/tests/data)
   --tests-dir PATH    Where to write the pytest file (default: <repo>/tests)
-  --no-overwrite      Do NOT overwrite an existing generated test file (default is to overwrite)
+  --no-overwrite      Do NOT overwrite an existing generated test file (default: overwrite)
   --dry-run           Show what would be deleted/created, but do not perform actions
   -v, --verbose       Print details
+
+Notes:
+- Generated tests depend on the `output_dir` fixture from conftest.py to provide a clean
+  output directory; no `_wipe_dir` helper is generated.
 """
 
 from __future__ import annotations
@@ -26,11 +30,10 @@ from pathlib import Path
 from typing import Iterable, Tuple
 
 # ------------------------------------------------------------------------------
-# Global defaults
+# Global defaults (used inside generated tests via string formatting)
 # ------------------------------------------------------------------------------
-# Default relative tolerance (used by generated tests as their default; can be
-# overridden at test runtime via env var K2P_RTOL inside the generated test).
-
+# Default relative tolerance for numeric cells; can be overridden at test runtime
+# via env var K2P_RTOL inside the generated test.
 RTOL = 1e-3  # 0.1%
 
 ALLOWED_NODE_FILE = "settings.xml"
@@ -155,9 +158,8 @@ def render_test_py(workflow_name: str) -> str:
     Produce a pytest that:
       - exports the workflow
       - runs the generated workbook
-      - compares !output/output.csv to data/data/<workflow_name>/output.csv
-        using relative numeric tolerance (default RTOL = module-level RTOL).
-        Override at test runtime via env var K2P_RTOL.
+      - compares produced output.csv to reference output.csv with relative tolerance
+      - uses the `output_dir` fixture from conftest.py for a clean output directory
     """
     slug = slugify(workflow_name).lower()
     template = '''\
@@ -167,26 +169,12 @@ def render_test_py(workflow_name: str) -> str:
 import csv
 import math
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 # Default relative tolerance; override by setting K2P_RTOL, e.g. K2P_RTOL=1e-4
 RTOL = float(os.environ.get("K2P_RTOL", "{rtol}"))
-
-def _wipe_dir(p: Path) -> None:
-    if p.exists():
-        for q in p.iterdir():
-            if q.is_dir():
-                shutil.rmtree(q, ignore_errors=True)
-            else:
-                try:
-                    q.unlink()
-                except FileNotFoundError:
-                    pass
-    else:
-        p.mkdir(parents=True, exist_ok=True)
 
 def _read_csv_rows(path: Path):
     """Read CSV into rows (lists of trimmed strings). Skip fully-empty rows."""
@@ -259,7 +247,7 @@ def _compare_csv_with_relative_tolerance(got_path: Path, exp_path: Path, *, rtol
                     an, av = _try_parse_float(ga)
                     bn, bv = _try_parse_float(eb)
                     if an and bn and not (math.isnan(av) and math.isnan(bv)) and not (math.isinf(av) or math.isinf(bv)):
-                        # Report relative error exactly like math.isclose uses: denom = max(|a|,|b|)
+                        # Report relative error like math.isclose uses: denom = max(|a|,|b|)
                         diff = abs(av - bv)
                         denom = max(abs(av), abs(bv))
                         if denom == 0.0:
@@ -284,18 +272,15 @@ def _compare_csv_with_relative_tolerance(got_path: Path, exp_path: Path, *, rtol
                 lines.append(f"  at ({{i}},{{j}}): got={{ga!r}} exp={{eb!r}} rel_err≈{{rel:.8g}}")
         raise AssertionError("\\n".join(lines))
 
-def test_roundtrip_{slug}():
+def test_roundtrip_{slug}(output_dir: Path):
     repo_root = Path(__file__).resolve().parents[1]
     knime_proj = repo_root / "tests" / "data" / "{workflow_name}"
-    out_dir = repo_root / "tests" / "data" / "!output"
+    out_dir = output_dir  # provided by conftest.py fixture
     expected_csv = repo_root / "tests" / "data" / "data" / "{workflow_name}" / "output.csv"
 
     # Preconditions
     assert (knime_proj / "workflow.knime").exists(), f"Missing workflow.knime in {{knime_proj}}"
     assert expected_csv.exists(), f"Expected reference CSV missing: {{expected_csv}}"
-
-    # Fresh output dir
-    _wipe_dir(out_dir)
 
     # 1) Generate Python workbook(s) only, no graphs
     cmd = [
@@ -383,8 +368,7 @@ def main(argv: list[str] | None = None) -> int:
     wf = proj_dir / ALLOWED_ROOT_FILE
     if not wf.exists():
         print(
-            f"[ERROR] '{ALLOWED_ROOT_FILE}' not found in {proj_dir}. "
-            f"This does not look like a KNIME project root.",
+            f"[ERROR] '{ALLOWED_ROOT_FILE}' not found in {proj_dir}. This does not look like a KNIME project root.",
             file=sys.stderr,
         )
         return 3

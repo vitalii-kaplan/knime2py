@@ -4,26 +4,12 @@
 import csv
 import math
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 # Default relative tolerance; override by setting K2P_RTOL, e.g. K2P_RTOL=1e-4
 RTOL = float(os.environ.get("K2P_RTOL", "0.001"))
-
-def _wipe_dir(p: Path) -> None:
-    if p.exists():
-        for q in p.iterdir():
-            if q.is_dir():
-                shutil.rmtree(q, ignore_errors=True)
-            else:
-                try:
-                    q.unlink()
-                except FileNotFoundError:
-                    pass
-    else:
-        p.mkdir(parents=True, exist_ok=True)
 
 def _read_csv_rows(path: Path):
     """Read CSV into rows (lists of trimmed strings). Skip fully-empty rows."""
@@ -96,7 +82,7 @@ def _compare_csv_with_relative_tolerance(got_path: Path, exp_path: Path, *, rtol
                     an, av = _try_parse_float(ga)
                     bn, bv = _try_parse_float(eb)
                     if an and bn and not (math.isnan(av) and math.isnan(bv)) and not (math.isinf(av) or math.isinf(bv)):
-                        # Report relative error exactly like math.isclose uses: denom = max(|a|,|b|)
+                        # Report relative error like math.isclose uses: denom = max(|a|,|b|)
                         diff = abs(av - bv)
                         denom = max(abs(av), abs(bv))
                         if denom == 0.0:
@@ -121,18 +107,15 @@ def _compare_csv_with_relative_tolerance(got_path: Path, exp_path: Path, *, rtol
                 lines.append(f"  at ({i},{j}): got={ga!r} exp={eb!r} rel_err≈{rel:.8g}")
         raise AssertionError("\n".join(lines))
 
-def test_roundtrip_isu_master_test_preparation():
+def test_roundtrip_isu_master_test_preparation(output_dir: Path):
     repo_root = Path(__file__).resolve().parents[1]
     knime_proj = repo_root / "tests" / "data" / "ISU_Master_test_preparation"
-    out_dir = repo_root / "tests" / "data" / "!output"
+    out_dir = output_dir  # provided by conftest.py fixture
     expected_csv = repo_root / "tests" / "data" / "data" / "ISU_Master_test_preparation" / "output.csv"
 
     # Preconditions
     assert (knime_proj / "workflow.knime").exists(), f"Missing workflow.knime in {knime_proj}"
     assert expected_csv.exists(), f"Expected reference CSV missing: {expected_csv}"
-
-    # Fresh output dir
-    _wipe_dir(out_dir)
 
     # 1) Generate Python workbook(s) only, no graphs
     cmd = [
