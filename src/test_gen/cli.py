@@ -16,6 +16,8 @@ Options:
 Notes:
 - Generated tests import helpers from tests/support/csv_compare.py
 - Generated tests rely on the `output_dir` fixture from conftest.py (no local wiping)
+- Generated tests compare *all* expected CSVs matching '*output.csv' in tests/data/data/<WF>/
+  against files with the same names produced into the output dir.
 """
 
 from __future__ import annotations
@@ -156,9 +158,9 @@ def render_test_py(workflow_name: str) -> str:
     Produce a pytest that:
       - exports the workflow
       - runs the generated workbook
-      - compares produced output.csv to reference output.csv (relative tolerance)
-      - uses the `output_dir` fixture from conftest.py for a clean output directory
-      - imports the helper module as `from support import csv_compare`
+      - collects ALL expected CSVs matching '*output.csv' under tests/data/data/<workflow_name>/
+      - for each expected, compares to produced file with the same name in the output dir
+      - uses `output_dir` fixture and `support/csv_compare`
     """
     slug = slugify(workflow_name).lower()
     template = '''\
@@ -180,11 +182,14 @@ def test_roundtrip_{slug}(output_dir: Path):
     repo_root = Path(__file__).resolve().parents[1]
     knime_proj = repo_root / "tests" / "data" / "{workflow_name}"
     out_dir = output_dir  # provided by conftest.py fixture
-    expected_csv = repo_root / "tests" / "data" / "data" / "{workflow_name}" / "output.csv"
+    expected_dir = repo_root / "tests" / "data" / "data" / "{workflow_name}"
 
     # Preconditions
     assert (knime_proj / "workflow.knime").exists(), f"Missing workflow.knime in {{knime_proj}}"
-    assert expected_csv.exists(), f"Expected reference CSV missing: {{expected_csv}}"
+    assert expected_dir.exists(), f"Expected directory missing: {{expected_dir}}"
+
+    expected_csvs = sorted(expected_dir.glob("*output.csv"))
+    assert expected_csvs, f"No expected '*output.csv' files found in {{expected_dir}}. Contents: {{[p.name for p in expected_dir.iterdir()]}}"
 
     # 1) Generate Python workbook(s) only, no graphs
     cmd = [
@@ -204,15 +209,21 @@ def test_roundtrip_{slug}(output_dir: Path):
     assert candidates, f"No *_workbook.py generated in {{out_dir}}. Contents: {{[p.name for p in out_dir.iterdir()]}}"
     script = candidates[0]
 
-    # 3) Run the generated workbook (cwd=out_dir so relative paths like ../!output/output.csv resolve correctly)
+    # 3) Run the generated workbook (cwd=out_dir so relative paths like ../!output/*.csv resolve correctly)
     run = subprocess.run([sys.executable, str(script)], cwd=str(out_dir), capture_output=True, text=True, env=env)
     assert run.returncode == 0, f"Workbook execution failed\\nSTDOUT:\\n{{run.stdout}}\\nSTDERR:\\n{{run.stderr}}"
 
-    # 4) Compare the produced CSV to the expected CSV (with RELATIVE tolerance)
-    produced_csv = out_dir / "output.csv"
-    assert produced_csv.exists(), f"Produced output.csv not found in {{out_dir}}. Contents: {{[p.name for p in out_dir.iterdir()]}}"
+    # 4) Compare each expected '*output.csv' with produced file of the same name
+    produced_names = {{p.name for p in out_dir.glob("*.csv")}}
+    assert produced_names, f"No produced CSVs in {{out_dir}}. Contents: {{[p.name for p in out_dir.iterdir()]}}"
 
-    csv_compare.compare_csv(produced_csv, expected_csv, rtol=RTOL)
+    for exp in expected_csvs:
+        produced = out_dir / exp.name
+        assert produced.exists(), (
+            f"Produced CSV not found for expected '{{exp.name}}'. "
+            f"Produced CSVs: {{sorted(produced_names)}}"
+        )
+        csv_compare.compare_csv(produced, exp, rtol=RTOL)
 '''
     return template.format(workflow_name=workflow_name, slug=slug)
 
