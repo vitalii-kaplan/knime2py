@@ -2,19 +2,18 @@
 
 ####################################################################################################
 #
-# Linear Correlation
+# Linear Correlation — KNIME order + nominal↔nominal pairs with p=0.0
 #
-# Outputs (aligned to KNIME):
-# - Port 1: Correlation measure (long table with exact KNIME column names)
-#           Columns: "First column name", "Second column name",
-#                    "Correlation value", "p value", "Degrees of freedom"
-# - Port 2: Correlation matrix (wide Pearson correlation among selected numeric columns)
-# - Port 3: Correlation model (dict with method, alternative, columns, and matrix)
+# Port 1 (measure):
+#   - Pair order follows source column order:
+#       * If EnforceInclusion + included_names → exactly that order (filtered to present columns)
+#       * Else → df.columns order
+#   - COMPATIBLE_PAIRS: include numeric↔numeric and eligible nominal↔nominal
+#   - For **nominal↔nominal pairs**, compute r on ordinal encoding and set **p value = 0.0**
+#   - Numeric↔numeric p-values come from SciPy (if available), alternative remapping applied.
 #
-# Settings honored (from settings.xml):
-# - include-list: included_names / excluded_names + enforce_option (EnforceInclusion/EnforceExclusion)
-# - pvalAlternative: TWO_SIDED | GREATER | LESS  (re-scales p from two-sided if SciPy is available)
-# - columnPairsFilter: COMPATIBLE_PAIRS | ALL_PAIRS (we compute numeric↔numeric only)
+# Port 2 (matrix): numeric-only Pearson matrix in the same source order.
+# Port 3 (model): metadata + the numeric matrix.
 #
 ####################################################################################################
 
@@ -28,7 +27,6 @@ from lxml import etree as ET
 from ..xml_utils import XML_PARSER
 from .node_utils import *  # first, first_el, iter_entries, normalize_in_ports, collect_module_imports, split_out_imports
 
-# KNIME factory
 FACTORY = "org.knime.base.node.preproc.correlation.compute2.CorrelationCompute2NodeFactory"
 
 # --------------------------------------------------------------------------------------------------
@@ -42,7 +40,7 @@ class CorrSettings:
     enforce_option: str            # "EnforceInclusion" | "EnforceExclusion"
     pval_alternative: str          # "TWO_SIDED" | "GREATER" | "LESS"
     pairs_filter: str              # "COMPATIBLE_PAIRS" | "ALL_PAIRS"
-    possible_values_count: int     # kept for completeness
+    possible_values_count: int
 
 def _collect_name_list(root: ET._Element, key: str) -> List[str]:
     base = first_el(
@@ -134,85 +132,144 @@ HUB_URL = (
 
 def _emit_corr_code(df_var: str, cfg: CorrSettings) -> List[str]:
     lines: List[str] = []
-    lines.append("out_df = df.copy()  # passthrough copy (not strictly required)")
+    lines.append("out_df = df.copy()  # passthrough copy")
     lines.append("")
-    lines.append("# Select numeric-like columns")
-    lines.append(f"_num_like = {df_var}.select_dtypes(include=['number','Int64','Float64']).columns.tolist()")
+    lines.append("# 1) Type buckets and eligible nominal limit")
+    lines.append(f"_pvc = int({int(cfg.possible_values_count)})")
+    lines.append(f"_num_like_all = {df_var}.select_dtypes(include=['number','Int64','Float64','bool','boolean']).columns.tolist()")
+    lines.append(f"_nom_cand_all = {df_var}.select_dtypes(include=['object','string','category']).columns.tolist()")
+    lines.append("_nom_eligible_all = []")
+    lines.append("for _c in _nom_cand_all:")
+    lines.append(f"    _k = int({df_var}[_c].astype('string').nunique(dropna=True))")
+    lines.append("    if _k <= _pvc:")
+    lines.append("        _nom_eligible_all.append(_c)")
+    lines.append("")
+    lines.append("# 2) Establish the SOURCE ORDER")
     lines.append(f"_included_cfg = {repr(cfg.include_names or [])}")
     lines.append(f"_excluded_cfg = {repr(cfg.exclude_names or [])}")
     lines.append(f"_enforce = {repr(cfg.enforce_option or 'EnforceExclusion')}")
+    lines.append("if _enforce == 'EnforceInclusion' and len(_included_cfg) > 0:")
+    lines.append("    # Exact order from settings.xml (filtered to existing columns)")
+    lines.append("    _order_source = [c for c in _included_cfg if c in out_df.columns]")
+    lines.append("else:")
+    lines.append("    # Input table order")
+    lines.append(f"    _order_source = list({df_var}.columns)")
     lines.append("")
-    lines.append("if _enforce == 'EnforceInclusion':")
-    lines.append("    _cols = [c for c in _included_cfg if c in _num_like and c in out_df.columns]")
+    lines.append("# 3) Apply include/exclude and compatibility (no reordering)")
+    lines.append("if _enforce == 'EnforceInclusion' and len(_included_cfg) > 0:")
+    lines.append("    _union = [c for c in _order_source if c in _included_cfg]")
     lines.append("else:  # EnforceExclusion")
-    lines.append("    _cols = [c for c in _num_like if c not in set(_excluded_cfg) and c in out_df.columns]")
+    lines.append("    _union = [c for c in _order_source if c not in set(_excluded_cfg)]")
     lines.append("")
-    lines.append("# Guard: need at least two columns")
-    lines.append("if len(_cols) < 2:")
+    lines.append("# Buckets in SOURCE order")
+    lines.append("_num_like = [c for c in _union if c in _num_like_all]")
+    lines.append("_nom_eligible = [c for c in _union if c in _nom_eligible_all]")
+    lines.append("")
+    lines.append("# 4) Build Port-1 measure rows in SOURCE order")
+    lines.append(f"_pairs_mode = {repr(cfg.pairs_filter)}  # 'COMPATIBLE_PAIRS' | 'ALL_PAIRS'")
+    lines.append("pairs = []")
+    lines.append("for i in range(len(_union)):")
+    lines.append("    for j in range(i+1, len(_union)):")
+    lines.append("        a, b = _union[i], _union[j]")
+    lines.append("        if _pairs_mode == 'COMPATIBLE_PAIRS':")
+    lines.append("            # Keep order; only add if both numeric or both eligible nominal")
+    lines.append("            if (a in _num_like and b in _num_like) or (a in _nom_eligible and b in _nom_eligible):")
+    lines.append("                pairs.append((a, b))")
+    lines.append("        else:  # ALL_PAIRS")
+    lines.append("            pairs.append((a, b))")
+    lines.append("")
+    lines.append("# Early-empty check")
+    lines.append("if len(pairs) == 0:")
     lines.append("    measure_out = pd.DataFrame(columns=[")
     lines.append("        'First column name', 'Second column name', 'Correlation value', 'p value', 'Degrees of freedom'")
     lines.append("    ])")
-    lines.append("    matrix_out  = pd.DataFrame(index=pd.Index(_cols, name=None), columns=_cols, dtype='float64')")
-    lines.append(f"    model_out   = {{'type':'CorrelationModel','method':'pearson','alternative':{repr(cfg.pval_alternative)},'columns':_cols,'matrix':matrix_out.copy()}}")
     lines.append("else:")
-    lines.append("    _X = out_df[_cols].astype('float64')")
-    lines.append("    matrix_out = _X.corr(method='pearson')")
-    lines.append("")
     lines.append("    try:")
-    lines.append("        from scipy import stats as _sstats  # optional")
+    lines.append("        from scipy import stats as _sstats")
     lines.append("        _have_scipy = True")
     lines.append("    except Exception:")
     lines.append("        _have_scipy = False")
+    lines.append(f"    _alt = {repr(cfg.pval_alternative)}")
     lines.append("")
-    lines.append(f"    _alt = {repr(cfg.pval_alternative)}  # 'TWO_SIDED' | 'GREATER' | 'LESS'")
+    lines.append("    def _encode_series(s):")
+    lines.append("        # Nominal → ordered integers with NaN preserved; numeric/bool → float64")
+    lines.append("        if s.dtype.name in ('object','string') or str(s.dtype).startswith('category'):")
+    lines.append("            _u = pd.Series(sorted(s.dropna().astype('string').unique()), dtype='string')")
+    lines.append("            _map = {v:i for i,v in enumerate(_u.tolist())}")
+    lines.append("            _enc = s.astype('string').map(_map)")
+    lines.append("            return _enc.astype('float64')")
+    lines.append("        return pd.to_numeric(s, errors='coerce').astype('float64')")
+    lines.append("")
     lines.append("    rows = []")
-    lines.append("    for i in range(len(_cols)):")
-    lines.append("        for j in range(i+1, len(_cols)):")
-    lines.append("            a, b = _cols[i], _cols[j]")
-    lines.append("            pair = _X[[a, b]].dropna()")
-    lines.append("            n = int(len(pair))")
-    lines.append("            if n < 2:")
-    lines.append("                r_val = np.nan; p_val = np.nan; dof = np.nan")
-    lines.append("            else:")
-    lines.append("                # degrees of freedom for Pearson's r")
-    lines.append("                dof = n - 2")
-    lines.append("                if _have_scipy:")
-    lines.append("                    try:")
-    lines.append("                        r_val, p_two = _sstats.pearsonr(pair[a].to_numpy(), pair[b].to_numpy())")
-    lines.append("                    except Exception:")
-    lines.append("                        r_val = pair[a].corr(pair[b])")
-    lines.append("                        p_two = np.nan")
-    lines.append("                else:")
-    lines.append("                    r_val = pair[a].corr(pair[b])")
+    lines.append("    for a, b in pairs:")
+    lines.append(f"        _sa_raw = {df_var}[a]")
+    lines.append(f"        _sb_raw = {df_var}[b]")
+    lines.append("        a_is_num = (a in _num_like)")
+    lines.append("        b_is_num = (b in _num_like)")
+    lines.append("        a_is_nom = (a in _nom_eligible)")
+    lines.append("        b_is_nom = (b in _nom_eligible)")
+    lines.append("        _sa = _encode_series(_sa_raw)")
+    lines.append("        _sb = _encode_series(_sb_raw)")
+    lines.append("        pair_df = pd.concat([_sa, _sb], axis=1).dropna()")
+    lines.append("        n = int(len(pair_df))")
+    lines.append("        if n < 2:")
+    lines.append("            r_val = np.nan; p_val = np.nan; dof = np.nan")
+    lines.append("        else:")
+    lines.append("            dof = n - 2")
+    lines.append("            # Correlation value (always Pearson on encoded data)")
+    lines.append("            if _have_scipy and a_is_num and b_is_num:")
+    lines.append("                try:")
+    lines.append("                    r_val, p_two = _sstats.pearsonr(pair_df.iloc[:,0].to_numpy(), pair_df.iloc[:,1].to_numpy())")
+    lines.append("                except Exception:")
+    lines.append("                    r_val = pair_df.iloc[:,0].corr(pair_df.iloc[:,1])")
     lines.append("                    p_two = np.nan")
-    lines.append("                # one-sided alternative remapping from two-sided (approx when available)")
-    lines.append("                if np.isnan(p_two):")
-    lines.append("                    p_val = np.nan")
-    lines.append("                else:")
-    lines.append("                    if _alt == 'TWO_SIDED':")
-    lines.append("                        p_val = float(p_two)")
-    lines.append("                    elif _alt == 'GREATER':")
-    lines.append("                        p_val = float(p_two/2.0) if r_val >= 0 else float(1.0 - p_two/2.0)")
-    lines.append("                    elif _alt == 'LESS':")
-    lines.append("                        p_val = float(p_two/2.0) if r_val <= 0 else float(1.0 - p_two/2.0)")
-    lines.append("                    else:")
-    lines.append("                        p_val = float(p_two)")
-    lines.append("            rows.append({")
-    lines.append("                'First column name': a,")
-    lines.append("                'Second column name': b,")
-    lines.append("                'Correlation value': r_val,")
-    lines.append("                'p value': p_val,")
-    lines.append("                'Degrees of freedom': dof,")
-    lines.append("            })")
-    lines.append("    measure_out = pd.DataFrame(rows)")
+    lines.append("            else:")
+    lines.append("                r_val = pair_df.iloc[:,0].corr(pair_df.iloc[:,1])")
+    lines.append("                p_two = np.nan")
     lines.append("")
-    lines.append("    model_out = {")
-    lines.append("        'type': 'CorrelationModel',")
-    lines.append("        'method': 'pearson',")
-    lines.append("        'alternative': _alt,")
-    lines.append("        'columns': _cols,")
-    lines.append("        'matrix': matrix_out.copy(),")
-    lines.append("    }")
+    lines.append("            # p-value policy:")
+    lines.append("            # - numeric↔numeric: use SciPy p (with alternative remap) when available, else NaN")
+    lines.append("            # - nominal↔nominal: KNIME shows p=0 → force 0.0")
+    lines.append("            if a_is_nom and b_is_nom:")
+    lines.append("                p_val = 0.0")
+    lines.append("            elif np.isnan(p_two):")
+    lines.append("                p_val = np.nan")
+    lines.append("            else:")
+    lines.append("                if _alt == 'TWO_SIDED':")
+    lines.append("                    p_val = float(p_two)")
+    lines.append("                elif _alt == 'GREATER':")
+    lines.append("                    p_val = float(p_two/2.0) if r_val >= 0 else float(1.0 - p_two/2.0)")
+    lines.append("                elif _alt == 'LESS':")
+    lines.append("                    p_val = float(p_two/2.0) if r_val <= 0 else float(1.0 - p_two/2.0)")
+    lines.append("                else:")
+    lines.append("                    p_val = float(p_two)")
+    lines.append("")
+    lines.append("        rows.append({")
+    lines.append("            'First column name': a,")
+    lines.append("            'Second column name': b,")
+    lines.append("            'Correlation value': r_val,")
+    lines.append("            'p value': p_val,")
+    lines.append("            'Degrees of freedom': dof,")
+    lines.append("        })")
+    lines.append("    measure_out = pd.DataFrame(rows)")
+    lines.append("    # Do NOT sort — retain insertion order (matches KNIME)")
+    lines.append("")
+    lines.append("# 5) Port 2 — numeric Pearson matrix in SOURCE order")
+    lines.append("_num_cols_ordered = [c for c in _union if c in _num_like]")
+    lines.append("if len(_num_cols_ordered) >= 1:")
+    lines.append(f"    _Xnum = {df_var}[_num_cols_ordered].apply(pd.to_numeric, errors='coerce').astype('float64')")
+    lines.append("    matrix_out = _Xnum.corr(method='pearson')")
+    lines.append("else:")
+    lines.append("    matrix_out = pd.DataFrame(index=pd.Index(_num_cols_ordered, name=None), columns=_num_cols_ordered, dtype='float64')")
+    lines.append("")
+    lines.append("# 6) Port 3 — model")
+    lines.append("model_out = {")
+    lines.append("    'type': 'CorrelationModel',")
+    lines.append("    'method': 'pearson',")
+    lines.append("    'alternative': _alt if len(pairs) else 'TWO_SIDED',")
+    lines.append("    'columns': _union,")
+    lines.append("    'matrix': matrix_out.copy(),")
+    lines.append("}")
     lines.append("")
     lines.append("port1 = measure_out")
     lines.append("port2 = matrix_out")
@@ -244,9 +301,9 @@ def generate_py_body(
         ports.append(str(len(ports) + 1))
     ports = ports[:3]
 
-    lines.append(f"context['{node_id}:{ports[0]}'] = port1")  # Correlation measure
-    lines.append(f"context['{node_id}:{ports[1]}'] = port2")  # Correlation matrix
-    lines.append(f"context['{node_id}:{ports[2]}'] = port3")  # Correlation model
+    lines.append(f"context['{node_id}:{ports[0]}'] = port1")  # measure (source order)
+    lines.append(f"context['{node_id}:{ports[1]}'] = port2")  # matrix (numeric, source order)
+    lines.append(f"context['{node_id}:{ports[2]}'] = port3")  # model
 
     return lines
 
@@ -267,7 +324,7 @@ def handle(ntype, nid, npath, incoming, outgoing):
     # One input table
     in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in (incoming or [])] or [("UNKNOWN", "1")]
 
-    # Three outputs; use string port ids, not Edge objects
+    # Three outputs
     out_port_ids = [str(getattr(e, "source_port", "") or "1") for _, e in (outgoing or [])] or ["1", "2", "3"]
 
     node_lines = generate_py_body(nid, npath, in_ports, out_port_ids)
