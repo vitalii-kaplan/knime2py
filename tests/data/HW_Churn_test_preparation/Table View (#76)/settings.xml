@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model"/>
+    <config key="view">
+        <config key="displayedColumns">
+            <config key="selected_Internals">
+                <entry key="array-size" type="xint" value="2"/>
+                <entry key="0" type="xstring" value="No. missings"/>
+                <entry key="1" type="xstring" value="Histogram"/>
+            </config>
+            <entry key="mode" type="xstring" value="MANUAL"/>
+            <config key="patternFilter">
+                <entry key="pattern" type="xstring" value=""/>
+                <entry key="isCaseSensitive" type="xboolean" value="false"/>
+                <entry key="isInverted" type="xboolean" value="false"/>
+            </config>
+            <config key="manualFilter">
+                <config key="manuallySelected">
+                    <entry key="array-size" type="xint" value="2"/>
+                    <entry key="0" type="xstring" value="No. missings"/>
+                    <entry key="1" type="xstring" value="Histogram"/>
+                </config>
+                <config key="manuallyDeselected">
+                    <entry key="array-size" type="xint" value="14"/>
+                    <entry key="0" type="xstring" value="Column"/>
+                    <entry key="1" type="xstring" value="Min"/>
+                    <entry key="2" type="xstring" value="Max"/>
+                    <entry key="3" type="xstring" value="Mean"/>
+                    <entry key="4" type="xstring" value="Std. deviation"/>
+                    <entry key="5" type="xstring" value="Variance"/>
+                    <entry key="6" type="xstring" value="Skewness"/>
+                    <entry key="7" type="xstring" value="Kurtosis"/>
+                    <entry key="8" type="xstring" value="Overall sum"/>
+                    <entry key="9" type="xstring" value="No. NaNs"/>
+                    <entry key="10" type="xstring" value="No. +∞s"/>
+                    <entry key="11" type="xstring" value="No. -∞s"/>
+                    <entry key="12" type="xstring" value="Median"/>
+                    <entry key="13" type="xstring" value="Row count"/>
+                </config>
+                <entry key="includeUnknownColumns" type="xboolean" value="false"/>
+            </config>
+            <config key="typeFilter">
+                <config key="selectedTypes">
+                    <entry key="array-size" type="xint" value="0"/>
+                </config>
+            </config>
+        </config>
+        <entry key="showRowIndices" type="xboolean" value="false"/>
+        <entry key="showRowKeys" type="xboolean" value="true"/>
+        <entry key="title" type="xstring" value="Table View"/>
+        <entry key="showTableSize" type="xboolean" value="true"/>
+        <entry key="showColumnDataType" type="xboolean" value="true"/>
+        <entry key="enablePagination" type="xboolean" value="false"/>
+        <entry key="pageSize" type="xint" value="10"/>
+        <entry key="autoSizeColumnsToContent" type="xstring" value="FIXED"/>
+        <entry key="rowHeightMode" type="xstring" value="DEFAULT"/>
+        <entry key="customRowHeight" type="xint" value="80"/>
+        <entry key="enableGlobalSearch" type="xboolean" value="true"/>
+        <entry key="enableColumnSearch" type="xboolean" value="true"/>
+        <entry key="enableSortingByHeader" type="xboolean" value="true"/>
+        <entry key="enableRendererSelection" type="xboolean" value="true"/>
+        <entry key="enableCellCopying" type="xboolean" value="true"/>
+        <entry key="selectionMode" type="xstring" value="EDIT"/>
+        <entry key="showOnlySelectedRows" type="xboolean" value="false"/>
+        <entry key="showOnlySelectedRowsConfigurable" type="xboolean" value="true"/>
+        <entry key="skipRemainingColumns_Internals" type="xboolean" value="false"/>
+    </config>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="CONFIGURED"/>
+    <entry key="factory" type="xstring" value="org.knime.base.views.node.tableview.TableViewNodeFactory"/>
+    <entry key="node-name" type="xstring" value="Table View"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME Views"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.base.views"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.5.1.v202507241234"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Views"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.base.views.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.5.1.v202507241234"/>
+    <config key="factory_settings"/>
+    <entry key="name" type="xstring" value="Table View"/>
+    <entry key="hasContent" type="xboolean" value="false"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports"/>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" isnull="true" value=""/>
+    </config>
+</config>

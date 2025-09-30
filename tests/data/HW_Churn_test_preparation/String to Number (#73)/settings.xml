@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model">
+        <config key="include_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_columnfilter"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <config key="include">
+            <entry key="filter-type" type="xstring" value="STANDARD"/>
+            <config key="included_names">
+                <entry key="array-size" type="xint" value="16"/>
+                <entry key="0" type="xstring" value="Callcard"/>
+                <entry key="1" type="xstring" value="Callid"/>
+                <entry key="2" type="xstring" value="Callwait"/>
+                <entry key="3" type="xstring" value="Confer"/>
+                <entry key="4" type="xstring" value="Ebill"/>
+                <entry key="5" type="xstring" value="Equip"/>
+                <entry key="6" type="xstring" value="Forward"/>
+                <entry key="7" type="xstring" value="Internet"/>
+                <entry key="8" type="xstring" value="Marital"/>
+                <entry key="9" type="xstring" value="Multline"/>
+                <entry key="10" type="xstring" value="Pager"/>
+                <entry key="11" type="xstring" value="Retire"/>
+                <entry key="12" type="xstring" value="Tollfree"/>
+                <entry key="13" type="xstring" value="Voice"/>
+                <entry key="14" type="xstring" value="Wireless"/>
+                <entry key="15" type="xstring" value="Churn (Y/N)"/>
+            </config>
+            <config key="excluded_names">
+                <entry key="array-size" type="xint" value="5"/>
+                <entry key="0" type="xstring" value="CustID"/>
+                <entry key="1" type="xstring" value="Custcat"/>
+                <entry key="2" type="xstring" value="Education"/>
+                <entry key="3" type="xstring" value="GeFemaleder"/>
+                <entry key="4" type="xstring" value="Region"/>
+            </config>
+            <entry key="enforce_option" type="xstring" value="EnforceInclusion"/>
+            <config key="name_pattern">
+                <entry key="pattern" type="xstring" value=""/>
+                <entry key="type" type="xstring" value="Wildcard"/>
+                <entry key="caseSensitive" type="xboolean" value="true"/>
+                <entry key="excludeMatching" type="xboolean" value="false"/>
+            </config>
+            <config key="datatype">
+                <config key="typelist"/>
+            </config>
+        </config>
+        <entry key="decimal_separator" type="xstring" value="."/>
+        <entry key="thousands_separator" type="xstring" value=""/>
+        <config key="parse_type">
+            <entry key="cell_class" type="xstring" value="org.knime.core.data.def.DoubleCell"/>
+            <entry key="is_null" type="xboolean" value="false"/>
+        </config>
+        <entry key="generic_parse" type="xboolean" value="false"/>
+        <entry key="fail_on_error" type="xboolean" value="false"/>
+    </config>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="EXECUTED"/>
+    <entry key="factory" type="xstring" value="org.knime.base.node.preproc.colconvert.stringtonumber2.StringToNumber2NodeFactory"/>
+    <entry key="node-name" type="xstring" value="String to Number"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME Base Nodes"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.base"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.5.1.v202507241550"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Base nodes"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.base.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.5.1.v202507241550"/>
+    <config key="factory_settings"/>
+    <entry key="name" type="xstring" value="String to Number"/>
+    <entry key="hasContent" type="xboolean" value="true"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports">
+        <config key="port_1">
+            <entry key="index" type="xint" value="1"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 1000, Cols: 36"/>
+            <entry key="port_dir_location" type="xstring" value="port_1"/>
+        </config>
+    </config>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" value="005c7ec4-d61a-48b6-8707-793a2bcbbea3"/>
+    </config>
+</config>
