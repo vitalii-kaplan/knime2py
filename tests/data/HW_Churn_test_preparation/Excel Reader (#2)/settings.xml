@@ -27,7 +27,7 @@
                     <entry key="location_present" type="xboolean" value="true"/>
                     <entry key="file_system_type" type="xstring" value="RELATIVE"/>
                     <entry key="file_system_specifier" type="xstring" value="knime.workflow"/>
-                    <entry key="path" type="xstring" value="../data/HW_Churn_test/CutomerChurnData_Target.xlsx"/>
+                    <entry key="path" type="xstring" value="../data/HW_Churn_test_preparation/CutomerChurnData_Target.xlsx"/>
                 </config>
                 <config key="filter_mode_Internals">
                     <entry key="SettingsModelID" type="xstring" value="SMID_FilterMode"/>
