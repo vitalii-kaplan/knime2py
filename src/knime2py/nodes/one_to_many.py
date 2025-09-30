@@ -2,16 +2,19 @@
 
 ####################################################################################################
 #
-# One to Many (One-Hot Encoding)
+# One to Many (One-Hot Encoding) — KNIME-style names & placement
 #
-# Transforms selected nominal/string columns into one-hot indicator columns.
-#
-# - Column selection: parsed from model/columns2Btransformed with EnforceInclusion/EnforceExclusion
-#   semantics, restricted to string-like dtypes (string/object/category).
-# - Naming: new columns are prefixed with the source column and '=' separator (e.g., "Region=West")
-#   to avoid collisions when different columns share the same category label.
-# - Missing values: not encoded (rows with NA get all zeros for that column’s dummies).
-# - removeSources: if true, drops the original columns after expansion.
+# Matches KNIME’s behavior:
+# - Naming: "<level>_<Column>" (value first, underscore).
+# - Level order within each source column: order of first appearance in the data (not alphabetical).
+# - Column placement:
+#     * Keep all non-transformed columns in their original order.
+#     * Append all newly created dummy columns at the END of the table.
+#       - Block order: targets in settings order (EnforceInclusion) or in table order (EnforceExclusion).
+# - removeSources:
+#     * True  → drop transformed source columns; only their dummies appear (appended at end).
+#     * False → keep sources (in place) and still append dummies at the end (KNIME-style).
+# - Missing values produce all-zero indicators for that column (dummy_na=False semantics).
 #
 ####################################################################################################
 
@@ -25,9 +28,7 @@ from lxml import etree as ET
 from ..xml_utils import XML_PARSER
 from .node_utils import *  # first, first_el, iter_entries, normalize_in_ports, collect_module_imports, split_out_imports
 
-# KNIME factory ID
 FACTORY = "org.knime.base.node.preproc.columntrans2.One2ManyCol2NodeFactory"
-
 
 # --------------------------------------------------------------------------------------------------
 # settings.xml → Settings
@@ -39,7 +40,6 @@ class OneHotSettings:
     exclude_names: List[str]
     enforce_option: str       # "EnforceInclusion" | "EnforceExclusion"
     remove_sources: bool
-
 
 def _collect_name_list(root: ET._Element, key: str) -> List[str]:
     """
@@ -70,7 +70,6 @@ def _collect_name_list(root: ET._Element, key: str) -> List[str]:
             out.append(name)
     return out
 
-
 def parse_onehot_settings(node_dir: Optional[Path]) -> OneHotSettings:
     if not node_dir:
         return OneHotSettings([], [], "EnforceInclusion", True)
@@ -86,7 +85,8 @@ def parse_onehot_settings(node_dir: Optional[Path]) -> OneHotSettings:
     exclude_names = _collect_name_list(root, "excluded_names")
 
     enforce_option = "EnforceInclusion"
-    en = first(root,
+    en = first(
+        root,
         ".//*[local-name()='config' and @key='model']"
         "/*[local-name()='config' and @key='columns2Btransformed']"
         "/*[local-name()='entry' and @key='enforce_option']/@value"
@@ -107,7 +107,6 @@ def parse_onehot_settings(node_dir: Optional[Path]) -> OneHotSettings:
         remove_sources=remove_sources,
     )
 
-
 # --------------------------------------------------------------------------------------------------
 # Code generators
 # --------------------------------------------------------------------------------------------------
@@ -115,30 +114,22 @@ def parse_onehot_settings(node_dir: Optional[Path]) -> OneHotSettings:
 def generate_imports():
     return ["import pandas as pd"]
 
-
 HUB_URL = (
     "https://hub.knime.com/knime/extensions/org.knime.features.base/latest/"
     "org.knime.base.node.preproc.columntrans2.One2ManyCol2NodeFactory"
 )
 
-
 def _emit_onehot_code(cfg: OneHotSettings) -> List[str]:
     """
-    Returns python lines that transform df -> out_df by one-hot encoding.
-    Selection logic:
-      - Candidate columns = string-like dtypes (string/object/category)
-      - If EnforceInclusion: intersect with include_names
-      - If EnforceExclusion: candidate minus exclude_names
-    Naming:
-      - Uses prefix=<col>, prefix_sep='=' → '<col>=<label>'
+    Transform df -> out_df with KNIME-style naming and placement.
     """
     lines: List[str] = []
     lines.append("out_df = df.copy()")
 
-    # Determine candidate columns by dtype
-    lines.append("str_like = out_df.select_dtypes(include=['string','object','category']).columns.tolist()")
+    # 1) Determine string-like candidates (preserves table order)
+    lines.append("str_like = [c for c in out_df.columns if out_df[c].dtype.name in ('string','object','category')]")
 
-    # Apply enforce semantics
+    # 2) Target column order per enforce semantics
     inc_list = "[" + ", ".join(repr(c) for c in (cfg.include_names or [])) + "]"
     exc_list = "[" + ", ".join(repr(c) for c in (cfg.exclude_names or [])) + "]"
     lines.append(f"_included_cfg = {inc_list}")
@@ -147,31 +138,36 @@ def _emit_onehot_code(cfg: OneHotSettings) -> List[str]:
 
     lines.append("if _enforce == 'EnforceInclusion':")
     lines.append("    _targets = [c for c in _included_cfg if c in str_like and c in out_df.columns]")
-    lines.append("else:  # EnforceExclusion")
-    lines.append("    _targets = [c for c in str_like if c not in set(_excluded_cfg) and c in out_df.columns]")
+    lines.append("else:  # EnforceExclusion → keep table order")
+    lines.append("    _targets = [c for c in out_df.columns if (c in str_like) and (c not in set(_excluded_cfg))]")
 
     lines.append("if not _targets:")
     lines.append("    # nothing to transform")
     lines.append("    pass")
     lines.append("else:")
-    # For each target column, build dummies with safe, unique names (prefix=col)
-    lines.append("    dummy_frames = []")
+    # 3) Build dummies for each target with KNIME-style names and first-appearance level order
+    lines.append("    _dummy_frames = []   # preserve target ordering for block order")
     lines.append("    for _c in _targets:")
-    lines.append("        _ser = out_df[_c].astype('string')  # keep NA as NA; dummy_na=False → all zeros row")
-    lines.append("        _dm = pd.get_dummies(_ser, prefix=_c, prefix_sep='=', dummy_na=False)")
-    lines.append("        dummy_frames.append(_dm)")
-    lines.append("    if dummy_frames:")
-    lines.append("        _dummies = pd.concat(dummy_frames, axis=1)")
-    lines.append("        out_df = pd.concat([out_df, _dummies], axis=1)")
-    # Remove sources if requested
+    lines.append("        s = out_df[_c].astype('string')")
+    lines.append("        # level order by first appearance (exclude NA)")
+    lines.append("        levels = s.dropna().drop_duplicates().tolist()")
+    lines.append("        cols = {}")
+    lines.append("        for lv in levels:")
+    lines.append("            cname = f\"{lv}_{_c}\"  # VALUE_first")
+    lines.append("            cols[cname] = (s == lv).astype('float64')")
+    lines.append("        _dm = pd.DataFrame(cols, index=s.index) if cols else pd.DataFrame(index=s.index)")
+    lines.append("        _dummy_frames.append(_dm)")
+
+    # 4) Base table: either drop sources (removeSources) or keep them; always append dummies at END
     if cfg.remove_sources:
-        lines.append("        out_df = out_df.drop(columns=_targets, errors='ignore')")
+        lines.append("    base_cols = [c for c in out_df.columns if c not in set(_targets)]")
     else:
-        lines.append("        # removeSources = false → keep originals")
-        lines.append("        pass")
+        lines.append("    base_cols = list(out_df.columns)")
+    lines.append("    base_df = out_df[base_cols].copy()")
+    lines.append("    dummies_df = pd.concat(_dummy_frames, axis=1) if _dummy_frames else pd.DataFrame(index=out_df.index)")
+    lines.append("    out_df = pd.concat([base_df, dummies_df], axis=1)")
 
     return lines
-
 
 def generate_py_body(
     node_id: str,
@@ -196,7 +192,6 @@ def generate_py_body(
         lines.append(f"context['{node_id}:{p}'] = out_df")
     return lines
 
-
 def generate_ipynb_code(
     node_id: str,
     node_dir: Optional[str],
@@ -204,7 +199,6 @@ def generate_ipynb_code(
     out_ports: Optional[List[str]] = None,
 ) -> str:
     return "\n".join(generate_py_body(node_id, node_dir, in_ports, out_ports)) + "\n"
-
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
