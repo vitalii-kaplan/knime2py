@@ -8,16 +8,12 @@
 #   - LOOP = "finish"  (used by emitter.py to recognize loop finish nodes)
 # Generated code behavior (executed INSIDE the loop body opened by X-Partitioner):
 #   - Reads the current fold DataFrame from context.
-#   - Finds loop state context['__loop__:<xpart_id>'] (k folds, current index).
+#   - Binds to the active loop state context['__loop__:<xpart_id>'] (k folds, current index).
+#   - Resets the fold accumulator on the first fold to avoid stale data across runs.
 #   - Optionally adds a Fold column to the current fold.
 #   - Appends the current fold DF into an accumulator list stored in
 #       context['__xagg__:<loop_id>:accum'].
-#   - **Only on the last fold** (current == k - 1):
-#       * Concatenates all accumulated folds -> out_df.
-#       * Publishes out_df to this node’s outgoing ports.
-#       * Sets context['__xagg__:<loop_id>:is_complete'] = True
-#
-#  On intermediate folds: no outputs are published (is_complete=False).
+#   - **Only on the last fold** (current == k - 1) publishes the concatenated result.
 #
 ####################################################################################################
 
@@ -92,8 +88,9 @@ HUB_URL = (
 def _emit_xagg_code(cfg: XAggSettings, node_id: str, out_ports: List[str]) -> List[str]:
     """
     Emit code that aggregates per-fold data and ONLY publishes outputs on the final fold.
+    It binds to the *active* loop (prefer a loop that isn't complete) and resets the accumulator
+    on the first fold to avoid row multiplication across re-runs.
     """
-    # Determine outgoing ports (unique; retain 1 if none given)
     ports = [str(p or "1") for p in (out_ports or ["1"])]
     ports = list(dict.fromkeys(ports)) or ["1"]
 
@@ -103,22 +100,47 @@ def _emit_xagg_code(cfg: XAggSettings, node_id: str, out_ports: List[str]) -> Li
     lines.append(f"_targ_col = {repr(cfg.target_col) if cfg.target_col else 'None'}")
     lines.append(f"_add_fold = {bool(cfg.add_fold_id)}")
     lines.append("")
-    lines.append("# Discover the active loop state saved by X-Partitioner")
+    lines.append("# Bind to an active loop state written by X-Partitioner")
+    lines.append("_loop = None")
+    lines.append("_loop_id = None")
+    lines.append("# Prefer a loop that is not yet complete")
     lines.append("_loop_keys = [k for k in list(context.keys()) if isinstance(k, str) and k.startswith('__loop__:')]")
     lines.append("if _loop_keys:")
-    lines.append("    _loop_keys.sort()")
-    lines.append("    _loop_key = _loop_keys[-1]  # most recent loop")
-    lines.append("    _loop = context.get(_loop_key, None)")
-    lines.append("    try:")
-    lines.append("        _loop_id = _loop_key.split(':', 1)[1]")
-    lines.append("    except Exception:")
-    lines.append("        _loop_id = str(_loop_key)")
+    lines.append("    # Try to pick a loop whose accumulator is not marked complete")
+    lines.append("    _cands = []")
+    lines.append("    for _lk in _loop_keys:")
+    lines.append("        try:")
+    lines.append("            _lid = _lk.split(':', 1)[1]")
+    lines.append("        except Exception:")
+    lines.append("            _lid = None")
+    lines.append("        _lobj = context.get(_lk, None)")
+    lines.append("        _is_done = bool(context.get(f'__xagg__:{_lid}:is_complete', False)) if _lid else False")
+    lines.append("        if isinstance(_lobj, dict) and not _is_done:")
+    lines.append("            _cands.append((_lid, _lobj))")
+    lines.append("    if _cands:")
+    lines.append("        # If multiple, choose the one with the greatest 'current' (most in-progress)")
+    lines.append("        _lid, _lobj = sorted(_cands, key=lambda t: int(t[1].get('current', 0)), reverse=True)[0]")
+    lines.append("        _loop_id, _loop = _lid, _lobj")
+    lines.append("    else:")
+    lines.append("        # Fallback: last loop key (lexicographically) if all are complete")
+    lines.append("        _loop_keys.sort()")
+    lines.append("        _loop_key = _loop_keys[-1]")
+    lines.append("        _loop = context.get(_loop_key, None)")
+    lines.append("        try:")
+    lines.append("            _loop_id = _loop_key.split(':', 1)[1]")
+    lines.append("        except Exception:")
+    lines.append("            _loop_id = str(_loop_key)")
     lines.append("else:")
     lines.append("    _loop = None")
     lines.append(f"    _loop_id = str({repr(node_id)})")
     lines.append("")
     lines.append("_cur = int(_loop.get('current', 0)) if isinstance(_loop, dict) else 0")
     lines.append("_k   = int(_loop.get('k', 1))       if isinstance(_loop, dict) else 1")
+    lines.append("")
+    lines.append("# Reset accumulator at the beginning of the loop to prevent stale concatenation")
+    lines.append("if int(_cur) == 0:")
+    lines.append("    context.pop(f'__xagg__:{_loop_id}:accum', None)")
+    lines.append("    context.pop(f'__xagg__:{_loop_id}:is_complete', None)")
     lines.append("")
     lines.append("# Current fold input")
     lines.append("cur_df = df.copy()")
@@ -141,10 +163,8 @@ def _emit_xagg_code(cfg: XAggSettings, node_id: str, out_ports: List[str]) -> Li
     lines.append("_acc.append(cur_df)")
     lines.append("context[_acc_key] = _acc")
     lines.append("")
-    lines.append("# Mark completion state")
+    lines.append("# Mark completion state and publish only on final fold")
     lines.append("context[f'__xagg__:{_loop_id}:is_complete'] = (len(_acc) >= max(int(_k), 1))")
-    lines.append("")
-    lines.append("# On the final fold, concatenate and publish outputs; earlier folds publish nothing")
     lines.append("if int(_cur) >= max(int(_k), 1) - 1:")
     lines.append("    out_df = pd.concat(_acc, ignore_index=True) if _acc else cur_df.iloc[0:0].copy()")
     for p in ports:
@@ -173,7 +193,6 @@ def generate_py_body(
     # Aggregate (and publish outputs only when the last fold is reached)
     lines.extend(_emit_xagg_code(cfg, node_id, out_ports or ["1"]))
 
-    # No additional output lines here; handled inside _emit_xagg_code on final fold only
     return lines
 
 
