@@ -13,6 +13,8 @@
 # - Prediction column name: custom if "change prediction" is true and a name is provided;
 #   otherwise "Prediction (<target>)".
 # - Probabilities: when predict_proba exists, adds "P (<target>=<class>)<suffix>" columns.
+# - Empty-input guard: if there are 0 rows, emits empty prediction and (if classes known) empty
+#   probability columns so schema matches when concatenating.
 #
 ####################################################################################################
 
@@ -72,7 +74,7 @@ def parse_predictor_settings(node_dir: Optional[Path]) -> PredictorSettings:
     if model_el is None:
         return PredictorSettings()
 
-    # Keys per the provided SVM Predictor XML
+    # Keys per the SVM Predictor XML
     pred_name = first(model_el, ".//*[local-name()='entry' and @key='prediction column name']/@value")
     change_pred = _bool(first(model_el, ".//*[local-name()='entry' and @key='change prediction']/@value"), False)
 
@@ -98,7 +100,7 @@ def generate_imports():
 
 def _emit_predict_code(cfg: PredictorSettings) -> List[str]:
     """
-    Consume the bundle produced by svm_learner:
+    Consume the bundle produced by the SVM Learner:
       {
         'estimator': sklearn estimator,
         'features': List[str],
@@ -121,6 +123,8 @@ def _emit_predict_code(cfg: PredictorSettings) -> List[str]:
     lines.append("    bundle = {'estimator': model_obj}")
     lines.append("")
     lines.append("est = bundle.get('estimator') or bundle.get('model')")
+    lines.append("if est is None:")
+    lines.append("    raise ValueError('SVM Predictor: missing estimator in model bundle')")
     lines.append("feat = bundle.get('features') or getattr(est, 'feature_names_in_', None)")
     lines.append("tgt  = bundle.get('target') or bundle.get('y_col') or bundle.get('target_name')")
     lines.append("classes = list(bundle.get('classes') or getattr(est, 'classes_', []))")
@@ -147,7 +151,7 @@ def _emit_predict_code(cfg: PredictorSettings) -> List[str]:
     lines.append("")
     lines.append("missing = [c for c in feat_list if c not in out_df.columns]")
     lines.append("if missing:")
-    lines.append("    raise KeyError(f'Missing feature columns in data: {missing}')")
+    lines.append("    raise KeyError(f'SVM Predictor: missing feature columns in data: {missing}')")
     lines.append("X = out_df[feat_list]")
     lines.append("")
     # Prediction column name
@@ -155,22 +159,32 @@ def _emit_predict_code(cfg: PredictorSettings) -> List[str]:
         lines.append(f"pred_col = {repr(cfg.pred_name)}")
     else:
         lines.append("pred_col = f'Prediction ({tgt or \"target\"})'")
-    lines.append("pred = est.predict(X)")
-    lines.append("out_df[pred_col] = pd.Series(pred, index=out_df.index).astype('object')")
+    lines.append(f"_suf = {repr(cfg.prob_suffix)}")
     lines.append("")
-    # Probabilities (optional)
-    if cfg.add_probabilities:
-        lines.append("# Probability columns per class (if supported)")
-        lines.append("if hasattr(est, 'predict_proba'):")
-        lines.append("    proba = est.predict_proba(X)")
-        lines.append("    if not classes and getattr(proba, 'shape', (0, 0))[1] == 2:")
-        lines.append("        classes = ['class0', 'class1']")
-        lines.append(f"    _suf = {repr(cfg.prob_suffix)}")
-        lines.append("    for j, cls in enumerate(classes):")
-        lines.append("        cname = f\"P ({tgt}={cls}){_suf}\"")
-        lines.append("        out_df[cname] = proba[:, j]")
-    else:
-        lines.append("# Probabilities disabled by settings")
+    # === EMPTY-INPUT GUARD ===
+    lines.append("if X.shape[0] == 0:")
+    lines.append("    # Create empty prediction/probability columns and publish.")
+    lines.append("    out_df[pred_col] = pd.Series(index=out_df.index, dtype='object')")
+    lines.append("    if bool(" + ("True" if cfg.add_probabilities else "False") + "):")
+    lines.append("        _cls = classes or list(getattr(est, 'classes_', []))")
+    lines.append("        for cls in _cls:")
+    lines.append("            cname = f\"P ({tgt}={cls}){_suf}\"")
+    lines.append("            out_df[cname] = pd.Series(index=out_df.index, dtype='float64')")
+    lines.append("else:")
+    lines.append("    # Normal scoring path")
+    lines.append("    pred = est.predict(X)")
+    lines.append("    out_df[pred_col] = pd.Series(pred, index=out_df.index).astype('object')")
+    lines.append("    if bool(" + ("True" if cfg.add_probabilities else "False") + ") and hasattr(est, 'predict_proba'):")
+    lines.append("        try:")
+    lines.append("            proba = est.predict_proba(X)")
+    lines.append("        except Exception:")
+    lines.append("            proba = None")
+    lines.append("        if proba is not None:")
+    lines.append("            # Align column order with estimator.classes_ when available")
+    lines.append("            _cls_order = list(getattr(est, 'classes_', [])) or list(classes)")
+    lines.append("            for j, cls in enumerate(_cls_order):")
+    lines.append("                cname = f\"P ({tgt}={cls}){_suf}\"")
+    lines.append("                out_df[cname] = proba[:, j]")
     return lines
 
 

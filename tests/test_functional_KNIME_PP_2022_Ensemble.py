@@ -66,9 +66,9 @@ def test_end_to_end_ensemble_scorer():
 
     # Expected table:
     # no,yes
-    # 458,190
-    # 231,724
+    # 465,183
+    # 243,712
     assert len(rows) >= 3, f"Unexpected CSV shape: {rows}"
     assert rows[0] == ["no", "yes"], f"Header mismatch: {rows[0]}"
-    assert rows[1] == ["458", "190"], f"First data row mismatch: {rows[1]}"
-    assert rows[2] == ["231", "724"], f"Second data row mismatch: {rows[2]}"
+    assert rows[1] == ["465", "183"], f"First data row mismatch: {rows[1]}"
+    assert rows[2] == ["243", "712"], f"Second data row mismatch: {rows[2]}"

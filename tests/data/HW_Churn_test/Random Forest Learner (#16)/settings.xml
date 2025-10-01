@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model">
+        <entry key="targetColumn" type="xstring" value="Churn (Y/N)"/>
+        <entry key="seed" type="xstring" value="1"/>
+        <entry key="maxLevels" type="xint" value="-1"/>
+        <entry key="minNodeSize" type="xint" value="-1"/>
+        <entry key="minChildSize" type="xint" value="-1"/>
+        <entry key="dataFraction" type="xdouble" value="1.0"/>
+        <entry key="isDataSelectionWithReplacement" type="xboolean" value="true"/>
+        <entry key="hardCodedRootColumn" type="xstring" isnull="true" value=""/>
+        <entry key="columnSamplingMode" type="xstring" value="SquareRoot"/>
+        <entry key="columnFractionPerTree" type="xdouble" value="1.0"/>
+        <entry key="columnAbsolutePerTree" type="xint" value="10"/>
+        <entry key="isUseDifferentAttributesAtEachNode" type="xboolean" value="true"/>
+        <entry key="nrModels" type="xint" value="100"/>
+        <entry key="splitCriterion" type="xstring" value="InformationGainRatio"/>
+        <entry key="missingValueHandling" type="xstring" value="XGBoost"/>
+        <entry key="useAverageSplitPoints" type="xboolean" value="true"/>
+        <entry key="useBinaryNominalSplits" type="xboolean" value="true"/>
+        <entry key="fingerprintColumn" type="xstring" isnull="true" value=""/>
+        <config key="columnFilterConfig">
+            <entry key="filter-type" type="xstring" value="STANDARD"/>
+            <config key="included_names">
+                <entry key="array-size" type="xint" value="37"/>
+                <entry key="0" type="xstring" value="Address"/>
+                <entry key="1" type="xstring" value="Age"/>
+                <entry key="2" type="xstring" value="Callcard"/>
+                <entry key="3" type="xstring" value="Callid"/>
+                <entry key="4" type="xstring" value="Callwait"/>
+                <entry key="5" type="xstring" value="Cardmon"/>
+                <entry key="6" type="xstring" value="Cardten"/>
+                <entry key="7" type="xstring" value="Confer"/>
+                <entry key="8" type="xstring" value="Custcat"/>
+                <entry key="9" type="xstring" value="Ebill"/>
+                <entry key="10" type="xstring" value="Education"/>
+                <entry key="11" type="xstring" value="Employ"/>
+                <entry key="12" type="xstring" value="Equip"/>
+                <entry key="13" type="xstring" value="Equipmon"/>
+                <entry key="14" type="xstring" value="Equipten"/>
+                <entry key="15" type="xstring" value="Forward"/>
+                <entry key="16" type="xstring" value="GeFemaleder"/>
+                <entry key="17" type="xstring" value="Income"/>
+                <entry key="18" type="xstring" value="Internet"/>
+                <entry key="19" type="xstring" value="lnInc"/>
+                <entry key="20" type="xstring" value="LogLong"/>
+                <entry key="21" type="xstring" value="LongMon"/>
+                <entry key="22" type="xstring" value="LongTen"/>
+                <entry key="23" type="xstring" value="Marital"/>
+                <entry key="24" type="xstring" value="Multline"/>
+                <entry key="25" type="xstring" value="Pager"/>
+                <entry key="26" type="xstring" value="Region"/>
+                <entry key="27" type="xstring" value="Reside"/>
+                <entry key="28" type="xstring" value="Retire"/>
+                <entry key="29" type="xstring" value="Tenure"/>
+                <entry key="30" type="xstring" value="Tollfree"/>
+                <entry key="31" type="xstring" value="Tollmon"/>
+                <entry key="32" type="xstring" value="Tollten"/>
+                <entry key="33" type="xstring" value="Voice"/>
+                <entry key="34" type="xstring" value="Wireless"/>
+                <entry key="35" type="xstring" value="Wiremon"/>
+                <entry key="36" type="xstring" value="Wireten"/>
+            </config>
+            <config key="excluded_names">
+                <entry key="array-size" type="xint" value="0"/>
+            </config>
+            <entry key="enforce_option" type="xstring" value="EnforceExclusion"/>
+            <config key="name_pattern">
+                <entry key="pattern" type="xstring" value=""/>
+                <entry key="type" type="xstring" value="Wildcard"/>
+                <entry key="caseSensitive" type="xboolean" value="true"/>
+                <entry key="excludeMatching" type="xboolean" value="false"/>
+            </config>
+            <config key="datatype">
+                <config key="typelist">
+                    <entry key="org.knime.core.data.DoubleValue" type="xboolean" value="false"/>
+                    <entry key="org.knime.core.data.StringValue" type="xboolean" value="false"/>
+                    <entry key="org.knime.core.data.BooleanValue" type="xboolean" value="false"/>
+                    <entry key="org.knime.core.data.IntValue" type="xboolean" value="false"/>
+                    <entry key="org.knime.core.data.LongValue" type="xboolean" value="false"/>
+                    <entry key="org.knime.core.data.date.DateAndTimeValue" type="xboolean" value="false"/>
+                </config>
+            </config>
+        </config>
+        <entry key="ignoreColumnsWithoutDomain" type="xboolean" value="true"/>
+        <entry key="nrHilitePatterns" type="xint" value="-1"/>
+        <entry key="saveTargetDistributionInNodes" type="xboolean" value="false"/>
+        <entry key="rowSamplingMode" type="xstring" value="Random"/>
+    </config>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="EXECUTED"/>
+    <entry key="factory" type="xstring" value="org.knime.base.node.mine.treeensemble2.node.randomforest.learner.classification.RandomForestClassificationLearnerNodeFactory2"/>
+    <entry key="node-name" type="xstring" value="Random Forest Learner"/>
+    <entry key="node-bundle-name" type="xstring" value="Decisions Tree Ensembles for KNIME"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.base.treeensembles2"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.5.0.v202506011520"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Ensemble Learning Wrappers"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.ensembles.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.5.0.v202506011520"/>
+    <config key="factory_settings"/>
+    <entry key="name" type="xstring" value="Random Forest Learner"/>
+    <entry key="hasContent" type="xboolean" value="true"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports">
+        <config key="port_1">
+            <entry key="index" type="xint" value="1"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 464, Cols: 66"/>
+            <entry key="port_dir_location" type="xstring" value="port_1"/>
+        </config>
+        <config key="port_2">
+            <entry key="index" type="xint" value="2"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 60, Cols: 6"/>
+            <entry key="port_dir_location" type="xstring" value="port_2"/>
+        </config>
+        <config key="port_3">
+            <entry key="index" type="xint" value="3"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.base.node.mine.treeensemble2.model.TreeEnsembleModelPortObjectSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.base.node.mine.treeensemble2.model.TreeEnsembleModelPortObject"/>
+            <entry key="port_object_summary" type="xstring" value="100 classifiers on 60 attributes"/>
+            <entry key="port_spec_location" type="xstring" value="spec/spec.zip"/>
+            <entry key="port_object_location" type="xstring" value="object/portobject.zip"/>
+            <entry key="port_dir_location" type="xstring" value="port_3"/>
+        </config>
+    </config>
+    <config key="internalObjects">
+        <entry key="location" type="xstring" value="internalTables"/>
+        <config key="content">
+            <config key="object_0">
+                <entry key="index" type="xint" value="0"/>
+                <entry key="type" type="xstring" value="referenced_output"/>
+                <entry key="outport" type="xint" value="3"/>
+            </config>
+        </config>
+    </config>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" isnull="true" value=""/>
+    </config>
+</config>

@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model">
+        <entry key="generateImage" type="xboolean" value="false"/>
+        <entry key="width" type="xint" value="800"/>
+        <entry key="height" type="xint" value="600"/>
+    </config>
+    <config key="view">
+        <config key="targetColumn">
+            <entry key="selected" type="xstring" value="Churn (Y/N) (#2)"/>
+            <config key="compatibleTypes_Internals">
+                <entry key="array-size" type="xint" value="3"/>
+                <entry key="0" type="xstring" value="org.knime.core.data.StringValue"/>
+                <entry key="1" type="xstring" value="org.knime.core.data.DataValue"/>
+                <entry key="2" type="xstring" value="org.knime.core.data.NominalValue"/>
+            </config>
+        </config>
+        <entry key="positiveClassValue" type="xstring" value="Y"/>
+        <config key="predictionColumns">
+            <config key="selected_Internals">
+                <entry key="array-size" type="xint" value="6"/>
+                <entry key="0" type="xstring" value="P (Churn (Y/N)=Y)_DT"/>
+                <entry key="1" type="xstring" value="P (Churn (Y/N)=Y)_RF"/>
+                <entry key="2" type="xstring" value="P (Churn (Y/N)=Y)_GT"/>
+                <entry key="3" type="xstring" value="P (Churn (Y/N)=Y)_NN"/>
+                <entry key="4" type="xstring" value="P (Churn (Y/N)=Y)_LR"/>
+                <entry key="5" type="xstring" value="P (Churn (Y/N)=Y)_SV"/>
+            </config>
+            <entry key="mode" type="xstring" value="MANUAL"/>
+            <config key="patternFilter">
+                <entry key="pattern" type="xstring" value=""/>
+                <entry key="isCaseSensitive" type="xboolean" value="false"/>
+                <entry key="isInverted" type="xboolean" value="false"/>
+            </config>
+            <config key="manualFilter">
+                <config key="manuallySelected">
+                    <entry key="array-size" type="xint" value="6"/>
+                    <entry key="0" type="xstring" value="P (Churn (Y/N)=Y)_DT"/>
+                    <entry key="1" type="xstring" value="P (Churn (Y/N)=Y)_RF"/>
+                    <entry key="2" type="xstring" value="P (Churn (Y/N)=Y)_GT"/>
+                    <entry key="3" type="xstring" value="P (Churn (Y/N)=Y)_NN"/>
+                    <entry key="4" type="xstring" value="P (Churn (Y/N)=Y)_LR"/>
+                    <entry key="5" type="xstring" value="P (Churn (Y/N)=Y)_SV"/>
+                </config>
+                <config key="manuallyDeselected">
+                    <entry key="array-size" type="xint" value="248"/>
+                    <entry key="0" type="xstring" value="Address"/>
+                    <entry key="1" type="xstring" value="Age"/>
+                    <entry key="2" type="xstring" value="Cardmon"/>
+                    <entry key="3" type="xstring" value="Cardten"/>
+                    <entry key="4" type="xstring" value="Employ"/>
+                    <entry key="5" type="xstring" value="Equipmon"/>
+                    <entry key="6" type="xstring" value="Equipten"/>
+                    <entry key="7" type="xstring" value="Income"/>
+                    <entry key="8" type="xstring" value="lnInc"/>
+                    <entry key="9" type="xstring" value="LogLong"/>
+                    <entry key="10" type="xstring" value="LongMon"/>
+                    <entry key="11" type="xstring" value="LongTen"/>
+                    <entry key="12" type="xstring" value="Reside"/>
+                    <entry key="13" type="xstring" value="Tenure"/>
+                    <entry key="14" type="xstring" value="Tollmon"/>
+                    <entry key="15" type="xstring" value="Tollten"/>
+                    <entry key="16" type="xstring" value="Wiremon"/>
+                    <entry key="17" type="xstring" value="Wireten"/>
+                    <entry key="18" type="xstring" value="P (Churn (Y/N)=N)_DT"/>
+                    <entry key="19" type="xstring" value="Address (#1)"/>
+                    <entry key="20" type="xstring" value="Age (#1)"/>
+                    <entry key="21" type="xstring" value="Cardmon (#1)"/>
+                    <entry key="22" type="xstring" value="Cardten (#1)"/>
+                    <entry key="23" type="xstring" value="Employ (#1)"/>
+                    <entry key="24" type="xstring" value="Equipmon (#1)"/>
+                    <entry key="25" type="xstring" value="Equipten (#1)"/>
+                    <entry key="26" type="xstring" value="Income (#1)"/>
+                    <entry key="27" type="xstring" value="lnInc (#1)"/>
+                    <entry key="28" type="xstring" value="LogLong (#1)"/>
+                    <entry key="29" type="xstring" value="LongMon (#1)"/>
+                    <entry key="30" type="xstring" value="LongTen (#1)"/>
+                    <entry key="31" type="xstring" value="Reside (#1)"/>
+                    <entry key="32" type="xstring" value="Tenure (#1)"/>
+                    <entry key="33" type="xstring" value="Tollmon (#1)"/>
+                    <entry key="34" type="xstring" value="Tollten (#1)"/>
+                    <entry key="35" type="xstring" value="Wiremon (#1)"/>
+                    <entry key="36" type="xstring" value="Wireten (#1)"/>
+                    <entry key="37" type="xstring" value="P (Churn (Y/N)=N)_RF"/>
+                    <entry key="38" type="xstring" value="Prediction (Churn (Y/N)) (Confidence)"/>
+                    <entry key="39" type="xstring" value="Address (#2)"/>
+                    <entry key="40" type="xstring" value="Age (#2)"/>
+                    <entry key="41" type="xstring" value="Cardmon (#2)"/>
+                    <entry key="42" type="xstring" value="Cardten (#2)"/>
+                    <entry key="43" type="xstring" value="Employ (#2)"/>
+                    <entry key="44" type="xstring" value="Equipmon (#2)"/>
+                    <entry key="45" type="xstring" value="Equipten (#2)"/>
+                    <entry key="46" type="xstring" value="Income (#2)"/>
+                    <entry key="47" type="xstring" value="lnInc (#2)"/>
+                    <entry key="48" type="xstring" value="LogLong (#2)"/>
+                    <entry key="49" type="xstring" value="LongMon (#2)"/>
+                    <entry key="50" type="xstring" value="LongTen (#2)"/>
+                    <entry key="51" type="xstring" value="Reside (#2)"/>
+                    <entry key="52" type="xstring" value="Tenure (#2)"/>
+                    <entry key="53" type="xstring" value="Tollmon (#2)"/>
+                    <entry key="54" type="xstring" value="Tollten (#2)"/>
+                    <entry key="55" type="xstring" value="Wiremon (#2)"/>
+                    <entry key="56" type="xstring" value="Wireten (#2)"/>
+                    <entry key="57" type="xstring" value="P (Churn (Y/N)=N)_GT"/>
+                    <entry key="58" type="xstring" value="Prediction (Churn (Y/N)) (Confidence) (#1)"/>
+                    <entry key="59" type="xstring" value="Address (#3)"/>
+                    <entry key="60" type="xstring" value="Age (#3)"/>
+                    <entry key="61" type="xstring" value="Cardmon (#3)"/>
+                    <entry key="62" type="xstring" value="Cardten (#3)"/>
+                    <entry key="63" type="xstring" value="Employ (#3)"/>
+                    <entry key="64" type="xstring" value="Equipmon (#3)"/>
+                    <entry key="65" type="xstring" value="Equipten (#3)"/>
+                    <entry key="66" type="xstring" value="Income (#3)"/>
+                    <entry key="67" type="xstring" value="lnInc (#3)"/>
+                    <entry key="68" type="xstring" value="LogLong (#3)"/>
+                    <entry key="69" type="xstring" value="LongMon (#3)"/>
+                    <entry key="70" type="xstring" value="LongTen (#3)"/>
+                    <entry key="71" type="xstring" value="Reside (#3)"/>
+                    <entry key="72" type="xstring" value="Tenure (#3)"/>
+                    <entry key="73" type="xstring" value="Tollmon (#3)"/>
+                    <entry key="74" type="xstring" value="Tollten (#3)"/>
+                    <entry key="75" type="xstring" value="Wiremon (#3)"/>
+                    <entry key="76" type="xstring" value="Wireten (#3)"/>
+                    <entry key="77" type="xstring" value="Y_Callcard"/>
+                    <entry key="78" type="xstring" value="N_Callcard"/>
+                    <entry key="79" type="xstring" value="N_Callid"/>
+                    <entry key="80" type="xstring" value="Y_Callid"/>
+                    <entry key="81" type="xstring" value="N_Callwait"/>
+                    <entry key="82" type="xstring" value="Y_Callwait"/>
+                    <entry key="83" type="xstring" value="N_Confer"/>
+                    <entry key="84" type="xstring" value="Y_Confer"/>
+                    <entry key="85" type="xstring" value="C1_Custcat"/>
+                    <entry key="86" type="xstring" value="C3_Custcat"/>
+                    <entry key="87" type="xstring" value="C2_Custcat"/>
+                    <entry key="88" type="xstring" value="C4_Custcat"/>
+                    <entry key="89" type="xstring" value="N_Ebill"/>
+                    <entry key="90" type="xstring" value="Y_Ebill"/>
+                    <entry key="91" type="xstring" value="E4_Education"/>
+                    <entry key="92" type="xstring" value="E1_Education"/>
+                    <entry key="93" type="xstring" value="E2_Education"/>
+                    <entry key="94" type="xstring" value="E3_Education"/>
+                    <entry key="95" type="xstring" value="E5_Education"/>
+                    <entry key="96" type="xstring" value="N_Equip"/>
+                    <entry key="97" type="xstring" value="Y_Equip"/>
+                    <entry key="98" type="xstring" value="Y_Forward"/>
+                    <entry key="99" type="xstring" value="N_Forward"/>
+                    <entry key="100" type="xstring" value="Female_GeFemaleder"/>
+                    <entry key="101" type="xstring" value="Male_GeFemaleder"/>
+                    <entry key="102" type="xstring" value="N_Internet"/>
+                    <entry key="103" type="xstring" value="Y_Internet"/>
+                    <entry key="104" type="xstring" value="Y_Marital"/>
+                    <entry key="105" type="xstring" value="N_Marital"/>
+                    <entry key="106" type="xstring" value="N_Multline"/>
+                    <entry key="107" type="xstring" value="Y_Multline"/>
+                    <entry key="108" type="xstring" value="N_Pager"/>
+                    <entry key="109" type="xstring" value="Y_Pager"/>
+                    <entry key="110" type="xstring" value="R2_Region"/>
+                    <entry key="111" type="xstring" value="R3_Region"/>
+                    <entry key="112" type="xstring" value="R1_Region"/>
+                    <entry key="113" type="xstring" value="N_Retire"/>
+                    <entry key="114" type="xstring" value="Y_Retire"/>
+                    <entry key="115" type="xstring" value="N_Tollfree"/>
+                    <entry key="116" type="xstring" value="Y_Tollfree"/>
+                    <entry key="117" type="xstring" value="N_Voice"/>
+                    <entry key="118" type="xstring" value="Y_Voice"/>
+                    <entry key="119" type="xstring" value="N_Wireless"/>
+                    <entry key="120" type="xstring" value="Y_Wireless"/>
+                    <entry key="121" type="xstring" value="P (Churn (Y/N)=N)_NN"/>
+                    <entry key="122" type="xstring" value="Address (#4)"/>
+                    <entry key="123" type="xstring" value="Age (#4)"/>
+                    <entry key="124" type="xstring" value="Cardmon (#4)"/>
+                    <entry key="125" type="xstring" value="Cardten (#4)"/>
+                    <entry key="126" type="xstring" value="Employ (#4)"/>
+                    <entry key="127" type="xstring" value="Equipmon (#4)"/>
+                    <entry key="128" type="xstring" value="Equipten (#4)"/>
+                    <entry key="129" type="xstring" value="Income (#4)"/>
+                    <entry key="130" type="xstring" value="lnInc (#4)"/>
+                    <entry key="131" type="xstring" value="LogLong (#4)"/>
+                    <entry key="132" type="xstring" value="LongMon (#4)"/>
+                    <entry key="133" type="xstring" value="LongTen (#4)"/>
+                    <entry key="134" type="xstring" value="Reside (#4)"/>
+                    <entry key="135" type="xstring" value="Tenure (#4)"/>
+                    <entry key="136" type="xstring" value="Tollmon (#4)"/>
+                    <entry key="137" type="xstring" value="Tollten (#4)"/>
+                    <entry key="138" type="xstring" value="Wiremon (#4)"/>
+                    <entry key="139" type="xstring" value="Wireten (#4)"/>
+                    <entry key="140" type="xstring" value="Y_Callcard (#1)"/>
+                    <entry key="141" type="xstring" value="N_Callcard (#1)"/>
+                    <entry key="142" type="xstring" value="N_Callid (#1)"/>
+                    <entry key="143" type="xstring" value="Y_Callid (#1)"/>
+                    <entry key="144" type="xstring" value="N_Callwait (#1)"/>
+                    <entry key="145" type="xstring" value="Y_Callwait (#1)"/>
+                    <entry key="146" type="xstring" value="N_Confer (#1)"/>
+                    <entry key="147" type="xstring" value="Y_Confer (#1)"/>
+                    <entry key="148" type="xstring" value="C1_Custcat (#1)"/>
+                    <entry key="149" type="xstring" value="C3_Custcat (#1)"/>
+                    <entry key="150" type="xstring" value="C2_Custcat (#1)"/>
+                    <entry key="151" type="xstring" value="C4_Custcat (#1)"/>
+                    <entry key="152" type="xstring" value="N_Ebill (#1)"/>
+                    <entry key="153" type="xstring" value="Y_Ebill (#1)"/>
+                    <entry key="154" type="xstring" value="E4_Education (#1)"/>
+                    <entry key="155" type="xstring" value="E1_Education (#1)"/>
+                    <entry key="156" type="xstring" value="E2_Education (#1)"/>
+                    <entry key="157" type="xstring" value="E3_Education (#1)"/>
+                    <entry key="158" type="xstring" value="E5_Education (#1)"/>
+                    <entry key="159" type="xstring" value="N_Equip (#1)"/>
+                    <entry key="160" type="xstring" value="Y_Equip (#1)"/>
+                    <entry key="161" type="xstring" value="Y_Forward (#1)"/>
+                    <entry key="162" type="xstring" value="N_Forward (#1)"/>
+                    <entry key="163" type="xstring" value="Female_GeFemaleder (#1)"/>
+                    <entry key="164" type="xstring" value="Male_GeFemaleder (#1)"/>
+                    <entry key="165" type="xstring" value="N_Internet (#1)"/>
+                    <entry key="166" type="xstring" value="Y_Internet (#1)"/>
+                    <entry key="167" type="xstring" value="Y_Marital (#1)"/>
+                    <entry key="168" type="xstring" value="N_Marital (#1)"/>
+                    <entry key="169" type="xstring" value="N_Multline (#1)"/>
+                    <entry key="170" type="xstring" value="Y_Multline (#1)"/>
+                    <entry key="171" type="xstring" value="N_Pager (#1)"/>
+                    <entry key="172" type="xstring" value="Y_Pager (#1)"/>
+                    <entry key="173" type="xstring" value="R2_Region (#1)"/>
+                    <entry key="174" type="xstring" value="R3_Region (#1)"/>
+                    <entry key="175" type="xstring" value="R1_Region (#1)"/>
+                    <entry key="176" type="xstring" value="N_Retire (#1)"/>
+                    <entry key="177" type="xstring" value="Y_Retire (#1)"/>
+                    <entry key="178" type="xstring" value="N_Tollfree (#1)"/>
+                    <entry key="179" type="xstring" value="Y_Tollfree (#1)"/>
+                    <entry key="180" type="xstring" value="N_Voice (#1)"/>
+                    <entry key="181" type="xstring" value="Y_Voice (#1)"/>
+                    <entry key="182" type="xstring" value="N_Wireless (#1)"/>
+                    <entry key="183" type="xstring" value="Y_Wireless (#1)"/>
+                    <entry key="184" type="xstring" value="P (Churn (Y/N)=N)_LR"/>
+                    <entry key="185" type="xstring" value="Address (#5)"/>
+                    <entry key="186" type="xstring" value="Age (#5)"/>
+                    <entry key="187" type="xstring" value="Cardmon (#5)"/>
+                    <entry key="188" type="xstring" value="Cardten (#5)"/>
+                    <entry key="189" type="xstring" value="Employ (#5)"/>
+                    <entry key="190" type="xstring" value="Equipmon (#5)"/>
+                    <entry key="191" type="xstring" value="Equipten (#5)"/>
+                    <entry key="192" type="xstring" value="Income (#5)"/>
+                    <entry key="193" type="xstring" value="lnInc (#5)"/>
+                    <entry key="194" type="xstring" value="LogLong (#5)"/>
+                    <entry key="195" type="xstring" value="LongMon (#5)"/>
+                    <entry key="196" type="xstring" value="LongTen (#5)"/>
+                    <entry key="197" type="xstring" value="Reside (#5)"/>
+                    <entry key="198" type="xstring" value="Tenure (#5)"/>
+                    <entry key="199" type="xstring" value="Tollmon (#5)"/>
+                    <entry key="200" type="xstring" value="Tollten (#5)"/>
+                    <entry key="201" type="xstring" value="Wiremon (#5)"/>
+                    <entry key="202" type="xstring" value="Wireten (#5)"/>
+                    <entry key="203" type="xstring" value="Y_Callcard (#2)"/>
+                    <entry key="204" type="xstring" value="N_Callcard (#2)"/>
+                    <entry key="205" type="xstring" value="N_Callid (#2)"/>
+                    <entry key="206" type="xstring" value="Y_Callid (#2)"/>
+                    <entry key="207" type="xstring" value="N_Callwait (#2)"/>
+                    <entry key="208" type="xstring" value="Y_Callwait (#2)"/>
+                    <entry key="209" type="xstring" value="N_Confer (#2)"/>
+                    <entry key="210" type="xstring" value="Y_Confer (#2)"/>
+                    <entry key="211" type="xstring" value="C1_Custcat (#2)"/>
+                    <entry key="212" type="xstring" value="C3_Custcat (#2)"/>
+                    <entry key="213" type="xstring" value="C2_Custcat (#2)"/>
+                    <entry key="214" type="xstring" value="C4_Custcat (#2)"/>
+                    <entry key="215" type="xstring" value="N_Ebill (#2)"/>
+                    <entry key="216" type="xstring" value="Y_Ebill (#2)"/>
+                    <entry key="217" type="xstring" value="E4_Education (#2)"/>
+                    <entry key="218" type="xstring" value="E1_Education (#2)"/>
+                    <entry key="219" type="xstring" value="E2_Education (#2)"/>
+                    <entry key="220" type="xstring" value="E3_Education (#2)"/>
+                    <entry key="221" type="xstring" value="E5_Education (#2)"/>
+                    <entry key="222" type="xstring" value="N_Equip (#2)"/>
+                    <entry key="223" type="xstring" value="Y_Equip (#2)"/>
+                    <entry key="224" type="xstring" value="Y_Forward (#2)"/>
+                    <entry key="225" type="xstring" value="N_Forward (#2)"/>
+                    <entry key="226" type="xstring" value="Female_GeFemaleder (#2)"/>
+                    <entry key="227" type="xstring" value="Male_GeFemaleder (#2)"/>
+                    <entry key="228" type="xstring" value="N_Internet (#2)"/>
+                    <entry key="229" type="xstring" value="Y_Internet (#2)"/>
+                    <entry key="230" type="xstring" value="Y_Marital (#2)"/>
+                    <entry key="231" type="xstring" value="N_Marital (#2)"/>
+                    <entry key="232" type="xstring" value="N_Multline (#2)"/>
+                    <entry key="233" type="xstring" value="Y_Multline (#2)"/>
+                    <entry key="234" type="xstring" value="N_Pager (#2)"/>
+                    <entry key="235" type="xstring" value="Y_Pager (#2)"/>
+                    <entry key="236" type="xstring" value="R2_Region (#2)"/>
+                    <entry key="237" type="xstring" value="R3_Region (#2)"/>
+                    <entry key="238" type="xstring" value="R1_Region (#2)"/>
+                    <entry key="239" type="xstring" value="N_Retire (#2)"/>
+                    <entry key="240" type="xstring" value="Y_Retire (#2)"/>
+                    <entry key="241" type="xstring" value="N_Tollfree (#2)"/>
+                    <entry key="242" type="xstring" value="Y_Tollfree (#2)"/>
+                    <entry key="243" type="xstring" value="N_Voice (#2)"/>
+                    <entry key="244" type="xstring" value="Y_Voice (#2)"/>
+                    <entry key="245" type="xstring" value="N_Wireless (#2)"/>
+                    <entry key="246" type="xstring" value="Y_Wireless (#2)"/>
+                    <entry key="247" type="xstring" value="P (Churn (Y/N)=N)_SV"/>
+                </config>
+                <entry key="includeUnknownColumns" type="xboolean" value="false"/>
+            </config>
+            <config key="typeFilter">
+                <config key="selectedTypes">
+                    <entry key="array-size" type="xint" value="0"/>
+                </config>
+            </config>
+        </config>
+        <entry key="maxPoints" type="xint" value="2500"/>
+        <entry key="title" type="xstring" value="ROC Curve"/>
+        <entry key="xAxisLabel" type="xstring" value="False positive rate (1 - specificity)"/>
+        <entry key="yAxisLabel" type="xstring" value="True positive rate (sensitivity)"/>
+        <entry key="lineSize" type="xint" value="2"/>
+        <entry key="legendPosition" type="xstring" value="INSIDE_PLOT"/>
+        <entry key="allowImageDownload" type="xboolean" value="true"/>
+        <entry key="enableAnimation" type="xboolean" value="true"/>
+        <entry key="enableDataZoom" type="xboolean" value="true"/>
+        <entry key="showTooltip" type="xboolean" value="true"/>
+    </config>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="EXECUTED"/>
+    <entry key="factory" type="xstring" value="org.knime.base.views.node.roccurve.ROCCurveNodeFactory"/>
+    <entry key="node-name" type="xstring" value="ROC Curve"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME Views"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.base.views"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.5.1.v202507241234"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Views"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.base.views.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.5.1.v202507241234"/>
+    <config key="factory_settings"/>
+    <config key="node_creation_config">
+        <config key="Input Table"/>
+        <config key="Output Image"/>
+    </config>
+    <entry key="name" type="xstring" value="ROC Curve"/>
+    <entry key="hasContent" type="xboolean" value="true"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports"/>
+    <config key="internalObjects">
+        <entry key="location" type="xstring" value="internalTables"/>
+        <config key="content">
+            <config key="object_0">
+                <entry key="index" type="xint" value="0"/>
+                <entry key="type" type="xstring" value="table"/>
+                <entry key="table_dir_location" type="xstring" value="object_0"/>
+            </config>
+        </config>
+    </config>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" value="ed742919-deb5-4000-b4e7-ce65d8aec5fb"/>
+    </config>
+</config>

@@ -2,23 +2,28 @@
 
 ####################################################################################################
 #
-# SVM Learner
+# SVM Learner  — fail-fast if misconfigured (reads KNIME keys: classcol, kernel_type, c_parameter,
+#                                              kernel_param_* such as Power/Bias/Gamma/Kappa/Delta/Sigma)
 #
-# Trains a scikit-learn SVC from parameters parsed in settings.xml and emits:
-# (1) a model bundle (estimator + metadata), (2) a coefficient table (when available), and (3) a
-# summary. Mapping (KNIME → sklearn):
-#   - Kernel:
-#       • "RBF"               → kernel='rbf',   gamma from Sigma as gamma = 1/(2*sigma^2)
-#       • "Polynomial"        → kernel='poly',  degree from Power, coef0 from Bias, gamma from Gamma
-#       • "HyperTangent"      → kernel='sigmoid', gamma from Kappa, coef0 from Delta
-#       • "Linear" (if present) → kernel='linear'
-#   - Cost parameter C (variously named "C" / "cost" / "regularization") → C
-#   - Probability: enabled (probability=True) to support downstream ROC/probabilities.
+# Trains a scikit-learn SVC and emits:
+#   Port 1: bundle (dict with estimator + metadata)
+#   Port 2: coefficients table (empty for non-linear kernels)
+#   Port 3: summary table
 #
-#   - Feature coefficients only exist for linear/separable cases; for non-linear kernels we emit an
-#     empty coefficient table.
-#   - Scaling is not applied here; if KNIME’s node performs internal scaling, replicate upstream.
-#   - Random seed: SVC uses it for probability calibration; default to 1 for reproducibility.
+# KNIME → sklearn mapping:
+#   kernel_type:
+#     - "RBF"          → kernel='rbf',     gamma = 1/(2*sigma^2) from kernel_param_sigma (if present)
+#     - "Polynomial"   → kernel='poly',    degree from kernel_param_Power, coef0 from kernel_param_Bias,
+#                                           gamma from kernel_param_Gamma (else 'scale')
+#     - "HyperTangent" → kernel='sigmoid', gamma from kernel_param_kappa, coef0 from kernel_param_delta
+#     - "Linear"       → kernel='linear'
+#
+#   C parameter: c_parameter → C
+#
+# Notes:
+#   - If no target is configured → raise (fail-fast).
+#   - Rows with missing target are dropped prior to fit.
+#   - Probability=True to enable downstream probabilities (KNIME predictor can use them).
 #
 ####################################################################################################
 
@@ -35,7 +40,7 @@ from .node_utils import *  # first, first_el, normalize_in_ports, collect_module
 # KNIME factory for SVM Learner (Base)
 FACTORY = "org.knime.base.node.mine.svm.learner.SVMLearnerNodeFactory2"
 
-# Hub doc (kept as a reference)
+# Hub doc (reference)
 HUB_URL = (
     "https://hub.knime.com/knime/extensions/org.knime.features.base/latest/"
     "org.knime.base.node.mine.svm.learner.SVMLearnerNodeFactory2"
@@ -50,25 +55,14 @@ class SVMLearnerSettings:
     target: Optional[str] = None
     kernel: str = "rbf"             # 'linear' | 'rbf' | 'poly' | 'sigmoid'
     C: float = 1.0
-    degree: int = 3                 # poly only (KNIME: Power)
+    degree: int = 3                 # poly only
     gamma: str | float = "scale"    # 'scale' | 'auto' | float
-    coef0: float = 0.0              # poly/sigmoid bias/Delta
+    coef0: float = 0.0              # poly/sigmoid bias/delta
     probability: bool = True
-    class_weight: Optional[str] = None  # e.g., 'balanced'
+    class_weight: Optional[str] = None
     random_state: int = 1
 
-# ----------------------------
-# Local parsing helpers (robust over varied key names)
-# ----------------------------
-
-def _tokfind(entries: Dict[str, str], *tokens: str) -> Optional[str]:
-    """Return first value whose key contains ALL tokens (case-insensitive)."""
-    toks = [t.lower() for t in tokens if t]
-    for k, v in entries.items():
-        lk = k.lower()
-        if all(t in lk for t in toks):
-            return v
-    return None
+# Helpers ------------------------------------------------------------------------------------------
 
 def _to_float(v: Optional[str], default: float | None = None) -> Optional[float]:
     try:
@@ -78,42 +72,33 @@ def _to_float(v: Optional[str], default: float | None = None) -> Optional[float]
 
 def _to_int(v: Optional[str], default: int | None = None) -> Optional[int]:
     try:
-        return int(v) if v is not None and v != "" else default
+        return int(float(v)) if v is not None and v != "" else default
     except Exception:
         return default
-
-def _to_bool(v: Optional[str], default: bool = False) -> bool:
-    if v is None:
-        return default
-    return str(v).strip().lower() in {"1", "true", "yes", "y"}
-
-def _collect_entries(el: ET._Element) -> Dict[str, str]:
-    """Flatten <entry key=... value=.../> into a dict (first win)."""
-    out: Dict[str, str] = {}
-    for k, v in iter_entries(el):
-        if k not in out:
-            out[k] = v or ""
-    return out
-
-# KNIME → sklearn kernel mapping (accepts several synonyms)
-_KERNEL_MAP = {
-    "RBF": "rbf",
-    "GAUSSIAN": "rbf",
-    "LINEAR": "linear",
-    "POLYNOMIAL": "poly",
-    "POLY": "poly",
-    "HYPERTANGENT": "sigmoid",   # KNIME naming
-    "SIGMOID": "sigmoid",
-}
 
 def _sigma_to_gamma(sigma: Optional[float]) -> Optional[float]:
     if sigma is None or sigma <= 0:
         return None
     return 1.0 / (2.0 * sigma * sigma)
 
-# ----------------------------
-# Parse settings.xml
-# ----------------------------
+_KERNEL_MAP = {
+    "RBF": "rbf",
+    "GAUSSIAN": "rbf",
+    "LINEAR": "linear",
+    "POLYNOMIAL": "poly",
+    "POLY": "poly",
+    "HYPERTANGENT": "sigmoid",
+    "SIGMOID": "sigmoid",
+}
+
+def _entries_dict(el: ET._Element) -> Dict[str, str]:
+    d: Dict[str, str] = {}
+    for k, v in iter_entries(el):
+        if k not in d:
+            d[k] = v or ""
+    return d
+
+# Parse settings.xml -------------------------------------------------------------------------------
 
 def parse_svm_settings(node_dir: Optional[Path]) -> SVMLearnerSettings:
     if not node_dir:
@@ -128,69 +113,48 @@ def parse_svm_settings(node_dir: Optional[Path]) -> SVMLearnerSettings:
     if model_el is None:
         return SVMLearnerSettings()
 
-    ent = _collect_entries(model_el)
+    ent = _entries_dict(model_el)
 
-    # Target column
-    target = (
-        first(model_el, ".//*[local-name()='entry' and @key='classifyColumn']/@value")
-        or _tokfind(ent, "class", "column")  # fallback
-    )
+    # Target column (KNIME: classcol)
+    target = first(model_el, ".//*[local-name()='entry' and @key='classcol']/@value")
 
-    # Kernel
-    raw_kernel = (
-        _tokfind(ent, "kernel")
-        or first(model_el, ".//*[local-name()='entry' and @key='kernel']/@value")
-        or "RBF"
-    )
-    sk_kernel = _KERNEL_MAP.get((raw_kernel or "").strip().upper(), "rbf")
+    # Kernel (KNIME: kernel_type)
+    raw_kernel = first(model_el, ".//*[local-name()='entry' and @key='kernel_type']/@value") or "RBF"
+    sk_kernel = _KERNEL_MAP.get(raw_kernel.strip().upper(), "rbf")
 
-    # Cost parameter (C)
-    raw_C = (
-        ent.get("C")
-        or _tokfind(ent, "cost")
-        or _tokfind(ent, "regularization")
-        or _tokfind(ent, "penalty")
-    )
-    C = _to_float(raw_C, 1.0) or 1.0
+    # Cost parameter (KNIME: c_parameter)
+    C = _to_float(first(model_el, ".//*[local-name()='entry' and @key='c_parameter']/@value"), 1.0) or 1.0
 
-    # Probability
-    prob = _to_bool(_tokfind(ent, "prob"), True)
-
-    # Class weight (optional)
-    cw = _tokfind(ent, "class", "weight")
-    class_weight = "balanced" if isinstance(cw, str) and cw.strip().lower() == "balanced" else None
-
-    # Kernel-specific params
+    # Kernel-specific parameters
     degree = 3
     gamma: str | float = "scale"
     coef0 = 0.0
 
     if sk_kernel == "rbf":
-        # KNIME uses Sigma; sklearn expects gamma
-        sigma = _to_float(_tokfind(ent, "sigma"))
+        sigma = _to_float(first(model_el, ".//*[local-name()='entry' and @key='kernel_param_sigma']/@value"), None)
         g = _sigma_to_gamma(sigma)
         if g is not None:
             gamma = g
+        # if sigma absent/invalid → keep default 'scale'
 
     elif sk_kernel == "poly":
-        # Polynomial(Power, Bias, Gamma)
-        degree = _to_int(_tokfind(ent, "power"), 3) or 3
-        coef0 = _to_float(_tokfind(ent, "bias"), 0.0) or 0.0
-        g = _to_float(_tokfind(ent, "gamma"))
+        # degree from Power (numeric in XML, cast to int); coef0 from Bias; gamma from Gamma
+        degree = _to_int(first(model_el, ".//*[local-name()='entry' and @key='kernel_param_Power']/@value"), 3) or 3
+        coef0 = _to_float(first(model_el, ".//*[local-name()='entry' and @key='kernel_param_Bias']/@value"), 0.0) or 0.0
+        g = _to_float(first(model_el, ".//*[local-name()='entry' and @key='kernel_param_Gamma']/@value"), None)
         if g is not None:
-            gamma = g  # direct
+            gamma = g  # otherwise remain 'scale'
 
     elif sk_kernel == "sigmoid":
-        # HyperTangent(Kappa, Delta) ~ sigmoid(gamma=Kappa, coef0=Delta)
-        g = _to_float(_tokfind(ent, "kappa"))
+        # HyperTangent: Kappa → gamma, Delta → coef0
+        g = _to_float(first(model_el, ".//*[local-name()='entry' and @key='kernel_param_kappa']/@value"), None)
+        d = _to_float(first(model_el, ".//*[local-name()='entry' and @key='kernel_param_delta']/@value"), None)
         if g is not None:
             gamma = g
-        d = _to_float(_tokfind(ent, "delta"))
         if d is not None:
             coef0 = d
 
-    # linear: no degree/gamma/coef0 needed
-
+    # Build settings object
     return SVMLearnerSettings(
         target=target or None,
         kernel=sk_kernel,
@@ -198,14 +162,12 @@ def parse_svm_settings(node_dir: Optional[Path]) -> SVMLearnerSettings:
         degree=int(degree),
         gamma=gamma,
         coef0=float(coef0),
-        probability=bool(prob),
-        class_weight=class_weight,
+        probability=True,          # enable probabilities for downstream predictor
+        class_weight=None,         # not present in this XML; could be extended later
         random_state=1,
     )
 
-# ---------------------------------------------------------------------
-# Code generators
-# ---------------------------------------------------------------------
+# Code generators ----------------------------------------------------------------------------------
 
 def generate_imports():
     return [
@@ -215,33 +177,34 @@ def generate_imports():
     ]
 
 def _emit_train_code(cfg: SVMLearnerSettings) -> List[str]:
-    """
-    Emit lines that:
-      - select X, y (numeric/bool features by default, excluding target)
-      - fit sklearn SVC
-      - produce coefficient table (if available) & a summary
-      - build a *bundle* dict with estimator + metadata for downstream Predictor
-    """
     lines: List[str] = []
     lines.append("out_df = df.copy()")
+
+    # --- fail-fast when misconfigured ---
     if not cfg.target:
-        lines.append("# No target column configured; passthrough / no model.")
-        lines.append("model = None")
-        lines.append("coef_df = pd.DataFrame(columns=['feature','coef'])")
-        lines.append("summary_df = pd.DataFrame([{'error': 'no target configured'}])")
-        lines.append("bundle = {'estimator': None, 'features': [], 'feature_cols': [], 'target': None, 'classes': []}")
+        lines.append("raise ValueError('SVM Learner: no target configured (settings.xml classcol is missing)')")
         return lines
 
-    # Target
+    # Target present?
     lines.append(f"_target = {repr(cfg.target)}")
+    lines.append("if _target not in df.columns:")
+    lines.append("    raise KeyError(f\"SVM Learner: target column not found: {_target!r}\")")
 
-    # Feature selection: numeric/boolean, excluding target
+    # Feature selection: numeric/bool, excluding target
     lines.append("num_like = df.select_dtypes(include=['number','bool','boolean','Int64','Float64']).columns.tolist()")
     lines.append("feat_cols = [c for c in num_like if c != _target]")
+    lines.append("if not feat_cols:")
+    lines.append("    raise ValueError('SVM Learner: no numeric/bool feature columns found (after excluding target)')")
 
-    # Extract X, y
+    # Extract X, y and drop rows with missing target (sklearn cannot fit with NaN labels)
     lines.append("X = df[feat_cols].copy()")
     lines.append("y = df[_target].copy()")
+    lines.append("_mask = y.notna()")
+    lines.append("if not bool(_mask.all()):")
+    lines.append("    X = X.loc[_mask]")
+    lines.append("    y = y.loc[_mask]")
+    lines.append("if X.shape[0] == 0:")
+    lines.append("    raise ValueError('SVM Learner: no training rows after dropping missing target values')")
 
     # Hyperparameters
     lines.append(f"_kernel = {repr(cfg.kernel)}")
@@ -269,16 +232,14 @@ def _emit_train_code(cfg: SVMLearnerSettings) -> List[str]:
     lines.append(")")
     lines.append("model.fit(X, y)")
 
-    # Coefficients (if available)
+    # Coefficients (only for linear kernels; scikit exposes coef_ in those cases)
     lines.append("coef_df = pd.DataFrame(columns=['feature','coef'])")
-    lines.append("if hasattr(model, 'coef_') and model.coef_ is not None:")
+    lines.append("if hasattr(model, 'coef_') and getattr(model, 'coef_', None) is not None:")
     lines.append("    try:")
-    lines.append("        # For linear kernel and one-vs-one, flatten per-pair coefs")
     lines.append("        coeffs = model.coef_")
-    lines.append("        if coeffs.ndim == 1:")
+    lines.append("        if getattr(coeffs, 'ndim', 1) == 1:")
     lines.append("            coef_df = pd.DataFrame({'feature': feat_cols, 'coef': coeffs})")
     lines.append("        else:")
-    lines.append("            # stack rows with pair index")
     lines.append("            tmp = []")
     lines.append("            for i, row in enumerate(coeffs):")
     lines.append("                tmp.append(pd.DataFrame({'feature': feat_cols, 'coef': row, 'pair': i}))")
@@ -310,6 +271,13 @@ def _emit_train_code(cfg: SVMLearnerSettings) -> List[str]:
     lines.append("}")
     return lines
 
+def generate_imports():
+    return [
+        "import pandas as pd",
+        "import numpy as np",
+        "from sklearn.svm import SVC",
+    ]
+
 def generate_py_body(
     node_id: str,
     node_dir: Optional[str],
@@ -330,20 +298,18 @@ def generate_py_body(
     # Training + outputs
     lines.extend(_emit_train_code(cfg))
 
-    # Publish:
-    # Convention: 1=model bundle, 2=coefficients (if any), 3=summary
+    # Publish: 1=bundle, 2=coeffs, 3=summary
     ports = [str(p or '1') for p in (out_ports or ['1', '2', '3'])]
     if not ports:
         ports = ['1', '2', '3']
-
     want = {'1': 'bundle', '2': 'coef_df', '3': 'summary_df'}
-    remaining_vals = ['bundle', 'coef_df', 'summary_df']
+    remaining = ['bundle', 'coef_df', 'summary_df']
     for p in ports:
         val = want.get(p)
-        if val is None and remaining_vals:
-            val = remaining_vals.pop(0)
-        elif val in remaining_vals:
-            remaining_vals.remove(val)
+        if val is None and remaining:
+            val = remaining.pop(0)
+        elif val in remaining:
+            remaining.remove(val)
         if val:
             lines.append(f"context['{node_id}:{p}'] = {val}")
 
@@ -355,8 +321,7 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
-    body = generate_py_body(node_id, node_dir, in_ports, out_ports)
-    return "\n".join(body) + "\n"
+    return "\n".join(generate_py_body(node_id, node_dir, in_ports, out_ports)) + "\n"
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """

@@ -6,15 +6,18 @@
 #
 # Appends columns from one or more “right” tables to a single “left” table. Options are parsed from
 # settings.xml. When row IDs are IDENTICAL the join aligns by index; otherwise it falls back to a
-# positional column-wise concat. Right-hand name collisions are resolved by suffixing each right
-# table’s columns with an incremented suffix (e.g., "_r1", "_r2", …).
+# positional column-wise concat. Right-hand name collisions are resolved using KNIME-style per-right
+# suffixes:  " (<#k>)"  → e.g.,  N_Voice (#1), Cardmon (#2), …
 #
 # - Settings read: selected_rowid_mode, selected_rowid_table, selected_rowid_table_number
-#   (base suffix defaults to "_r"; final suffix becomes f"{base}{k}" per right table).
-# - Alignment: IDENTICAL → index join; other modes → positional concat with reset index.
-# 
+# - Alignment: IDENTICAL → index join (reindex right to left if needed); otherwise positional concat
+# - Suffixing rules:
+#       • For each right table k (1-based), only columns that collide with *current* out_df get
+#         renamed by appending " (#k)".
+#       • If the new name would still collide (e.g., existing "A (#1)" already present), the suffix
+#         is appended repeatedly: "A (#1) (#1)" and so on, until unique.
+#
 ####################################################################################################
-
 
 from __future__ import annotations
 
@@ -35,16 +38,15 @@ from .node_utils import (  # project helpers
 # KNIME factory (Column Appender 2)
 FACTORY = "org.knime.base.node.preproc.columnappend2.ColumnAppender2NodeFactory"
 
-# ---------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 # settings.xml → ColumnAppenderSettings
-# ---------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 
 @dataclass
 class ColumnAppenderSettings:
     rowid_mode: str = "IDENTICAL"   # KNIME "selected_rowid_mode"
     rowid_table: Optional[int] = None
     rowid_table_number: Optional[int] = None
-    right_suffix: str = "_r"        # base suffix; final suffix becomes f"{right_suffix}{k}"
 
 
 def _to_int_or_none(s: Optional[str]) -> Optional[int]:
@@ -76,10 +78,9 @@ def parse_column_appender_settings(node_dir: Optional[Path]) -> ColumnAppenderSe
         rowid_table_number=num,
     )
 
-
-# ---------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 # Code generators
-# ---------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 
 def generate_imports():
     return ["import pandas as pd"]
@@ -90,26 +91,43 @@ HUB_URL = (
     "org.knime.base.node.preproc.columnappend2.ColumnAppender2NodeFactory"
 )
 
-
 def _emit_append_many_code(cfg: ColumnAppenderSettings, right_count: int) -> List[str]:
     """
     Return python lines that create out_df by appending columns of each right_df[k] to out_df.
     - Try index (row ID) alignment for IDENTICAL mode.
-    - Rename right-side collisions with a per-right suffix (e.g., '_r1', '_r2', ...).
-    - Fallback to positional concat when mode unsupported.
+    - KNIME-style collision renaming with per-right suffix: ' (<#k>)'.
+    - Ensure final column names are unique even if the right df already contains similar suffixes.
     """
     lines: List[str] = []
     lines.append("out_df = left_df.copy()")
     lines.append(f"_mode = {repr((cfg.rowid_mode or 'IDENTICAL').upper())}")
-    lines.append(f"_base_suffix = {repr(cfg.right_suffix)}")
     lines.append("")
-    lines.append("# Append each right table in order")
+
+    # Helper for KNIME-style unique names per right table
+    lines.append("def _unique_with_suffix(base: str, existing: set, suffix: str) -> str:")
+    lines.append("    if base not in existing:")
+    lines.append("        return base")
+    lines.append("    new = f\"{base}{suffix}\"")
+    lines.append("    # If even the suffixed name exists, keep appending the same suffix")
+    lines.append("    while new in existing:")
+    lines.append("        new = f\"{new}{suffix}\"")
+    lines.append("    return new")
+    lines.append("")
+
+    lines.append("# Append each right table in order (1-based index for suffix)")
     lines.append("for k, rdf in enumerate(right_dfs, start=1):")
-    lines.append("    # Collision-safe rename of this right-hand table")
-    lines.append("    suff = f\"{_base_suffix}{k}\"")
-    lines.append("    out_cols = set(out_df.columns)")
-    lines.append("    collision_map = {c: f\"{c}{suff}\" for c in rdf.columns if c in out_cols}")
-    lines.append("    right_safe = rdf.rename(columns=collision_map) if collision_map else rdf")
+    lines.append("    suffix = f\" (#{k})\"")
+    lines.append("    # Build a collision-aware rename map guaranteeing uniqueness")
+    lines.append("    existing = set(out_df.columns)")
+    lines.append("    rename_map = {}")
+    lines.append("    for c in rdf.columns:")
+    lines.append("        if c in existing or c in rename_map.values():")
+    lines.append("            newc = _unique_with_suffix(c, existing | set(rename_map.values()), suffix)")
+    lines.append("            rename_map[c] = newc")
+    lines.append("        else:")
+    lines.append("            # no collision; keep original")
+    lines.append("            rename_map[c] = c")
+    lines.append("    right_safe = rdf.rename(columns=rename_map) if rename_map else rdf")
     lines.append("")
     lines.append("    if _mode == 'IDENTICAL':")
     lines.append("        # Align by index; if different, left-align by reindexing right to out_df.index")
@@ -134,8 +152,6 @@ def generate_py_body(
     cfg = parse_column_appender_settings(ndir)
 
     # Determine ordered inputs: prefer KNIME target_port to decide left vs rights
-    # in_ports here is [(src_id, EdgeObj), ...] to allow target_port access
-    # Build a list of (tgt_port_int_or_large, src_id, src_port)
     ordered: List[Tuple[int, str, str]] = []
     for src_id, e in (in_ports or []):
         tgt = getattr(e, "target_port", None)
@@ -199,7 +215,6 @@ def handle(ntype, nid, npath, incoming, outgoing):
       - Input 2..N → right tables to append
       - Output 1 → appended table
     """
-
     explicit_imports = collect_module_imports(generate_imports)
 
     # Preserve (src_id, Edge) to keep target_port info for ordering

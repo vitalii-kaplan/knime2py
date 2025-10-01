@@ -9,12 +9,12 @@ set -euo pipefail
 #####################################
 
 # Option A: Clean a project by NAME located under tests/data/<NAME>
-WORKFLOW_NAME="HW_Churn_test_preparation"   # e.g., "KNIME_io_csv" or "KNIME_PP_2022_LR"
+WORKFLOW_NAME="HW_Churn_test"   # e.g., "KNIME_io_csv" or "KNIME_PP_2022_LR"
 DATA_DIR="tests/data"          # change if your tests data dir differs
 
 # Option B: Clean an explicit KNIME project directory (absolute or relative)
 # If non-empty, this takes precedence over WORKFLOW_NAME.
-KNIME_PROJECT_PATH=""          # e.g., "../../harbour/KNIME/ISU_Master_test_preparation"
+KNIME_PROJECT_PATH=""          # e.g., "../../KNIME/ISU_Master_test_preparation"
 
 # Behavior flags
 DRY_RUN=0                      # 1 = show what would be deleted; 0 = actually delete
