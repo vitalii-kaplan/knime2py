@@ -21,11 +21,11 @@ __all__ = [
 @dataclass
 class NodeBlock:
     # identity / ordering
-    func_name: str
     nid: str
     title: str
     root_id: str
 
+    # export coverage flag: True iff NO dedicated exporter exists
     not_implemented: bool
 
     # state & summaries (already formatted one-liners)
@@ -34,7 +34,7 @@ class NodeBlock:
     input_line: Optional[str]
     output_line: Optional[str]
 
-    # final code body lines (what will go inside the function / code cell)
+    # final code body lines (what will go inside the code cell)
     code_lines: List[str]
 
     # loop metadata
@@ -57,14 +57,10 @@ def _title_for_neighbor(g, nei_id: str) -> str:
     return t
 
 
-def _safe_name_from_title(title: str) -> str:
-    return re.sub(r"\W+", "_", title).strip("_") or "node"
-
-
 def _banner_lines(b: "NodeBlock") -> List[str]:
     """
     Produce compact, comment-style banners to separate nodes inside combined cells.
-    Respect the block's indent_prefix so banners stay inside loops.
+    Respects the block's indent_prefix so banners stay inside loops.
     """
     pref = b.indent_prefix or ""
     lines = [
@@ -73,19 +69,13 @@ def _banner_lines(b: "NodeBlock") -> List[str]:
         pref + f"# Node state: `{b.state}`",
     ]
     if b.input_line:
-        il = b.input_line
-        if pref and il.startswith(pref):
-            il = il[len(pref):]
+        il = b.input_line[len(pref):] if b.input_line.startswith(pref) else b.input_line
         lines.append(pref + f"# {il}")
     if b.output_line:
-        ol = b.output_line
-        if pref and ol.startswith(pref):
-            ol = ol[len(pref):]
+        ol = b.output_line[len(pref):] if b.output_line.startswith(pref) else b.output_line
         lines.append(pref + f"# {ol}")
     if b.comment_line and b.comment_line != b.title:
-        cl = b.comment_line
-        if pref and cl.startswith(pref):
-            cl = cl[len(pref):]
+        cl = b.comment_line[len(pref):] if b.comment_line.startswith(pref) else b.comment_line
         lines.append(pref + f"# {cl}")
     return lines
 
@@ -103,11 +93,11 @@ def _node_markdown(b: "NodeBlock") -> str:
 
 
 def _not_impl_list_for_graph(g, blocks: List[NodeBlock]) -> List[str]:
-    """Collect display names for not-implemented nodes."""
+    """Collect display names for nodes that lack a dedicated exporter (regardless of state)."""
     names: set[str] = set()
     for b in blocks:
         if getattr(b, "not_implemented", False):
-            node = getattr(g, "nodes", {}).get(getattr(b, "nid", None)) if hasattr(g, "nodes") else None
+            node = getattr(g, "nodes", {}).get(getattr(b, "nid", None))
             factory = (
                 getattr(node, "type", None)
                 or getattr(node, "factory", None)
@@ -200,8 +190,11 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
         incoming = ctx["incoming"]
         outgoing = ctx["outgoing"]
 
-        safe_name = _safe_name_from_title(title)
-        func_name = f"node_{nid}_{safe_name}"
+        # Determine exporter presence (coverage): dedicated handler only
+        factory = getattr(n, "type", None)
+        specific_mod = handlers.get(factory, None) if factory else None
+        default_mod = handlers.get("", None)
+        has_dedicated_exporter = specific_mod is not None
 
         # one-liners
         comment_line = None
@@ -230,39 +223,28 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
             output_line = "Output: " + "; ".join(outs)
 
         code_lines: List[str] = []
-        not_impl_flag = True
 
         if state == "IDLE":
-            if getattr(n, "type", None):
-                hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
+            # Still show the Hub URL and a stub; node may still be counted as implemented if exporter exists
+            if factory:
+                hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{factory}"
                 code_lines.append(f"# {hub_url}")
             else:
                 code_lines.append("# Factory class unavailable")
-            code_lines.append("# The node is IDLE. Codegen is not possible. Implement this node manually.")
+            code_lines.append("# The node is IDLE. Codegen is not possible. Implement this node manually or run the node in KNIME.")
             code_lines.append("pass")
-
-        mod = None
-        default_mod = handlers.get("")
-        if getattr(n, "type", None):
-            mod = handlers.get(n.type)
-            if mod is not None:
-                not_impl_flag = False
-        if mod is None and default_mod is not None:
-            mod = default_mod
-
-        loop_role = getattr(mod, "LOOP", None) if mod is not None else None
-        is_loop_start = (loop_role == "start")
-        is_loop_finish = (loop_role == "finish")
-
-        if state != "IDLE":
+        else:
+            # Prefer dedicated handler; otherwise fall back to default for codegen convenience
+            mod = specific_mod or default_mod
             res = None
             if mod is not None:
                 try:
-                    res = mod.handle(n.type, nid, n.path, incoming, outgoing)
+                    res = mod.handle(factory, nid, n.path, incoming, outgoing)
                 except Exception as e:
                     import sys as _sys
                     print(f"[emitters] Handler {getattr(mod, '__name__', mod)} failed on node {nid}: {e}", file=_sys.stderr)
                     res = None
+
             if res:
                 found_imports, body = res
                 if found_imports:
@@ -270,13 +252,19 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
                 if body:
                     code_lines.extend(body)
             else:
-                if getattr(n, "type", None):
-                    hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{n.type}"
+                if factory:
+                    hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{factory}"
                     code_lines.append(f"# {hub_url}")
                 else:
                     code_lines.append("# Factory class unavailable")
                 code_lines.append("# TODO: implement this node")
                 code_lines.append("pass")
+
+        # Loop role—use the handler that defines LOOP, preferring the dedicated one
+        mod_for_role = specific_mod or default_mod
+        loop_role = getattr(mod_for_role, "LOOP", None) if mod_for_role is not None else None
+        is_loop_start = (loop_role == "start")
+        is_loop_finish = (loop_role == "finish")
 
         # indentation (for .py)
         indent_prefix = "    " * indent_depth if indent_depth > 0 else ""
@@ -290,7 +278,6 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
             code_lines = [(indent_prefix + ln) if ln else ln for ln in code_lines]
 
         prepared.append({
-            "func_name": func_name,
             "nid": nid,
             "title": title,
             "root_id": root_id,
@@ -299,7 +286,7 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
             "input_line": input_line,
             "output_line": output_line,
             "code_lines": code_lines,
-            "not_impl_flag": not_impl_flag,
+            "not_impl_flag": (not has_dedicated_exporter),
             "indent_prefix": indent_prefix,
             "loop_role": loop_role,
         })
@@ -313,7 +300,6 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
     blocks: List[NodeBlock] = []
     for p in prepared:
         blocks.append(NodeBlock(
-            func_name=p["func_name"],
             nid=p["nid"],
             title=p["title"],
             root_id=p["root_id"],
@@ -348,7 +334,7 @@ def write_workbook_py(
     if blocks is None or imports is None:
         blocks, imports = build_workbook_blocks(g)
 
-    # Coverage list for header
+    # Coverage list for header (based solely on dedicated exporter presence)
     not_impl_names = _not_impl_list_for_graph(g, blocks)
 
     lines: List[str] = []
@@ -387,23 +373,12 @@ def write_workbook_py(
     lines.append("")
 
     for b in blocks:
-        pref = getattr(b, "indent_prefix", "")
-        lines.append(pref + "################################################################################################################################################################")
-        lines.append(pref + f"## {b.title} # `{b.root_id}`")
-        lines.append(pref + f"# Node state: `{b.state}`")
-        if b.input_line:
-            lines.append(pref + f"# {b.input_line[len(pref):] if b.input_line.startswith(pref) else b.input_line}")
-        if b.output_line:
-            lines.append(pref + f"# {b.output_line[len(pref):] if b.output_line.startswith(pref) else b.output_line}")
-        if b.comment_line and b.comment_line != b.title:
-            lines.append(pref + f"# {b.comment_line[len(pref):] if b.comment_line.startswith(pref) else b.comment_line}")
-
+        lines.extend(_banner_lines(b))
         if not b.code_lines:
-            lines.append(pref + "# TODO: implement this node")
-            lines.append(pref + "pass")
+            lines.append((b.indent_prefix or "") + "# TODO: implement this node")
+            lines.append((b.indent_prefix or "") + "pass")
         else:
             lines.extend(b.code_lines)
-
         lines.append("")
 
     fp.write_text("\n".join(lines))
@@ -430,7 +405,7 @@ def write_workbook_ipynb(
     if blocks is None or imports is None:
         blocks, imports = build_workbook_blocks(g)
 
-    # Coverage list for header (will be a separate markdown cell)
+    # Coverage list for header (based solely on dedicated exporter presence)
     not_impl_names = _not_impl_list_for_graph(g, blocks)
     if not_impl_names:
         coverage_md = "**Export coverage**\n\n- The following nodes have no automatic exporter:\n" + "\n".join(
@@ -454,7 +429,7 @@ def write_workbook_ipynb(
     )
     cells.append({"cell_type": "markdown", "metadata": {}, "source": header_md if header_md.endswith("\n") else header_md + "\n"})
 
-    # Explicit coverage cell (ensures visibility in all viewers)
+    # Explicit coverage cell
     cells.append({"cell_type": "markdown", "metadata": {}, "source": coverage_md if coverage_md.endswith("\n") else coverage_md + "\n"})
 
     # Imports cell
@@ -530,7 +505,7 @@ def write_workbook_ipynb(
         _emit_md_cell([_node_markdown(b)])
         _emit_code_cell(_banner_lines(b) + (b.code_lines or []))
 
-    # Safety: if we ended still inside a loop, flush the outermost accumulated cells
+    # Safety: if we ended still inside a loop, flush the accumulated outermost buffer
     if loop_stack:
         finished = loop_stack[0]
         _emit_md_cell(finished["md"])
