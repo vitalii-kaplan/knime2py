@@ -57,6 +57,9 @@ output/
 # ---- Local helper scripts (not needed in image) ----
 scripts/
 
+# ---- Local RAG index ----
+.rag_index 
+
 # ---- Keep these (do NOT ignore) ----
 !src/**
 !pyproject.toml

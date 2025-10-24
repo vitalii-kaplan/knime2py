@@ -1,0 +1,4 @@
+tests/data
+.coverage
+coverage.xml
+LICENSE
