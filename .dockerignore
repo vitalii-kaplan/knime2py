@@ -54,9 +54,8 @@ output/
 *.swp
 *~
 
-# ---- Local helper scripts (optional to exclude) ----
-k2p_*.sh
-pex_yml_local.sh
+# ---- Local helper scripts (not needed in image) ----
+scripts/
 
 # ---- Keep these (do NOT ignore) ----
 !src/**
