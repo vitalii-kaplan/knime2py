@@ -12,7 +12,7 @@ dependencies = [
   "lxml>=4.9,<6",
   "jinja2>=3.1,<4",
   "networkx>=3.2,<4",
-  "packaging>=23,<25"
+  "packaging>=23,<25",
 ]
 
 [project.optional-dependencies]
@@ -21,24 +21,29 @@ dev = [
   "pytest-cov>=5",
 ]
 
+# RAG tooling – keep protobuf + tenacity conservative to avoid clobbering TF/Streamlit envs.
 rag = [
   "sentence-transformers>=2.6,<3",
   "chromadb>=0.5",
   "python-dotenv>=1.0",
-  "requests>=2.32"
+  "requests>=2.32",
+  "protobuf<5",     # <- prevents upgrade to v6 that breaks TF/Streamlit stacks
+  "tenacity<9",     # <- streamlit<1.33 expects <9; avoids pulling 9.x
 ]
 
 # Graph rendering only:
 viz = ["graphviz>=0.20"]
 
-# Heavy scientific stack used by examples/notebooks, not the CLI:
+# Heavy scientific stack used by examples/notebooks, not the CLI.
+# Add protobuf<5 for coexistence with TF/Streamlit; it won’t be used directly here.
 ml-examples = [
   "pandas>=1.5,<3.0",
   "numpy>=1.23,<2.0",
   "scipy>=1.10,<1.13",
   "scikit-learn>=1.4.2,<1.6",
   "imbalanced-learn>=0.12.3,<0.13",
-  "matplotlib>=3.6"
+  "matplotlib>=3.6",
+  "protobuf<5",
 ]
 
 [project.scripts]
