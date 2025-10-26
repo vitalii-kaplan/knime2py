@@ -31,6 +31,7 @@ pip-wheel-metadata/
 *.whl
 *.pex
 *.log
+.generated
 
 # ---- Tests & coverage (not needed in runtime image) ----
 tests/
@@ -58,7 +59,8 @@ output/
 scripts/
 
 # ---- Local RAG index ----
-.rag_index 
+.rag_index
+.env 
 
 # ---- Keep these (do NOT ignore) ----
 !src/**
