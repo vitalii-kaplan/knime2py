@@ -12,6 +12,7 @@
 # - Dynamically computes max_output_tokens = min(requested, context_window - input_tokens - safety).
 # - Enforces token budget and fails fast if there is no headroom.
 # - Prints ONLY the updated file content to stdout (if the markers are present).
+# - If --rewrite is provided, also overwrites the target file with the updated content.
 #
 # Usage
 # -----
@@ -24,6 +25,7 @@
 #   --max-output TOKENS           (default: 10000) upper bound; actual value is computed to fit
 #   --safety TOKENS               (default: 1024) safety margin for prompt budgeting
 #   --raw                         print model response as-is (don’t parse markers)
+#   --rewrite                     overwrite the target file with the updated content
 #
 # Requirements
 # ------------
@@ -58,10 +60,8 @@ from rag.rag_utils import (
 )
 
 # ---------------- Config defaults ----------------
-# Retrieval (embedding backend+model used by the index)
 CFG: RAGConfig = load_config_from_env(default_embed_backend=os.getenv("RAG_EMBED_BACKEND", "openai"))
 
-# Reserved slots so STRUCTURE.md doesn’t crowd out real content
 STRUCTURE_MAX_CHUNKS_DEFAULT = int(os.getenv("RAG_STRUCTURE_MAX_CHUNKS", "1"))
 FILE_HINT_MAX_CHUNKS_DEFAULT = int(os.getenv("RAG_FILE_HINT_MAX_CHUNKS", "8"))  # per hinted file
 
@@ -99,7 +99,6 @@ def _build_prompt(
     struct_chunks: List[Tuple[str, dict]],
     aux_chunks: List[Tuple[str, dict]],
 ) -> str:
-    # Format context blocks
     blocks: List[str] = []
 
     if struct_chunks:
@@ -171,7 +170,7 @@ def _llm_openai(prompt: str, model: str, requested_max_output: int, ctx_window: 
         flush=True,
     )
 
-    # Optional guard (should pass given computed_max_output)
+    # Guard using the computed headroom
     ensure_prompt_fits(
         prompt,
         ctx_limit=ctx_window,
@@ -273,6 +272,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     p.add_argument("--max-output", type=int, default=OPENAI_MAX_OUTPUT_DEFAULT, help="Upper bound for output tokens.")
     p.add_argument("--safety", type=int, default=RAG_SAFETY_MARGIN_TOKENS_DEFAULT, help="Safety margin tokens.")
     p.add_argument("--raw", action="store_true", help="Print raw model response (don’t parse markers).")
+    p.add_argument("--rewrite", action="store_true", help="Overwrite the target file with the updated content.")
 
     args = p.parse_args(argv)
 
@@ -298,7 +298,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         safety=args.safety,
         extras=[f"editing={target_path} (bytes={size})",
                 f"struct_slots={args.structure_max_chunks}",
-                f"file_hint_slots={args.file_hint_max_chunks} per file"],
+                f"file_hint_slots={args.file_hint_max_chunks} per file",
+                f"rewrite={'on' if args.rewrite else 'off'}"],
         warn_openai_embed=(CFG.embed_backend == "openai"),
         warn_openai_gen=True,
     )
@@ -315,9 +316,29 @@ def main(argv: Sequence[str] | None = None) -> int:
             safety=args.safety,
             raw_out=args.raw,
         )
-        # Print ONLY the updated file content (so you can redirect to the same path)
+
+        # If --rewrite, write to disk. If --raw was used, extract payload first.
+        if args.rewrite:
+            to_write = updated
+            if args.raw:
+                payload = extract_between_markers(updated)
+                if payload is None:
+                    raise RuntimeError(
+                        "Cannot --rewrite because --raw was used and the response lacks required markers.\n"
+                        "Remove --raw or ensure the model outputs the <<BEGIN_FILE>>/<<END_FILE>> wrapped content."
+                    )
+                to_write = payload
+            target_path.write_text(to_write, encoding="utf-8")
+            try:
+                nbytes = len(to_write.encode("utf-8"))
+            except Exception:
+                nbytes = "?"
+            print(f"[RAG] wrote {target_path} ({nbytes} bytes)", file=sys.stderr, flush=True)
+
+        # Always print to stdout (keep old behavior; you can redirect if desired)
         print(updated, end="" if updated.endswith("\n") else "\n")
         return 0
+
     except KeyboardInterrupt:
         print("Aborted.")
         return 130

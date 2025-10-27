@@ -15,6 +15,10 @@ from knime2py.nodes.registry import get_handlers, get_default_handler  # ← upd
 # ----------------------------
 
 def _read_file(path: Path) -> str:
+    """
+    Read the contents of a file at the given path and return it as a string.
+    If an error occurs during reading, return an empty string.
+    """
     try:
         return path.read_text(encoding="utf-8", errors="replace")
     except Exception:
@@ -25,9 +29,9 @@ _COMMENT_BORDER_RE = re.compile(r'^\s*#\s*([#=\-\*_~]{6,})\s*$')
 
 def _extract_header_block(src: str) -> List[str]:
     """
-    Return a list of raw comment lines from the file header (without leading '#'),
-    stopping at the first non-comment line. Blank comment lines are kept as ''.
-    Handles an optional shebang and any leading blank lines before the header.
+    Extract the header comment block from the source code.
+    Returns a list of raw comment lines without leading '#', stopping at the first non-comment line.
+    Blank comment lines are preserved as empty strings.
     """
     lines = src.splitlines()
     out: List[str] = []
@@ -88,8 +92,8 @@ def _extract_header_block(src: str) -> List[str]:
 
 def _split_paragraphs(comment_lines: List[str]) -> List[List[str]]:
     """
-    Split header comment lines into paragraphs by blank lines.
-    Each paragraph is a list of non-empty lines (whitespace trimmed).
+    Split header comment lines into paragraphs based on blank lines.
+    Each paragraph is represented as a list of non-empty lines with whitespace trimmed.
     """
     paras: List[List[str]] = []
     buf: List[str] = []
@@ -106,8 +110,8 @@ def _split_paragraphs(comment_lines: List[str]) -> List[List[str]]:
 
 def _first_sentence_from_header(paras: List[List[str]]) -> str:
     """
-    "Name of the node": use the first non-empty line from the header.
-    If that line contains a period, cut at the first period; else return as-is.
+    Extract the first non-empty line from the header paragraphs.
+    If that line contains a period, return the substring before the first period; otherwise, return the line as-is.
     """
     for para in paras:
         for ln in para:
@@ -120,7 +124,8 @@ def _first_sentence_from_header(paras: List[List[str]]) -> str:
 
 def _third_paragraph_as_notes(paras: List[List[str]]) -> str:
     """
-    Return the 3rd paragraph (index 2) joined with <br>. If not available, return ''.
+    Return the third paragraph (index 2) from the header paragraphs, joined with <br>.
+    If the third paragraph is not available, return an empty string.
     """
     if len(paras) >= 3:
         return "<br>".join(html.escape(ln) for ln in paras[2])
@@ -132,16 +137,27 @@ def _third_paragraph_as_notes(paras: List[List[str]]) -> str:
 # ----------------------------
 
 def _split_camel(s: str) -> str:
+    """
+    Split a camel case string into words, dropping trailing version digits and the 'Node Factory' suffix.
+    """
     s = re.sub(r"(\d+)$", "", s)  # drop trailing version digits
     s = re.sub(r"Node\s*Factory$", "", s, flags=re.I)  # drop NodeFactory suffix
     s = re.sub(r"(?<=[a-z0-9])([A-Z])", r" \1", s).strip()
     return re.sub(r"\s+", " ", s)
 
 def _humanize_module_name(mod_name: str) -> str:
+    """
+    Convert a module name into a more human-readable format by replacing underscores and dashes with spaces,
+    and capitalizing the words.
+    """
     base = mod_name.split(".")[-1]
     return base.replace("_", " ").replace("-", " ").strip().title()
 
 def _iter_factory_like_attrs(mod: Any) -> Iterable[str]:
+    """
+    Iterate over attributes of a module and yield those that are likely to represent factory names.
+    This includes attributes ending with 'FACTORY' or 'FACTORIES'.
+    """
     for attr in dir(mod):
         if not attr:
             continue
@@ -156,6 +172,11 @@ def _iter_factory_like_attrs(mod: Any) -> Iterable[str]:
                         yield v.strip()
 
 def _guess_knime_node_name(mod: Any) -> str:
+    """
+    Attempt to guess the KNIME node name from the module's attributes.
+    Checks for specific attributes that are likely to contain the node name,
+    and falls back to the module name if none are found.
+    """
     for key in ("NODE_NAME", "KNIME_NODE_NAME", "FRIENDLY_NAME", "TITLE", "NAME"):
         v = getattr(mod, key, None)
         if isinstance(v, str) and v.strip():
@@ -179,12 +200,9 @@ def _guess_knime_node_name(mod: Any) -> str:
 
 def _collect_modules() -> List[Tuple[str, str, str]]:
     """
-    Returns rows: (knime_node_name, module_filename, notes_html)
-      - knime_node_name: first sentence/line from header comment (fallback to guess)
-      - module_filename: basename of module __file__ (e.g., csv_reader.py)
-      - notes_html: third paragraph from header (joined with <br>)
-    Skips the default fallback/not_implemented handler (FACTORY == "") and
-    deduplicates modules that serve multiple FACTORY IDs.
+    Collect information about KNIME nodes and their corresponding modules.
+    Returns a list of tuples containing the KNIME node name, module filename, and notes in HTML format.
+    Skips the default fallback/not_implemented handler and deduplicates modules that serve multiple FACTORY IDs.
     """
     rows: List[Tuple[str, str, str]] = []
 
@@ -235,6 +253,10 @@ def _collect_modules() -> List[Tuple[str, str, str]]:
 # ----------------------------
 
 def _render_html(rows: List[Tuple[str, str, str]]) -> str:
+    """
+    Render the collected module information into an HTML table format.
+    Returns the complete HTML as a string.
+    """
     head = """<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
@@ -286,6 +308,11 @@ For unsupported nodes, the generator produces a best-effort stub and TODOs to gu
 # ----------------------------
 
 def run_cli(argv: Optional[List[str]] = None) -> int:
+    """
+    Run the command-line interface for generating an HTML page listing implemented node generators.
+    Accepts an optional list of command-line arguments.
+    Returns an exit code indicating success or failure.
+    """
     ap = argparse.ArgumentParser(description="Generate an HTML page listing implemented node generators (parsed from header comments).")
     ap.add_argument("--out", type=Path, default=Path("../../docs/implemented.html"),
                     help="Output HTML file path (default: ../../docs/implemented.html)")
