@@ -46,10 +46,12 @@ class NodeBlock:
 # Shared helpers
 # ----------------------------
 def _esc(s: str) -> str:
+    """Escape special characters in a string for safe output."""
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def _title_for_neighbor(g, nei_id: str) -> str:
+    """Retrieve the title for a neighboring node given its ID."""
     nn = g.nodes.get(nei_id)
     if not nn:
         return nei_id
@@ -81,7 +83,7 @@ def _banner_lines(b: "NodeBlock") -> List[str]:
 
 
 def _node_markdown(b: "NodeBlock") -> str:
-    """One markdown chunk for a single node."""
+    """Generate a markdown chunk for a single node."""
     md_lines = [f"## {b.title} \\# `{b.root_id}`", f"Node state: `{b.state}`  "]
     if b.comment_line:
         md_lines.append(f"{b.comment_line}  ")
@@ -112,6 +114,7 @@ def _not_impl_list_for_graph(g, blocks: List[NodeBlock]) -> List[str]:
 # Graph emitters
 # ----------------------------
 def write_graph_json(g, out_dir: Path) -> Path:
+    """Write the graph structure to a JSON file."""
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}.json"
     payload = {
@@ -125,6 +128,7 @@ def write_graph_json(g, out_dir: Path) -> Path:
 
 
 def write_graph_dot(g, out_dir: Path) -> Path:
+    """Write the graph structure to a DOT file for visualization."""
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}.dot"
     lines = ["digraph knime {", "  rankdir=LR;"]
@@ -326,7 +330,7 @@ def write_workbook_py(
     imports: Optional[List[str]] = None,
 ) -> Path:
     """
-    Linear .py script: each node -> banner + code (with loop indentation).
+    Write a linear .py script: each node -> banner + code (with loop indentation).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.py"
@@ -392,7 +396,7 @@ def write_workbook_ipynb(
     imports: Optional[List[str]] = None,
 ) -> Path:
     """
-    Jupyter notebook:
+    Write a Jupyter notebook:
       • Outside loops: one markdown cell per node + one code cell per node.
       • Inside a loop (from LOOP='start' to LOOP='finish'): a single markdown cell is emitted
         containing the comments for ALL nodes in the loop, followed by ONE code cell that
@@ -451,6 +455,7 @@ def write_workbook_ipynb(
     loop_stack: List[dict] = []  # each: {"md": [str], "code": [str]}
 
     def _emit_code_cell(code_lines: List[str]):
+        """Emit a code cell with the provided code lines."""
         src = "\n".join(code_lines)
         if src and not src.endswith("\n"):
             src += "\n"
@@ -463,6 +468,7 @@ def write_workbook_ipynb(
         })
 
     def _emit_md_cell(md_lines: List[str]):
+        """Emit a markdown cell with the provided markdown lines."""
         md = "\n".join(md_lines)
         cells.append({"cell_type": "markdown", "metadata": {}, "source": md if md.endswith("\n") else md + "\n"})
 

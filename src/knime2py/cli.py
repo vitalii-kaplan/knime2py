@@ -30,6 +30,15 @@ def _resolve_single_workflow(path: Path) -> Path:
       - If 'path' is a file, it must be named 'workflow.knime'.
       - If 'path' is a directory, it must contain a file named 'workflow.knime' directly
         (no recursive search).
+
+    Args:
+        path (Path): The path to the workflow file or directory.
+
+    Returns:
+        Path: The resolved path to the workflow.knime file.
+
+    Raises:
+        SystemExit: If the path does not exist or is not a valid workflow file.
     """
     p = path.expanduser().resolve()
 
@@ -52,6 +61,15 @@ def _resolve_single_workflow(path: Path) -> Path:
 
 
 def run_cli(argv: Optional[list[str]] = None) -> int:
+    """
+    Parse command-line arguments and execute the KNIME workflow parsing and exporting.
+
+    Args:
+        argv (Optional[list[str]]): The command-line arguments. If None, uses sys.argv.
+
+    Returns:
+        int: Exit code indicating success (0) or failure (non-zero).
+    """
     p = argparse.ArgumentParser(
         description="Parse a single KNIME workflow and emit graph + workbook per isolated subgraph."
     )
@@ -152,7 +170,12 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
 
 
 def main(argv: Optional[list[str]] = None) -> None:
-    """Console entrypoint used by `pyproject.toml`."""
+    """
+    Console entrypoint used by `pyproject.toml`.
+
+    Args:
+        argv (Optional[list[str]]): The command-line arguments. If None, uses sys.argv.
+    """
     code = run_cli(argv)
     if code:
         sys.exit(code)
