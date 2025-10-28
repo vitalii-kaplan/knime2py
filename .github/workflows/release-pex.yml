@@ -51,12 +51,19 @@ jobs:
             windows-2022) OS_OUT="k2p-windows.pex" ;;
           esac
 
+          # Skip entry-point validation on Windows (PEX venv bug)
+          if [ "${{ matrix.os }}" = "windows-2022" ]; then
+            VALIDATE=""
+          else
+            VALIDATE="--validate-entry-point"
+          fi
+
           pex dist/*.whl \
             -c k2p \
             -o "dist/${OS_OUT}" \
             --venv prepend \
             --strip-pex-env \
-            --validate-entry-point \
+            ${VALIDATE} \
             --interpreter-constraint 'CPython==3.11.*'
 
           echo "Produced dist/${OS_OUT}"
