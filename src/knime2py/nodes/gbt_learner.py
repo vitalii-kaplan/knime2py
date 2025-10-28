@@ -67,6 +67,7 @@ class GradientBoostingSettings:
 
 
 def _to_int(s: Optional[str], default: Optional[int]) -> Optional[int]:
+    """Convert a string to an integer, returning a default value if conversion fails."""
     try:
         return int(s) if s is not None else default
     except Exception:
@@ -74,6 +75,7 @@ def _to_int(s: Optional[str], default: Optional[int]) -> Optional[int]:
 
 
 def _to_float(s: Optional[str], default: Optional[float]) -> Optional[float]:
+    """Convert a string to a float, returning a default value if conversion fails."""
     try:
         return float(s) if s is not None else default
     except Exception:
@@ -81,12 +83,14 @@ def _to_float(s: Optional[str], default: Optional[float]) -> Optional[float]:
 
 
 def _to_bool(s: Optional[str], default: bool = False) -> bool:
+    """Convert a string to a boolean, returning a default value if conversion fails."""
     if s is None:
         return default
     return str(s).strip().lower() in {"1", "true", "yes", "y"}
 
 
 def _collect_name_entries(cfg: ET._Element) -> List[str]:
+    """Collect names from the configuration XML element."""
     out: List[str] = []
     for k, v in iter_entries(cfg):
         if k.isdigit() and v:
@@ -98,6 +102,7 @@ def _map_max_features(mode: str,
                       frac: Optional[float],
                       absolute: Optional[int],
                       use_diff_attrs: bool) -> Optional[object]:
+    """Map the column sampling mode to the appropriate max_features value."""
     m = (mode or "").strip().upper()
     if m in {"NONE", "ALL", "ALLCOLUMNS", "ALL_COLUMNS", ""}:
         return None
@@ -117,6 +122,7 @@ def _map_max_features(mode: str,
 
 
 def parse_gbt_settings(node_dir: Optional[Path]) -> GradientBoostingSettings:
+    """Parse the settings from the settings.xml file and return a GradientBoostingSettings object."""
     if not node_dir:
         return GradientBoostingSettings(include_cols=[], exclude_cols=[])
 
@@ -198,6 +204,7 @@ def parse_gbt_settings(node_dir: Optional[Path]) -> GradientBoostingSettings:
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """Generate the necessary import statements for the code."""
     return [
         "import pandas as pd",
         "import numpy as np",
@@ -211,6 +218,7 @@ HUB_URL = (
 )
 
 def _emit_train_code(cfg: GradientBoostingSettings) -> List[str]:
+    """Emit the training code based on the provided GradientBoostingSettings."""
     lines: List[str] = []
     lines.append("out_df = df.copy()")
     if not cfg.target:
@@ -329,6 +337,7 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """Generate the Python body for the node based on its ID, directory, and ports."""
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_gbt_settings(ndir)
 
@@ -365,11 +374,13 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """Generate the code for a Jupyter notebook cell based on the node's ID, directory, and ports."""
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
+    """Handle the node processing, generating imports and body code."""
     explicit_imports = collect_module_imports(generate_imports)
 
     in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in (incoming or [])]

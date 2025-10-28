@@ -57,12 +57,32 @@ class KNNSettings:
 
 
 def _bool(s: Optional[str], default: bool) -> bool:
+    """
+    Convert a string to a boolean value.
+
+    Args:
+        s (Optional[str]): The string to convert.
+        default (bool): The default value to return if s is None.
+
+    Returns:
+        bool: The converted boolean value.
+    """
     if s is None:
         return default
     return str(s).strip().lower() in {"1", "true", "yes", "y"}
 
 
 def _to_int(s: Optional[str], default: int) -> int:
+    """
+    Convert a string to an integer value.
+
+    Args:
+        s (Optional[str]): The string to convert.
+        default (int): The default value to return if conversion fails.
+
+    Returns:
+        int: The converted integer value.
+    """
     try:
         return int(str(s).strip())
     except Exception:
@@ -70,6 +90,15 @@ def _to_int(s: Optional[str], default: int) -> int:
 
 
 def parse_knn_settings(node_dir: Optional[Path]) -> KNNSettings:
+    """
+    Parse the KNN settings from the settings.xml file.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        KNNSettings: An instance of KNNSettings populated with values from the XML.
+    """
     if not node_dir:
         return KNNSettings()
     settings_path = node_dir / "settings.xml"
@@ -98,6 +127,12 @@ def parse_knn_settings(node_dir: Optional[Path]) -> KNNSettings:
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary import statements for the KNN implementation.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return [
         "import pandas as pd",
         "import numpy as np",
@@ -111,6 +146,15 @@ HUB_URL = (
 )
 
 def _emit_knn_code(cfg: KNNSettings) -> List[str]:
+    """
+    Emit the KNN code based on the provided configuration settings.
+
+    Args:
+        cfg (KNNSettings): The configuration settings for the KNN.
+
+    Returns:
+        List[str]: A list of code lines for the KNN implementation.
+    """
     lines: List[str] = []
     lines.append(f"_target = {repr(cfg.target_col) if cfg.target_col else 'None'}")
     lines.append(f"_k = int({cfg.k})")
@@ -175,8 +219,13 @@ def _emit_knn_code(cfg: KNNSettings) -> List[str]:
 
 def _order_incoming_by_target_port(in_ports) -> List[Tuple[int, str, str]]:
     """
-    Returns a list of (target_port_index, src_id, src_port) sorted by KNIME target port number
-    when available; falls back to input order otherwise.
+    Order incoming ports by their target port index.
+
+    Args:
+        in_ports: A list of incoming ports.
+
+    Returns:
+        List[Tuple[int, str, str]]: A list of tuples containing the target port index, source ID, and source port.
     """
     ordered: List[Tuple[int, str, str]] = []
     for src_id, e in (in_ports or []):
@@ -201,6 +250,18 @@ def generate_py_body(
     in_ports: List[object],        # may have 1 or 2 table inputs
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the Python code body for the KNN node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        List[str]: A list of code lines for the KNN implementation.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_knn_settings(ndir)
 
@@ -240,17 +301,35 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell for the KNN node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) if this module can handle the node; None otherwise.
-    Port mapping:
-      - Input 1 → TRAIN table
-      - Input 2 → TEST  table (optional)
-      - Output 1 → scored TEST table (predictions and optional probabilities)
+    Handle the KNN node and generate the necessary imports and body lines.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming edges.
+        outgoing: The outgoing edges.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

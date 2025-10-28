@@ -48,12 +48,31 @@ class MCStringSettings:
 
 
 def _bool(s: Optional[str], default: bool) -> bool:
+    """
+    Convert a string representation of a boolean to a boolean value.
+
+    Args:
+        s (Optional[str]): The string to convert.
+        default (bool): The default value to return if s is None.
+
+    Returns:
+        bool: The converted boolean value.
+    """
     if s is None:
         return default
     return str(s).strip().lower() in {"1", "true", "yes", "y"}
 
 
 def _collect_included_names(root: ET._Element) -> List[str]:
+    """
+    Collect included column names from the XML configuration.
+
+    Args:
+        root (ET._Element): The root element of the XML configuration.
+
+    Returns:
+        List[str]: A list of included column names.
+    """
     base = first_el(root, ".//*[local-name()='config' and @key='model']"
                           "/*[local-name()='config' and @key='column_selection']"
                           "/*[local-name()='config' and @key='included_names']")
@@ -80,6 +99,15 @@ def _collect_included_names(root: ET._Element) -> List[str]:
 
 
 def parse_settings(node_dir: Optional[Path]) -> MCStringSettings:
+    """
+    Parse the settings from the XML file located in the specified directory.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        MCStringSettings: The parsed settings.
+    """
     if not node_dir:
         return MCStringSettings([], "", "REPLACE_COLUMNS", "_transformed", True, True)
 
@@ -129,8 +157,12 @@ CURR_TOKEN = "$$CURRENTCOLUMN$$"
 def _parse_expr_ops(s: str) -> List[tuple[str, str, str]]:
     """
     Parse a KNIME expression into a sequence of ('replace', old, new) operations.
-    Returns operations in evaluation order (inner → outer).
-    If the expression isn't recognized, returns [] meaning 'identity'.
+
+    Args:
+        s (str): The KNIME expression to parse.
+
+    Returns:
+        List[tuple[str, str, str]]: A list of operations in evaluation order (inner → outer).
     """
     s = (s or "").strip()
     pos = 0
@@ -205,6 +237,12 @@ def _parse_expr_ops(s: str) -> List[tuple[str, str, str]]:
 # --------------------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary imports for the generated code.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return ["import pandas as pd"]
 
 HUB_URL = (
@@ -213,6 +251,15 @@ HUB_URL = (
 )
 
 def _emit_apply_code(cfg: MCStringSettings) -> List[str]:
+    """
+    Emit the code that applies the string manipulation based on the provided settings.
+
+    Args:
+        cfg (MCStringSettings): The settings for the string manipulation.
+
+    Returns:
+        List[str]: The lines of code that perform the string manipulation.
+    """
     lines: List[str] = []
     lines.append("out_df = df.copy()")
     # Determine target columns present in df
@@ -263,6 +310,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the Python body for the node based on the provided parameters.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        List[str]: The lines of Python code for the node.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_settings(ndir)
 
@@ -291,12 +350,34 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell based on the node parameters.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     return "\n".join(generate_py_body(node_id, node_dir, in_ports, out_ports)) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Return (imports, body_lines) if we can handle this node; otherwise None.
+    Handle the node and return the necessary imports and body lines.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines if the node can be handled; otherwise None.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

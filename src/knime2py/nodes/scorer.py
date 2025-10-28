@@ -40,12 +40,31 @@ class ScorerSettings:
 
 
 def _bool(v: Optional[str], default: bool) -> bool:
+    """
+    Convert a string value to a boolean.
+
+    Args:
+        v (Optional[str]): The string value to convert.
+        default (bool): The default boolean value if v is None.
+
+    Returns:
+        bool: The converted boolean value.
+    """
     if v is None:
         return default
     return str(v).strip().lower() in {"true", "1", "yes", "y"}
 
 
 def parse_scorer_settings(node_dir: Optional[Path]) -> ScorerSettings:
+    """
+    Parse the scorer settings from the settings.xml file.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        ScorerSettings: An instance of ScorerSettings populated with values from the XML.
+    """
     if not node_dir:
         return ScorerSettings()
     sp = node_dir / "settings.xml"
@@ -69,6 +88,12 @@ def parse_scorer_settings(node_dir: Optional[Path]) -> ScorerSettings:
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary import statements for the scorer code.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return [
         "import pandas as pd",
         "import numpy as np",
@@ -83,6 +108,15 @@ HUB_URL = (
 
 
 def _emit_scorer_code(cfg: ScorerSettings) -> List[str]:
+    """
+    Emit the scorer code based on the provided configuration settings.
+
+    Args:
+        cfg (ScorerSettings): The configuration settings for the scorer.
+
+    Returns:
+        List[str]: A list of code lines for the scorer implementation.
+    """
     lines: List[str] = []
     lines.append("out_df = df.copy()  # not strictly required, but keeps pattern consistent")
     lines.append(f"_truth_col = {repr(cfg.truth_col)}")
@@ -152,6 +186,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the Python code body for the scorer node.
+
+    Args:
+        node_id (str): The identifier for the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports for the node.
+        out_ports (Optional[List[str]]): The outgoing ports for the node.
+
+    Returns:
+        List[str]: A list of code lines for the node's implementation.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_scorer_settings(ndir)
 
@@ -188,15 +234,36 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell for the scorer node.
+
+    Args:
+        node_id (str): The identifier for the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports for the node.
+        out_ports (Optional[List[str]]): The outgoing ports for the node.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) if this module can handle the node; else None.
-    """
+    Handle the node processing and return the necessary imports and body lines.
 
+    Args:
+        ntype: The type of the node.
+        nid: The identifier for the node.
+        npath: The path to the node.
+        incoming: The incoming connections to the node.
+        outgoing: The outgoing connections from the node.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines.
+    """
     explicit_imports = collect_module_imports(generate_imports)
 
     # One input (scored table)

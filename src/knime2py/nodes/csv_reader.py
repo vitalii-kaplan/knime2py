@@ -32,6 +32,15 @@ from .node_utils import *
 FACTORY = "org.knime.base.node.io.filehandling.csv.reader.CSVTableReaderNodeFactory"
 
 def _build_pandas_dtype_map(root: ET._Element) -> dict:
+    """
+    Build a mapping of column names to pandas data types based on the provided XML root element.
+
+    Args:
+        root (ET._Element): The root element of the parsed XML settings.
+
+    Returns:
+        dict: A dictionary mapping column names to pandas data types.
+    """
     spec = extract_table_spec_types(root)
     d = {}
     for col, jcls in (spec or {}).items():
@@ -57,8 +66,15 @@ class CSVReaderSettings:
 
 def parse_csv_reader_settings(node_dir: Path) -> CSVReaderSettings:
     """
-    Read <node_dir>/settings.xml and extract csv path & common options.
+    Read <node_dir>/settings.xml and extract CSV path and common options.
+
     Handles absolute LOCAL paths and RELATIVE paths anchored at the workflow directory.
+
+    Args:
+        node_dir (Path): The directory containing the settings.xml file.
+
+    Returns:
+        CSVReaderSettings: An instance of CSVReaderSettings populated with the extracted values.
     """
     settings = node_dir / "settings.xml"
     if not settings.exists():
@@ -96,6 +112,12 @@ def parse_csv_reader_settings(node_dir: Path) -> CSVReaderSettings:
 # ----------------------------
 
 def generate_imports():
+    """
+    Generate a list of import statements required for the CSV Reader.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return ["from pathlib import Path", "import pandas as pd"]
 
 
@@ -103,6 +125,14 @@ def generate_py_body(node_id: str, node_dir: Optional[str], out_ports: List[str]
     """
     Emit body lines for a CSV Reader node that reads a CSV into `df`
     and publishes it to the provided context out_ports.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        out_ports (List[str]): The output ports to publish the DataFrame to.
+
+    Returns:
+        List[str]: A list of lines representing the body of the Python code.
     """
     ndir = Path(node_dir) if node_dir else None
     settings = parse_csv_reader_settings(ndir) if ndir else CSVReaderSettings()
@@ -171,12 +201,33 @@ def generate_py_body(node_id: str, node_dir: Optional[str], out_ports: List[str]
 def generate_ipynb_code(node_id: str, node_dir: Optional[str], out_ports: List[str]) -> str:
     """
     Return the code cell text for the notebook workbook (single string).
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        out_ports (List[str]): The output ports to publish the DataFrame to.
+
+    Returns:
+        str: The code cell text for the notebook.
     """
     body = generate_py_body(node_id, node_dir, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
+    """
+    Handle the processing of a node, generating the necessary imports and body lines.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: Incoming connections to the node.
+        outgoing: Outgoing connections from the node.
+
+    Returns:
+        tuple: A tuple containing the list of imports and the body lines.
+    """
     out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in outgoing]
     node_lines = generate_py_body(nid, npath, out_ports)
 

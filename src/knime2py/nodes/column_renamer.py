@@ -46,8 +46,16 @@ class ColumnRenamerSettings:
 
 def _collect_renamings(cfg: ET._Element) -> List[Tuple[str, str]]:
     """
+    Collects renaming pairs from the provided XML configuration element.
+
     Under <config key="renamings"> there are numbered <config key="N"> elements,
     each with entries: oldName, newName.
+
+    Args:
+        cfg (ET._Element): The XML configuration element.
+
+    Returns:
+        List[Tuple[str, str]]: A list of tuples containing old and new column names.
     """
     out: List[Tuple[str, str]] = []
     if cfg is None:
@@ -69,6 +77,15 @@ def _collect_renamings(cfg: ET._Element) -> List[Tuple[str, str]]:
     return out
 
 def parse_col_renamer_settings(node_dir: Optional[Path]) -> ColumnRenamerSettings:
+    """
+    Parses the column renamer settings from the settings.xml file.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        ColumnRenamerSettings: An instance containing the renaming pairs.
+    """
     if not node_dir:
         return ColumnRenamerSettings()
     sp = node_dir / "settings.xml"
@@ -89,6 +106,12 @@ def parse_col_renamer_settings(node_dir: Optional[Path]) -> ColumnRenamerSetting
 # --------------------------------------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generates the necessary import statements for the code.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return ["import pandas as pd"]
 
 HUB_URL = (
@@ -98,9 +121,17 @@ HUB_URL = (
 
 def _emit_rename_code(cfg: ColumnRenamerSettings) -> List[str]:
     """
-    Emit lines that build a collision-safe mapping and apply DataFrame.rename().
+    Emits the code lines that apply the column renaming logic.
+
+    This function builds a collision-safe mapping and applies DataFrame.rename().
     If a target name already exists (and is not the same column being renamed),
-    append _1, _2, … until unique.
+    it appends _1, _2, … until a unique name is found.
+
+    Args:
+        cfg (ColumnRenamerSettings): The settings containing the renaming pairs.
+
+    Returns:
+        List[str]: A list of code lines for renaming columns.
     """
     lines: List[str] = []
     # Serialize pairs for transparency
@@ -147,6 +178,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generates the Python code body for the column renamer node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The list of incoming ports.
+        out_ports (Optional[List[str]]): The list of outgoing ports.
+
+    Returns:
+        List[str]: A list of code lines for the node's functionality.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_col_renamer_settings(ndir)
 
@@ -171,16 +214,34 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generates the code for a Jupyter notebook cell.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The list of incoming ports.
+        out_ports (Optional[List[str]]): The list of outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) if this module can handle the node; None otherwise.
+    Handles the processing of the node and returns the necessary imports and body lines.
 
-    Ports:
-      • Input 1  → source table
-      • Output 1 → renamed table
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines if the node can be handled; None otherwise.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

@@ -66,6 +66,7 @@ def _collect_numeric_name_entries(cfg: Optional[ET._Element]) -> List[str]:
 
 
 def parse_row_agg_settings(node_dir: Optional[Path]) -> RowAggregatorSettings:
+    """Parse the row aggregation settings from the settings.xml file."""
     if not node_dir:
         return RowAggregatorSettings()
     settings_path = node_dir / "settings.xml"
@@ -108,6 +109,7 @@ def parse_row_agg_settings(node_dir: Optional[Path]) -> RowAggregatorSettings:
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """Generate the necessary import statements for the output code."""
     return [
         "import pandas as pd",
         "import numpy as np",
@@ -248,6 +250,7 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,  # ignored (fixed ports: 1 + optional 2)
 ) -> List[str]:
+    """Generate the Python body for the row aggregator node."""
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_row_agg_settings(ndir)
 
@@ -270,6 +273,7 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """Generate the code for the Jupyter notebook cell."""
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 

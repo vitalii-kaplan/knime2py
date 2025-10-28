@@ -57,23 +57,27 @@ class NaiveBayesSettings:
     compatible_pmml: bool = False    # informational
 
 def _to_int(s: Optional[str], default: int) -> int:
+    """Convert a string to an integer, returning a default value if conversion fails."""
     try:
         return int(str(s))
     except Exception:
         return default
 
 def _to_float(s: Optional[str], default: float) -> float:
+    """Convert a string to a float, returning a default value if conversion fails."""
     try:
         return float(str(s))
     except Exception:
         return default
 
 def _to_bool(s: Optional[str], default: bool) -> bool:
+    """Convert a string to a boolean, returning a default value if conversion fails."""
     if s is None:
         return default
     return str(s).strip().lower() in {"1", "true", "yes", "y"}
 
 def parse_nb_settings(node_dir: Optional[Path]) -> NaiveBayesSettings:
+    """Parse the settings.xml file to extract Naive Bayes settings."""
     if not node_dir:
         return NaiveBayesSettings()
     settings_path = node_dir / "settings.xml"
@@ -114,6 +118,7 @@ def parse_nb_settings(node_dir: Optional[Path]) -> NaiveBayesSettings:
 # -------------------------------------------------------------------------------------------------
 
 def generate_imports():
+    """Generate the necessary import statements for the Naive Bayes learner."""
     return [
         "import pandas as pd",
         "import numpy as np",
@@ -243,6 +248,18 @@ def generate_py_body(
     in_ports: List[object],   # Port 1 = training table
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the Python code body for the Naive Bayes learner.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        List[str]: The generated Python code lines.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_nb_settings(ndir)
 
@@ -278,17 +295,34 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        str: The generated code for the notebook cell.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) if this module can handle the node; None otherwise.
+    Handle the node and return the necessary imports and body lines.
 
-    Port mapping:
-      - Input 1 → training table
-      - Output 1 → model bundle
-      - Output 2 → training summary table
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines if this module can handle the node; None otherwise.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

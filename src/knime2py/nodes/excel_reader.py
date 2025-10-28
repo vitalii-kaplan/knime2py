@@ -63,6 +63,7 @@ def _col_letter(s: Optional[str]) -> Optional[str]:
     return v.upper() or None
 
 def _to_int(s: Optional[str]) -> Optional[int]:
+    """Convert a string to an integer, returning None if conversion fails."""
     try:
         return int(str(s).strip())
     except Exception:
@@ -96,6 +97,7 @@ class ExcelReaderSettings:
 
 
 def parse_excel_reader_settings(node_dir: Optional[Path]) -> ExcelReaderSettings:
+    """Parse settings from settings.xml and return an ExcelReaderSettings object."""
     if not node_dir:
         return ExcelReaderSettings()
 
@@ -167,10 +169,12 @@ def parse_excel_reader_settings(node_dir: Optional[Path]) -> ExcelReaderSettings
 # -----------------------------------------------------------------------------------
 
 def generate_imports():
+    """Generate a list of import statements required for the Excel reader."""
     return ["from pathlib import Path", "import pandas as pd"]
 
 
 def generate_py_body(node_id: str, node_dir: Optional[str], out_ports: List[str]) -> List[str]:
+    """Generate the Python code body for reading an Excel file based on the provided settings."""
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_excel_reader_settings(ndir)
 
@@ -216,6 +220,7 @@ def generate_py_body(node_id: str, node_dir: Optional[str], out_ports: List[str]
 
 
 def generate_ipynb_code(node_id: str, node_dir: Optional[str], out_ports: List[str]) -> str:
+    """Generate the complete IPython notebook code for the Excel reader node."""
     body = generate_py_body(node_id, node_dir, out_ports)
     return "\n".join(body) + "\n"
 

@@ -48,6 +48,12 @@ def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
     Path resolution:
       - LOCAL => absolute path from settings
       - RELATIVE + knime.workflow => path relative to the workflow root (node_dir)
+    
+    Args:
+        node_dir (Optional[Path]): The directory of the node containing settings.xml.
+
+    Returns:
+        CSVWriterSettings: An object containing the parsed settings for the CSV writer.
     """
     if not node_dir:
         return CSVWriterSettings()
@@ -99,10 +105,25 @@ def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
 # ----------------------------
 
 def generate_imports():
+    """
+    Generate a list of import statements required for the CSV writer.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return ["from pathlib import Path", "import pandas as pd"]
 
 def _fmt_kw(key: str, val) -> Optional[str]:
-    """Return 'key=value' with correct literal formatting, or None to skip."""
+    """
+    Format a keyword argument for the to_csv function.
+
+    Args:
+        key (str): The name of the keyword argument.
+        val: The value of the keyword argument.
+
+    Returns:
+        Optional[str]: A formatted string in the form 'key=value' or None if the value should be skipped.
+    """
     if isinstance(val, bool):
         return f"{key}={'True' if val else 'False'}"
     if val is None:
@@ -113,8 +134,15 @@ def _fmt_kw(key: str, val) -> Optional[str]:
 
 def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[object]) -> List[str]:
     """
-    Return the *body* lines to place inside the function for this CSV Writer node
-    in the .py workbook. Accepts input ports as either [('1393','1')] or ['1393:1'].
+    Generate the body of the Python function for the CSV Writer node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The input ports for the node.
+
+    Returns:
+        List[str]: A list of lines representing the body of the function.
     """
     ndir = Path(node_dir) if node_dir else None
     settings = parse_csv_writer_settings(ndir) if ndir else CSVWriterSettings()
@@ -150,11 +178,35 @@ def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[objec
 
 
 def generate_ipynb_code(node_id: str, node_dir: Optional[str], in_ports: List[object]) -> str:
+    """
+    Generate the complete code for the CSV Writer node in IPython notebook format.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The input ports for the node.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
+    """
+    Handle the processing of the CSV Writer node, generating the necessary imports and body code.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections to the node.
+        outgoing: The outgoing connections from the node.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing a list of import statements and the body code.
+    """
     in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in incoming]
     node_lines = generate_py_body(nid, npath, in_ports)
 

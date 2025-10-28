@@ -35,6 +35,14 @@ FACTORY = "org.knime.base.node.mine.smote.SmoteNodeFactory"
 
 
 def can_handle(node_type: Optional[str]) -> bool:
+    """Check if the given node type can be handled by this module.
+
+    Args:
+        node_type (Optional[str]): The type of the node.
+
+    Returns:
+        bool: True if the node type can be handled, False otherwise.
+    """
     return bool(node_type and node_type.endswith(SMOTE_FACTORY))
 
 
@@ -52,6 +60,15 @@ class SmoteSettings:
 
 
 def _to_int(s: Optional[str], default: int) -> int:
+    """Convert a string to an integer, returning a default value if conversion fails.
+
+    Args:
+        s (Optional[str]): The string to convert.
+        default (int): The default value to return on failure.
+
+    Returns:
+        int: The converted integer or the default value.
+    """
     try:
         return int(s) if s is not None else default
     except Exception:
@@ -59,6 +76,15 @@ def _to_int(s: Optional[str], default: int) -> int:
 
 
 def _to_float(s: Optional[str], default: float) -> float:
+    """Convert a string to a float, returning a default value if conversion fails.
+
+    Args:
+        s (Optional[str]): The string to convert.
+        default (float): The default value to return on failure.
+
+    Returns:
+        float: The converted float or the default value.
+    """
     try:
         return float(s) if s is not None else default
     except Exception:
@@ -66,6 +92,14 @@ def _to_float(s: Optional[str], default: float) -> float:
 
 
 def parse_smote_settings(node_dir: Optional[Path]) -> SmoteSettings:
+    """Parse the SMOTE settings from the settings.xml file.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        SmoteSettings: An instance of SmoteSettings populated with values from the XML.
+    """
     if not node_dir:
         return SmoteSettings()
 
@@ -103,6 +137,11 @@ def parse_smote_settings(node_dir: Optional[Path]) -> SmoteSettings:
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """Generate the necessary import statements for the SMOTE code.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return [
         "import pandas as pd",
         "import numpy as np",
@@ -117,20 +156,13 @@ HUB_URL = (
 
 
 def _emit_smote_code(cfg: SmoteSettings) -> List[str]:
-    """
-    Emit lines that:
-      - select features (numeric/bool) and the target column
-      - compute sampling_strategy according to KNIME method/rate
-      - run SMOTE and return the resampled dataframe
+    """Emit the code lines necessary to perform SMOTE on the input DataFrame.
 
-    Mapping notes:
-      • method == 'oversample_equal' → sampling_strategy='auto' (minorities up to majority)
-      • otherwise uses `rate`:
-          - if 0 < rate <= 1: interpret as minority/majority ratio after resampling
-                              target_n = int(rate * majority_n)
-          - if rate  > 1   : interpret as a multiplier on each minority class
-                              target_n = int(rate * minority_n)
-        This covers both common interpretations and is robust across binary/multiclass.
+    Args:
+        cfg (SmoteSettings): The configuration settings for SMOTE.
+
+    Returns:
+        List[str]: A list of code lines to perform SMOTE.
     """
     lines: List[str] = []
     lines.append("out_df = df.copy()")
@@ -209,6 +241,17 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """Generate the Python body for the SMOTE node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        List[str]: A list of code lines representing the body of the node.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_smote_settings(ndir)
 
@@ -237,15 +280,34 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """Generate the code for a Jupyter notebook cell for the SMOTE node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
-    """
-    Returns (imports, body_lines) if this module can handle the node; None otherwise.
-    """
+    """Handle the node processing and return the necessary imports and body lines.
 
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines if the node can be handled; None otherwise.
+    """
     explicit_imports = collect_module_imports(generate_imports)
 
     in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in (incoming or [])]

@@ -40,6 +40,15 @@ class ColumnFilterSettings:
 
 
 def _uniq_preserve(seq: List[str]) -> List[str]:
+    """
+    Remove duplicates from a list while preserving the order of elements.
+
+    Args:
+        seq (List[str]): The input list from which to remove duplicates.
+
+    Returns:
+        List[str]: A list with duplicates removed, preserving the original order.
+    """
     return list(dict.fromkeys([s for s in seq if s]))
 
 
@@ -49,6 +58,12 @@ def parse_column_filter_settings(node_dir: Optional[Path]) -> ColumnFilterSettin
     We look for <config> blocks whose @key contains 'exclude' and collect entries:
       - <entry key='0' value='Col'/> style lists
       - <entry key='name' value='Col'/> style lists
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        ColumnFilterSettings: An instance of ColumnFilterSettings containing the excluded column names.
     """
     if not node_dir:
         return ColumnFilterSettings()
@@ -90,6 +105,12 @@ HUB_URL = (
 def _emit_filter_code(settings: ColumnFilterSettings) -> List[str]:
     """
     Return python lines that transform `df` into `out_df` by DROPPING excludes only.
+
+    Args:
+        settings (ColumnFilterSettings): The settings containing the excluded column names.
+
+    Returns:
+        List[str]: A list of Python code lines for dropping the excluded columns.
     """
     lines: List[str] = []
     lines.append("out_df = df")
@@ -102,7 +123,13 @@ def _emit_filter_code(settings: ColumnFilterSettings) -> List[str]:
     return lines
 
 
-def generate_imports():
+def generate_imports() -> List[str]:
+    """
+    Generate the necessary import statements for the generated Python code.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return ["import pandas as pd"]
 
 
@@ -113,9 +140,16 @@ def generate_py_body(
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
     """
-    - Reads df from the first input port.
-    - Drops exclude columns (if any).
-    - Publishes to this node's output port(s).
+    Generate the body of the Python code for the node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The input ports for the node.
+        out_ports (Optional[List[str]]): The output ports for the node.
+
+    Returns:
+        List[str]: A list of Python code lines for the node's functionality.
     """
     ndir = Path(node_dir) if node_dir else None
     settings = parse_column_filter_settings(ndir)
@@ -142,13 +176,35 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the complete code for a Jupyter notebook cell.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The input ports for the node.
+        out_ports (Optional[List[str]]): The output ports for the node.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines).
+    Handle the processing of a node, returning the necessary imports and body lines.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path to the node.
+        incoming: The incoming connections to the node.
+        outgoing: The outgoing connections from the node.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the list of imports and the body lines.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

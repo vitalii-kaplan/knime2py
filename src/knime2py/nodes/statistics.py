@@ -40,11 +40,30 @@ class StatsSettings:
     max_nominal_out: int = 20  # per-column cap for occurrence table (wide)
 
 def _bool(s: Optional[str], default: bool) -> bool:
+    """
+    Convert a string to a boolean value.
+
+    Args:
+        s (Optional[str]): The string to convert.
+        default (bool): The default value to return if s is None.
+
+    Returns:
+        bool: The converted boolean value.
+    """
     if s is None:
         return default
     return str(s).strip().lower() in {"true", "1", "yes", "y"}
 
 def _collect_included_names(root: ET._Element) -> List[str]:
+    """
+    Collect the names of included nominal columns from the XML settings.
+
+    Args:
+        root (ET._Element): The root element of the XML settings.
+
+    Returns:
+        List[str]: A list of included nominal column names.
+    """
     base = first_el(
         root,
         ".//*[local-name()='config' and @key='model']"
@@ -73,6 +92,15 @@ def _collect_included_names(root: ET._Element) -> List[str]:
     return out
 
 def parse_stats_settings(node_dir: Optional[Path]) -> StatsSettings:
+    """
+    Parse the statistics settings from the settings.xml file.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        StatsSettings: An instance of StatsSettings with parsed values.
+    """
     if not node_dir:
         return StatsSettings(True, [], 20)
 
@@ -109,6 +137,12 @@ def parse_stats_settings(node_dir: Optional[Path]) -> StatsSettings:
 # --------------------------------------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary import statements for the generated code.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return [
         "import pandas as pd",
         "import numpy as np",
@@ -122,9 +156,14 @@ HUB_URL = (
 
 def _emit_numeric_stats(df_var: str, include_median: bool) -> List[str]:
     """
-    Emit KNIME-aligned numeric statistics for Port 1.
-    - Separate 'No. missings' (nullable <NA>) from 'No. NaNs' (IEEE NaN).
-    - Force float64 arrays for numeric computations & ±inf detection.
+    Emit KNIME-aligned numeric statistics for a given DataFrame variable.
+
+    Args:
+        df_var (str): The variable name of the DataFrame.
+        include_median (bool): Whether to include the median in the output.
+
+    Returns:
+        List[str]: A list of lines of code that compute numeric statistics.
     """
     lines: List[str] = []
     lines.append(f"_num_cols = {df_var}.select_dtypes(include=['number','Int64','Float64']).columns.tolist()")
@@ -220,6 +259,17 @@ def _emit_numeric_stats(df_var: str, include_median: bool) -> List[str]:
     return lines
 
 def _emit_nominal_tables(df_var: str, selected_cols_expr: str, max_nom_out_expr: str) -> List[str]:
+    """
+    Emit KNIME-aligned nominal statistics for a given DataFrame variable.
+
+    Args:
+        df_var (str): The variable name of the DataFrame.
+        selected_cols_expr (str): The expression for selected columns.
+        max_nom_out_expr (str): The expression for the maximum number of nominal outputs.
+
+    Returns:
+        List[str]: A list of lines of code that compute nominal statistics.
+    """
     lines: List[str] = []
     lines.append(f"_nom_sel = [c for c in {selected_cols_expr} if c in {df_var}.columns]")
     lines.append(f"if not _nom_sel:")
@@ -252,6 +302,16 @@ def _emit_nominal_tables(df_var: str, selected_cols_expr: str, max_nom_out_expr:
     return lines
 
 def _emit_code(df_var: str, cfg: StatsSettings) -> List[str]:
+    """
+    Emit the complete code for generating statistics based on the DataFrame variable and settings.
+
+    Args:
+        df_var (str): The variable name of the DataFrame.
+        cfg (StatsSettings): The settings configuration for statistics generation.
+
+    Returns:
+        List[str]: A list of lines of code that generate the statistics.
+    """
     lines: List[str] = []
     lines.append("out_df = df.copy()  # passthrough copy (not strictly needed)")
     lines.extend(_emit_numeric_stats(df_var, cfg.compute_median))
@@ -268,6 +328,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the Python code body for the KNIME node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The list of incoming ports.
+        out_ports (Optional[List[str]]): The list of outgoing ports.
+
+    Returns:
+        List[str]: A list of lines of code that make up the body of the node.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_stats_settings(ndir)
 
@@ -298,9 +370,34 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell for the KNIME node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The list of incoming ports.
+        out_ports (Optional[List[str]]): The list of outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     return "\n".join(generate_py_body(node_id, node_dir, in_ports, out_ports)) + "\n"
 
 def handle(ntype, nid, npath, incoming, outgoing):
+    """
+    Handle the generation of code for a KNIME node.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path to the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the list of imports and the body of the code.
+    """
     explicit_imports = collect_module_imports(generate_imports)
     in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in (incoming or [])] or [("UNKNOWN", "1")]
     out_port_ids = [str(getattr(e, "source_port", "") or "1") for _, e in (outgoing or [])] or ["1", "2", "3"]

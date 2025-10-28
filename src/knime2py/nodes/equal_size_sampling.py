@@ -43,10 +43,13 @@ class EqualSizeSamplingSettings:
 
 def parse_equal_size_sampling_settings(node_dir: Optional[Path]) -> EqualSizeSamplingSettings:
     """
-    Parse Equal Size Sampling settings:
-      - classColumn (target/stratify column)
-      - seed
-      - samplingMethod ("Exact" | "Approximate")
+    Parse Equal Size Sampling settings from the specified node directory.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        EqualSizeSamplingSettings: An instance containing the parsed settings.
     """
     if not node_dir:
         return EqualSizeSamplingSettings()
@@ -75,6 +78,12 @@ def parse_equal_size_sampling_settings(node_dir: Optional[Path]) -> EqualSizeSam
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary import statements for the code.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     # Use sklearn for the sampling
     return [
         "import pandas as pd",
@@ -90,7 +99,12 @@ HUB_URL = (
 def _emit_equal_size_code(cfg: EqualSizeSamplingSettings) -> List[str]:
     """
     Emit lines that create `out_df` with equal class sizes across `cfg.class_col`.
-    Implementation: 'Exact' downsampling to the minimum class size using sklearn.utils.resample.
+
+    Args:
+        cfg (EqualSizeSamplingSettings): The settings for equal size sampling.
+
+    Returns:
+        List[str]: A list of code lines to perform equal size sampling.
     """
     lines: List[str] = []
     lines.append("out_df = df.copy()")
@@ -125,6 +139,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the Python code body for the node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        List[str]: A list of code lines representing the body of the node.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_equal_size_sampling_settings(ndir)
 
@@ -151,15 +177,35 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Entry used by emitters:
-      - returns (imports, body_lines) if this module can handle the node type
-      - returns None otherwise
+    Entry used by emitters to handle the node type.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines if the node type is handled, None otherwise.
     """
 
     explicit_imports = collect_module_imports(generate_imports)

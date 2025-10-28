@@ -43,16 +43,19 @@ ALLOWED_ROOT_FILE = "workflow.knime"
 # Path resolution
 # --------------------------------------------------------------------------------------
 def repo_root_from_this_file() -> Path:
-    """Assumes this file is at <repo>/src/test_gen/cli.py"""
+    """Return the root path of the repository based on the location of this file."""
     return Path(__file__).resolve().parents[2]
 
 def default_tests_data_dir() -> Path:
+    """Return the default tests data directory path."""
     return repo_root_from_this_file() / "tests" / "data"
 
 def default_tests_dir() -> Path:
+    """Return the default tests directory path."""
     return repo_root_from_this_file() / "tests"
 
 def is_fs_root(p: Path) -> bool:
+    """Check if the given path is the filesystem root."""
     try:
         p = p.resolve()
     except Exception:
@@ -61,7 +64,7 @@ def is_fs_root(p: Path) -> bool:
 
 def resolve_project_dir(project: str | None, path: str | None, data_dir: Path) -> Tuple[Path, str]:
     """
-    Resolve KNIME project directory and logical NAME.
+    Resolve the KNIME project directory and logical NAME.
     If --path is given, use it and take NAME from its basename.
     Else use tests/data/<NAME>.
     """
@@ -79,6 +82,7 @@ def resolve_project_dir(project: str | None, path: str | None, data_dir: Path) -
 # Hidden detection
 # --------------------------------------------------------------------------------------
 def is_hidden_path(p: Path) -> bool:
+    """Check if the given path is a hidden file or directory."""
     name = p.name
     if name.startswith(".") and name not in (".", ".."):
         return True
@@ -103,7 +107,7 @@ class CleanPlanItem:
     is_dir: bool
 
 def plan_clean_node_dir(node_dir: Path) -> Iterable[CleanPlanItem]:
-    """Keep only settings.xml inside a node directory (remove hidden too)."""
+    """Plan to keep only settings.xml inside a node directory (remove hidden too)."""
     if not node_dir.is_dir():
         return []
     items: list[CleanPlanItem] = []
@@ -115,7 +119,7 @@ def plan_clean_node_dir(node_dir: Path) -> Iterable[CleanPlanItem]:
 
 def plan_clean_root_entries(root: Path) -> Iterable[CleanPlanItem]:
     """
-    In root:
+    Plan to clean the root directory:
       - delete all files except workflow.knime (hidden included)
       - delete hidden directories
       - keep non-hidden directories (node dirs)
@@ -132,6 +136,7 @@ def plan_clean_root_entries(root: Path) -> Iterable[CleanPlanItem]:
     return items
 
 def execute_plan(items: Iterable[CleanPlanItem], *, dry_run: bool, verbose: bool) -> None:
+    """Execute the cleaning plan by removing specified files and directories."""
     for it in items:
         if dry_run or verbose:
             print(f"{'DRY-RUN ' if dry_run else ''}REMOVE {'DIR ' if it.is_dir else 'FILE'}: {it.path}", file=sys.stderr)
@@ -149,7 +154,7 @@ def execute_plan(items: Iterable[CleanPlanItem], *, dry_run: bool, verbose: bool
 # Test file generation
 # --------------------------------------------------------------------------------------
 def slugify(name: str) -> str:
-    """Conservative slug for filenames: keep alnum, convert others to '_' and collapse."""
+    """Convert a string to a slug suitable for filenames: keep alphanumeric characters, convert others to '_' and collapse."""
     s = re.sub(r"[^0-9A-Za-z]+", "_", name).strip("_")
     return re.sub(r"_+", "_", s) or "workflow"
 
@@ -235,6 +240,19 @@ def write_test_file(
     dry_run: bool,
     verbose: bool,
 ) -> Path:
+    """
+    Write the generated test file to the specified tests directory.
+
+    Args:
+        tests_dir (Path): The directory where the test file will be written.
+        workflow_name (str): The name of the workflow for which the test is generated.
+        overwrite (bool): Whether to overwrite an existing test file.
+        dry_run (bool): If True, do not perform the write operation.
+        verbose (bool): If True, print details about the operation.
+
+    Returns:
+        Path: The path to the written test file.
+    """
     tests_dir.mkdir(parents=True, exist_ok=True)
     fname = f"test_{slugify(workflow_name)}.py"
     out = tests_dir / fname
@@ -250,6 +268,7 @@ def write_test_file(
 # CLI
 # --------------------------------------------------------------------------------------
 def build_argparser() -> argparse.ArgumentParser:
+    """Build and return the argument parser for the CLI."""
     p = argparse.ArgumentParser(
         description="Clean a copied KNIME project and generate a pytest that validates knime2py roundtrip (with relative tolerance)."
     )
@@ -263,6 +282,7 @@ def build_argparser() -> argparse.ArgumentParser:
     return p
 
 def main(argv: list[str] | None = None) -> int:
+    """Main entry point for the CLI application."""
     args = build_argparser().parse_args(argv)
 
     data_dir = Path(args.data_dir).expanduser().resolve() if args.data_dir else default_tests_data_dir()

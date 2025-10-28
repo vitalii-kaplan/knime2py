@@ -46,11 +46,30 @@ class TableViewSettings:
     page_size: int = 10
 
 def _bool(s: Optional[str], default: bool) -> bool:
+    """
+    Convert a string to a boolean value.
+
+    Args:
+        s (Optional[str]): The string to convert.
+        default (bool): The default value to return if s is None.
+
+    Returns:
+        bool: The converted boolean value.
+    """
     if s is None:
         return default
     return str(s).strip().lower() in {"1", "true", "yes", "y"}
 
 def _collect_numeric_name_entries(cfg: ET._Element) -> List[str]:
+    """
+    Collect numeric name entries from the given XML configuration element.
+
+    Args:
+        cfg (ET._Element): The XML configuration element.
+
+    Returns:
+        List[str]: A list of numeric name entries.
+    """
     out: List[str] = []
     for k, v in iter_entries(cfg):
         if k.isdigit() and v:
@@ -58,6 +77,15 @@ def _collect_numeric_name_entries(cfg: ET._Element) -> List[str]:
     return out
 
 def parse_table_view_settings(node_dir: Optional[Path]) -> TableViewSettings:
+    """
+    Parse the table view settings from the settings.xml file.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        TableViewSettings: The parsed table view settings.
+    """
     if not node_dir:
         return TableViewSettings()
 
@@ -123,6 +151,12 @@ def parse_table_view_settings(node_dir: Optional[Path]) -> TableViewSettings:
 # --------------------------------------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary imports for the table view.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return ["import pandas as pd"]
 
 HUB_URL = (
@@ -131,6 +165,15 @@ HUB_URL = (
 )
 
 def _emit_view_code(cfg: TableViewSettings) -> List[str]:
+    """
+    Emit the code for displaying the table view based on the provided settings.
+
+    Args:
+        cfg (TableViewSettings): The settings for the table view.
+
+    Returns:
+        List[str]: The lines of code to display the table view.
+    """
     lines: List[str] = []
     lines.append(f"_mode = {repr(cfg.mode)}")
     lines.append(f"_sel  = {repr(cfg.selected_cols)}")
@@ -182,6 +225,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,  # ignored
 ) -> List[str]:
+    """
+    Generate the Python body for the table view node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports (ignored).
+
+    Returns:
+        List[str]: The lines of code for the node's body.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_table_view_settings(ndir)
 
@@ -205,12 +260,34 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for the Jupyter notebook representation of the table view node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports (ignored).
+
+    Returns:
+        str: The generated code for the Jupyter notebook.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) for this view node.
+    Handle the processing of the table view node.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines for the node.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

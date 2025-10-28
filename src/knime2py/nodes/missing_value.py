@@ -49,6 +49,7 @@ _CELL_TO_DTYPE = {
 }
 
 def _strategy_from_factory(factory_id: str) -> str:
+    """Determine the fill strategy based on the factory ID."""
     s = factory_id.lower()
     if "fixed" in s: return "fixed"
     if "mean" in s:  return "mean"
@@ -65,12 +66,14 @@ _FIXED_VALUE_KEYS = (
 )
 
 def _first_present_value(cfg: ET._Element, keys=_FIXED_VALUE_KEYS) -> Optional[str]:
+    """Retrieve the first present value from the configuration based on specified keys."""
     for k, v in iter_entries(cfg):
         if k in keys:
             return v
     return None
 
 def parse_missing_value_settings(node_dir: Optional[Path]) -> MissingValueSettings:
+    """Parse the missing value settings from the settings.xml file."""
     if not node_dir:
         return MissingValueSettings()
     sp = node_dir / "settings.xml"
@@ -117,6 +120,7 @@ def parse_missing_value_settings(node_dir: Optional[Path]) -> MissingValueSettin
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """Generate the necessary import statements for the output code."""
     return ["import pandas as pd"]
 
 HUB_URL = (
@@ -125,6 +129,7 @@ HUB_URL = (
 )
 
 def _emit_fill_code(settings: MissingValueSettings) -> List[str]:
+    """Generate the code to fill missing values based on the provided settings."""
     lines: List[str] = []
     lines.append("out_df = df.copy()")
 
@@ -241,20 +246,13 @@ def _emit_fill_code(settings: MissingValueSettings) -> List[str]:
 
     return lines
 
-def generate_imports():
-    return ["import pandas as pd"]
-
-HUB_URL = (
-    "https://hub.knime.com/knime/extensions/org.knime.features.base/latest/"
-    "org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory"
-)
-
 def generate_py_body(
     node_id: str,
     node_dir: Optional[str],
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """Generate the Python code body for the node based on its configuration and input ports."""
     ndir = Path(node_dir) if node_dir else None
     settings = parse_missing_value_settings(ndir)
 
@@ -278,10 +276,12 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """Generate the code for a Jupyter notebook cell based on the node's configuration."""
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 def handle(ntype, nid, npath, incoming, outgoing):
+    """Handle the node processing, generating imports and body code."""
     explicit_imports = collect_module_imports(generate_imports)
     in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in (incoming or [])]
     out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in (outgoing or [])] or ["1"]

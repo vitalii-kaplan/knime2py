@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Iterable, List, Optional, Union, Callable
+from typing import Iterable, List, Optional, Union, Callable, Tuple
 from lxml import etree as ET
 
 # ----------------------------
@@ -54,6 +54,7 @@ def iter_entries(root: ET._Element):
         yield k, (v or "").strip() if v is not None else None
 
 def _first_value_re(root: ET._Element, pattern: str, flags=re.I) -> Optional[str]:
+    """Return the first value whose key matches the given regex pattern."""
     rx = re.compile(pattern, flags)
     for k, v in iter_entries(root):
         if rx.search(k):
@@ -61,6 +62,7 @@ def _first_value_re(root: ET._Element, pattern: str, flags=re.I) -> Optional[str
     return None
 
 def _first_value_re_excluding(root: ET._Element, include_pat: str, exclude_pat: str, flags=re.I) -> Optional[str]:
+    """Return the first value whose key matches the include pattern but not the exclude pattern."""
     inc = re.compile(include_pat, flags)
     exc = re.compile(exclude_pat, flags)
     for k, v in iter_entries(root):
@@ -82,6 +84,7 @@ def _first_value_all_tokens(root: ET._Element, tokens: List[str]) -> Optional[st
 # ----------------------------
 
 def normalize_delim(raw: Optional[str]) -> Optional[str]:
+    """Normalize delimiter strings to their corresponding character representation."""
     if raw is None:
         return None
     v = raw.strip()
@@ -103,6 +106,7 @@ def normalize_delim(raw: Optional[str]) -> Optional[str]:
     return v or None
 
 def normalize_char(raw: Optional[str]) -> Optional[str]:
+    """Normalize character strings to their corresponding single character representation."""
     if not raw:
         return None
     v = raw.strip()
@@ -115,6 +119,7 @@ def normalize_char(raw: Optional[str]) -> Optional[str]:
     return v[:1] if len(v) >= 1 else None
 
 def looks_like_path(s: str) -> bool:
+    """Check if the given string looks like a file path."""
     if not s:
         return False
     low = s.lower()
@@ -127,6 +132,7 @@ def looks_like_path(s: str) -> bool:
     return False
 
 def bool_from_value(v: Optional[str]) -> Optional[bool]:
+    """Convert a string value to a boolean."""
     if v is None:
         return None
     t = v.strip().lower()
@@ -190,13 +196,12 @@ def extract_csv_path(root: ET._Element) -> Optional[str]:
     return None
 
 def extract_csv_sep(root: ET._Element) -> Optional[str]:
-    # cover 'delim', 'separator', 'column_delimiter'
+    """Extract the CSV separator from the XML configuration."""
     raw = _first_value_re(root, r"(delim|separator|column[_-]?delimiter)\b")
     return normalize_delim(raw)
 
 def extract_csv_quotechar(root: ET._Element) -> Optional[str]:
-    # prefer quote char keys but ignore escape keys
-    # exact-ish matches first
+    """Extract the quote character used in the CSV configuration."""
     raw = _first_value_re_excluding(root, r"\bquote(_?char)?\b", r"escape")
     if raw is None:
         # looser fallback: any 'quote' key that isn't an escape
@@ -207,11 +212,12 @@ def extract_csv_quotechar(root: ET._Element) -> Optional[str]:
     return normalize_char(raw)
 
 def extract_csv_escapechar(root: ET._Element) -> Optional[str]:
+    """Extract the escape character used in the CSV configuration."""
     raw = _first_value_re(root, r"escape")
     return normalize_char(raw)
 
 def extract_csv_encoding(root: ET._Element) -> Optional[str]:
-    # handles 'charset', 'encoding', and writer's 'character_set'
+    """Extract the character encoding from the CSV configuration."""
     return (
         _first_value_re(root, r"\bcharacter_set\b")
         or _first_value_re(root, r"\bcharset\b")
@@ -258,6 +264,7 @@ def extract_csv_na_rep(root: ET._Element) -> Optional[str]:
     return v
 
 def extract_csv_include_index(root: ET._Element) -> Optional[bool]:
+    """Extract whether to include the index in the CSV output."""
     raw = _first_value_re(root, r"include[_-]?index")
     return bool_from_value(raw)
 
@@ -303,7 +310,7 @@ def java_to_pandas_dtype(java_class: str) -> Optional[str]:
     return None
 
 # ----------------------------
-# Import ulils
+# Import utils
 # ----------------------------
 
 def collect_module_imports(mod_or_func: Optional[Union[object, Callable[[], Iterable[str]]]]) -> List[str]:
@@ -380,4 +387,3 @@ def resolve_reader_path(root: ET._Element, node_dir: Path) -> Optional[str]:
     except Exception:
         # Last-ditch: just return the raw string
         return raw_path
-

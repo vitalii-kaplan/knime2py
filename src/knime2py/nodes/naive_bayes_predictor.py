@@ -58,11 +58,30 @@ class NaiveBayesPredictorSettings:
     prob_suffix: str = "_NB"
 
 def _bool(s: Optional[str], default: bool) -> bool:
+    """
+    Convert a string to a boolean value.
+
+    Args:
+        s (Optional[str]): The string to convert.
+        default (bool): The default value to return if s is None.
+
+    Returns:
+        bool: The converted boolean value.
+    """
     if s is None:
         return default
     return str(s).strip().lower() in {"1", "true", "yes", "y"}
 
 def parse_nb_predictor_settings(node_dir: Optional[Path]) -> NaiveBayesPredictorSettings:
+    """
+    Parse the Naive Bayes predictor settings from the settings.xml file.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        NaiveBayesPredictorSettings: The parsed settings.
+    """
     if not node_dir:
         return NaiveBayesPredictorSettings()
     settings_path = node_dir / "settings.xml"
@@ -91,6 +110,12 @@ def parse_nb_predictor_settings(node_dir: Optional[Path]) -> NaiveBayesPredictor
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary imports for the Naive Bayes predictor.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     # Only pandas needed; estimator comes from the Learner bundle
     return ["import pandas as pd"]
 
@@ -101,15 +126,13 @@ HUB_URL = (
 
 def _emit_predict_code(cfg: NaiveBayesPredictorSettings) -> List[str]:
     """
-    Consume the bundle produced by naive_bayes_learner:
-      {
-        'estimator': sklearn estimator,
-        'features': List[str],           # after one-hot
-        'target': str,
-        'classes': List[Any],
-        'meta': {'skip_missing': bool, ...}
-      }
-    Falls back gracefully if a bare estimator is provided.
+    Generate the prediction code based on the provided configuration.
+
+    Args:
+        cfg (NaiveBayesPredictorSettings): The settings for the Naive Bayes predictor.
+
+    Returns:
+        List[str]: The lines of code for making predictions.
     """
     lines: List[str] = []
     lines.append("# Fetch inputs")
@@ -201,6 +224,18 @@ def generate_py_body(
     in_ports: List[object],   # Port 1 = model bundle, Port 2 = data
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the body of the Python code for the Naive Bayes predictor.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        List[str]: The lines of code for the node's body.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_nb_predictor_settings(ndir)
 
@@ -226,16 +261,34 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        str: The generated code for the notebook cell.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) if this module can handle the node; else None.
+    Handle the node and return the necessary imports and body lines.
 
-    We map inputs so that:
-      - Port 1 → model bundle
-      - Port 2 → data frame
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

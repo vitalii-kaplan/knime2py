@@ -72,12 +72,31 @@ class ExcelWriterSettings:
 
 
 def _bool(v: Optional[str], default: bool = False) -> bool:
+    """
+    Convert a string value to a boolean.
+
+    Args:
+        v (Optional[str]): The string value to convert.
+        default (bool): The default boolean value if v is None.
+
+    Returns:
+        bool: The converted boolean value.
+    """
     if v is None:
         return default
     return str(v).strip().lower() in {"1", "true", "yes", "y"}
 
 
 def parse_excel_writer_settings(node_dir: Optional[Path]) -> ExcelWriterSettings:
+    """
+    Parse the Excel writer settings from the settings.xml file.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        ExcelWriterSettings: The parsed settings.
+    """
     if not node_dir:
         return ExcelWriterSettings()
 
@@ -144,20 +163,42 @@ def parse_excel_writer_settings(node_dir: Optional[Path]) -> ExcelWriterSettings
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary imports for the Excel writer.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     # openpyxl is required for XLSX writing and append mode
     return ["from pathlib import Path", "import pandas as pd"]
 
 
 def _map_if_sheet_exists(kn: str) -> str:
     """
-    KNIME: FAIL | REPLACE | NEW
-    pandas.ExcelWriter(if_sheet_exists): 'error' | 'replace' | 'new'
+    Map KNIME's sheet existence policy to pandas' equivalent.
+
+    Args:
+        kn (str): The KNIME sheet existence policy.
+
+    Returns:
+        str: The corresponding pandas policy.
     """
     m = {"FAIL": "error", "REPLACE": "replace", "NEW": "new"}
     return m.get(kn.upper(), "error")
 
 
 def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[object]) -> List[str]:
+    """
+    Generate the Python code body for the Excel writer.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The list of incoming ports.
+
+    Returns:
+        List[str]: The generated Python code lines.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_excel_writer_settings(ndir)
 
@@ -226,14 +267,34 @@ def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[objec
 
 
 def generate_ipynb_code(node_id: str, node_dir: Optional[str], in_ports: List[object]) -> str:
+    """
+    Generate the code for a Jupyter notebook cell.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The list of incoming ports.
+
+    Returns:
+        str: The generated code for the notebook cell.
+    """
     body = generate_py_body(node_id, node_dir, in_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) for Excel Writer.
-    Accepts a single tabular input; produces no outputs.
+    Handle the Excel Writer node processing.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines for the node.
     """
     in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in (incoming or [])] or [("UNKNOWN", "1")]
     node_lines = generate_py_body(nid, npath, in_ports)

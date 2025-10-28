@@ -57,6 +57,16 @@ class ValueLookupSettings:
 
 
 def _bool(s: Optional[str], default: bool) -> bool:
+    """
+    Convert a string to a boolean value.
+
+    Args:
+        s (Optional[str]): The string to convert.
+        default (bool): The default value to return if s is None.
+
+    Returns:
+        bool: The converted boolean value.
+    """
     if s is None:
         return default
     return str(s).strip().lower() in {"1", "true", "yes", "y"}
@@ -66,6 +76,12 @@ def _collect_numeric_entry_values(root: ET._Element) -> List[str]:
     """
     Collect values from <entry key="0" value="..."/>, <entry key="1" value="..."/>, ...
     anywhere under the given root node.
+
+    Args:
+        root (ET._Element): The root XML element to search.
+
+    Returns:
+        List[str]: A list of collected numeric entry values.
     """
     out: List[str] = []
     for k, v in iter_entries(root):
@@ -77,6 +93,15 @@ def _collect_numeric_entry_values(root: ET._Element) -> List[str]:
 
 
 def parse_lookup_settings(node_dir: Optional[Path]) -> ValueLookupSettings:
+    """
+    Parse the lookup settings from the settings.xml file.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        ValueLookupSettings: An instance of ValueLookupSettings populated with parsed values.
+    """
     if not node_dir:
         return ValueLookupSettings()
     settings_path = node_dir / "settings.xml"
@@ -141,6 +166,12 @@ def parse_lookup_settings(node_dir: Optional[Path]) -> ValueLookupSettings:
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary import statements for the generated code.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return ["import pandas as pd"]
 
 
@@ -153,6 +184,12 @@ HUB_URL = (
 def _emit_lookup_code(cfg: ValueLookupSettings) -> List[str]:
     """
     Emit python lines that join df_left with df_right, add columns, and optionally replace.
+
+    Args:
+        cfg (ValueLookupSettings): The configuration settings for the lookup.
+
+    Returns:
+        List[str]: A list of generated Python code lines.
     """
     lines: List[str] = []
     lines.append("out_df = df_left.copy()")
@@ -224,6 +261,18 @@ def generate_py_body(
     in_ports: List[object],   # two inputs: Port 1=data, Port 2=dictionary
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the Python code body for the value lookup node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        List[str]: A list of generated Python code lines.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_lookup_settings(ndir)
 
@@ -270,6 +319,18 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
@@ -281,6 +342,16 @@ def handle(ntype, nid, npath, incoming, outgoing):
     Port mapping:
       - target port 1 → data
       - target port 2 → dictionary
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the list of imports and the body lines.
     """
 
     explicit_imports = collect_module_imports(generate_imports)

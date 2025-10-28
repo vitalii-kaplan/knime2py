@@ -45,6 +45,13 @@ def _collect_name_list(root: ET._Element, key: str) -> List[str]:
     """
     Collect numeric-indexed entries from:
       model/columns2Btransformed/<key>  where key ∈ {"included_names", "excluded_names"}
+    
+    Args:
+        root (ET._Element): The root XML element to search within.
+        key (str): The key to look for in the XML structure.
+
+    Returns:
+        List[str]: A list of unique names collected from the specified key.
     """
     base = first_el(
         root,
@@ -71,6 +78,15 @@ def _collect_name_list(root: ET._Element, key: str) -> List[str]:
     return out
 
 def parse_onehot_settings(node_dir: Optional[Path]) -> OneHotSettings:
+    """
+    Parse the one-hot encoding settings from the settings.xml file.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        OneHotSettings: An instance of OneHotSettings populated with the parsed values.
+    """
     if not node_dir:
         return OneHotSettings([], [], "EnforceInclusion", True)
 
@@ -112,6 +128,12 @@ def parse_onehot_settings(node_dir: Optional[Path]) -> OneHotSettings:
 # --------------------------------------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary imports for the one-hot encoding code.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return ["import pandas as pd"]
 
 HUB_URL = (
@@ -122,6 +144,12 @@ HUB_URL = (
 def _emit_onehot_code(cfg: OneHotSettings) -> List[str]:
     """
     Transform df -> out_df with KNIME-style naming and placement.
+
+    Args:
+        cfg (OneHotSettings): The configuration settings for one-hot encoding.
+
+    Returns:
+        List[str]: A list of code lines that perform the one-hot encoding transformation.
     """
     lines: List[str] = []
     lines.append("out_df = df.copy()")
@@ -175,6 +203,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the Python code body for the one-hot encoding node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports for the node.
+        out_ports (Optional[List[str]]): The outgoing ports for the node.
+
+    Returns:
+        List[str]: A list of code lines that represent the body of the node.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_onehot_settings(ndir)
 
@@ -198,11 +238,33 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports for the node.
+        out_ports (Optional[List[str]]): The outgoing ports for the node.
+
+    Returns:
+        str: The generated code as a string.
+    """
     return "\n".join(generate_py_body(node_id, node_dir, in_ports, out_ports)) + "\n"
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) if this module can handle the node.
+    Handle the node processing and return the necessary imports and body lines.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path to the node.
+        incoming: The incoming connections to the node.
+        outgoing: The outgoing connections from the node.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the list of imports and the body lines.
     """
     explicit_imports = collect_module_imports(generate_imports)
     in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in (incoming or [])]

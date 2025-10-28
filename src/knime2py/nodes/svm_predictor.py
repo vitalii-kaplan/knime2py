@@ -57,12 +57,31 @@ class PredictorSettings:
 
 
 def _bool(s: Optional[str], default: bool) -> bool:
+    """
+    Convert a string to a boolean value.
+
+    Args:
+        s (Optional[str]): The string to convert.
+        default (bool): The default value to return if s is None.
+
+    Returns:
+        bool: The converted boolean value.
+    """
     if s is None:
         return default
     return str(s).strip().lower() in {"1", "true", "yes", "y"}
 
 
 def parse_predictor_settings(node_dir: Optional[Path]) -> PredictorSettings:
+    """
+    Parse the predictor settings from the settings.xml file.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        PredictorSettings: The parsed predictor settings.
+    """
     if not node_dir:
         return PredictorSettings()
     settings_path = node_dir / "settings.xml"
@@ -94,21 +113,25 @@ def parse_predictor_settings(node_dir: Optional[Path]) -> PredictorSettings:
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary import statements for the code.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     # Only pandas needed here; estimator comes from the Learner bundle
     return ["import pandas as pd"]
 
 
 def _emit_predict_code(cfg: PredictorSettings) -> List[str]:
     """
-    Consume the bundle produced by the SVM Learner:
-      {
-        'estimator': sklearn estimator,
-        'features': List[str],
-        'target': str,
-        'classes': List[Any],
-        ...
-      }
-    Falls back gracefully if a bare estimator is provided.
+    Generate the prediction code based on the provided predictor settings.
+
+    Args:
+        cfg (PredictorSettings): The settings for the predictor.
+
+    Returns:
+        List[str]: The lines of code for making predictions.
     """
     lines: List[str] = []
     lines.append("model_obj = context[model_key]")
@@ -194,6 +217,18 @@ def generate_py_body(
     in_ports: List[object],   # Port 1 = model bundle, Port 2 = data
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the body of the Python code for the SVM predictor node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        List[str]: The lines of code for the node's body.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_predictor_settings(ndir)
 
@@ -223,17 +258,41 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell for the SVM predictor node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
+    Handle the processing of the SVM predictor node.
+
     Returns (imports, body_lines) if this module can handle the node; else None.
 
     We map inputs so that:
       - **Port 1** (this node's target port 1) → model bundle key
       - **Port 2** (this node's target port 2) → data frame key
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

@@ -69,6 +69,7 @@ def _collect_numeric_name_entries(cfg: ET._Element) -> List[str]:
 
 
 def parse_roc_settings(node_dir: Optional[Path]) -> ROCCurveSettings:
+    """Parse the ROC settings from the settings.xml file located in the specified node directory."""
     if not node_dir:
         return ROCCurveSettings()
 
@@ -148,6 +149,7 @@ def parse_roc_settings(node_dir: Optional[Path]) -> ROCCurveSettings:
 # -------------------------------------------------------------------------------------
 
 def generate_imports():
+    """Generate a list of import statements required for the ROC curve generation."""
     return [
         "import tempfile",
         "from pathlib import Path",
@@ -165,6 +167,7 @@ HUB_URL = (
 
 
 def _emit_roc_code(cfg: ROCCurveSettings, node_id: str) -> List[str]:
+    """Emit the ROC curve generation code based on the provided settings and node ID."""
     lines: List[str] = []
     lines.append(f"_truth_col = {repr(cfg.truth_col) if cfg.truth_col else 'None'}")
     lines.append(f"_pos_label = {repr(cfg.pos_label) if cfg.pos_label else 'None'}")
@@ -245,6 +248,7 @@ def _emit_roc_code(cfg: ROCCurveSettings, node_id: str) -> List[str]:
 
 
 def generate_imports():
+    """Generate a list of import statements required for the ROC curve generation."""
     return [
         "import tempfile",
         "from pathlib import Path",
@@ -261,6 +265,7 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,  # ignored
 ) -> List[str]:
+    """Generate the Python body for the ROC curve generation based on the node ID and input ports."""
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_roc_settings(ndir)
 
@@ -281,11 +286,13 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """Generate the code for a Jupyter notebook cell for the ROC curve generation."""
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
+    """Handle the node processing by generating the necessary imports and body code."""
     explicit_imports = collect_module_imports(generate_imports)
     in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in (incoming or [])]
     node_lines = generate_py_body(nid, npath, in_ports)

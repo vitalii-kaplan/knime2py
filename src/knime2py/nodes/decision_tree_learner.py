@@ -73,6 +73,7 @@ _CRITERION_MAP = {
 
 
 def _to_int(s: Optional[str], default: int) -> int:
+    """Convert a string to an integer, returning a default value if conversion fails."""
     try:
         return int(s) if s is not None else default
     except Exception:
@@ -80,12 +81,14 @@ def _to_int(s: Optional[str], default: int) -> int:
 
 
 def _to_bool(s: Optional[str], default: bool = False) -> bool:
+    """Convert a string to a boolean, returning a default value if conversion fails."""
     if s is None:
         return default
     return str(s).strip().lower() in {"1", "true", "yes", "y"}
 
 
 def parse_dt_settings(node_dir: Optional[Path]) -> DecisionTreeSettings:
+    """Parse the settings.xml file and return a DecisionTreeSettings object."""
     if not node_dir:
         return DecisionTreeSettings()
 
@@ -144,6 +147,7 @@ def parse_dt_settings(node_dir: Optional[Path]) -> DecisionTreeSettings:
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """Generate a list of import statements required for the Decision Tree Learner."""
     return [
         "import pandas as pd",
         "import numpy as np",
@@ -191,7 +195,6 @@ def _emit_train_code(cfg: DecisionTreeSettings) -> List[str]:
     lines.append(f"_min_samples_split = int({int(cfg.min_samples_split)})")
     lines.append("# KNIME Decision Tree Learner does not expose a random seed; k2p defaults to 1 for reproducibility.")
     lines.append(f"_seed = int({int(cfg.random_state)})  # default from k2p (1 unless overridden)")
-
 
     # Informational notes for unsupported knobs
     if cfg.pruning_method:
@@ -252,6 +255,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the Python code body for the Decision Tree Learner node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        List[str]: The generated lines of Python code.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_dt_settings(ndir)
 
@@ -292,13 +307,35 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell for the Decision Tree Learner node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        str: The generated Jupyter notebook cell code.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) if this module can handle the node; None otherwise.
+    Handle the node and return the necessary imports and body lines.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines if this module can handle the node; None otherwise.
     """
 
     explicit_imports = collect_module_imports(generate_imports)

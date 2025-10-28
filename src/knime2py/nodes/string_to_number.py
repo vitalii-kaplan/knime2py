@@ -46,6 +46,15 @@ class StringToNumberSettings:
     generic_parse: bool        # (currently unused but captured)
 
 def _collect_included_names(root: ET._Element) -> List[str]:
+    """
+    Collects the included column names from the provided XML root element.
+
+    Args:
+        root (ET._Element): The root element of the XML document.
+
+    Returns:
+        List[str]: A list of included column names.
+    """
     base = first_el(root, ".//*[local-name()='config' and @key='model']"
                           "/*[local-name()='config' and @key='include']"
                           "/*[local-name()='config' and @key='included_names']")
@@ -72,6 +81,15 @@ def _collect_included_names(root: ET._Element) -> List[str]:
     return out
 
 def _target_from_cell_class(cls: Optional[str]) -> str:
+    """
+    Determines the target data type based on the cell class.
+
+    Args:
+        cls (Optional[str]): The cell class as a string.
+
+    Returns:
+        str: The inferred target data type ("Float64" or "Int64").
+    """
     s = (cls or "").lower()
     if "doublecell" in s or "double" in s or "float" in s:
         return "Float64"
@@ -81,6 +99,15 @@ def _target_from_cell_class(cls: Optional[str]) -> str:
     return "Float64"
 
 def parse_string_to_number_settings(node_dir: Optional[Path]) -> StringToNumberSettings:
+    """
+    Parses the settings.xml file to extract StringToNumberSettings.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        StringToNumberSettings: The parsed settings.
+    """
     if not node_dir:
         return StringToNumberSettings([], ".", None, "Float64", False, False)
 
@@ -122,6 +149,12 @@ def parse_string_to_number_settings(node_dir: Optional[Path]) -> StringToNumberS
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generates the necessary imports for the conversion code.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return ["import pandas as pd"]
 
 HUB_URL = (
@@ -130,6 +163,15 @@ HUB_URL = (
 )
 
 def _emit_convert_code(cfg: StringToNumberSettings) -> List[str]:
+    """
+    Emits the conversion code based on the provided settings.
+
+    Args:
+        cfg (StringToNumberSettings): The settings for the conversion.
+
+    Returns:
+        List[str]: The lines of code for the conversion.
+    """
     lines: List[str] = []
     lines.append("out_df = df.copy()")
 
@@ -185,6 +227,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generates the Python body for the String to Number node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        List[str]: The lines of code for the node's body.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_string_to_number_settings(ndir)
 
@@ -211,12 +265,34 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generates the code for a Jupyter notebook cell.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     return "\n".join(generate_py_body(node_id, node_dir, in_ports, out_ports)) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Return (imports, body_lines) for the String to Number node.
+    Handles the generation of imports and body lines for the String to Number node.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

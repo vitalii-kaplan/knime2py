@@ -35,6 +35,13 @@ def _sanitize_name(key: str, used: set[str]) -> str:
     """
     Turn an arbitrary KNIME entry key into a safe Python identifier.
     Deduplicate by suffixing _2, _3, ... as needed.
+    
+    Args:
+        key (str): The KNIME entry key to sanitize.
+        used (set[str]): A set of already used names to avoid duplicates.
+
+    Returns:
+        str: A sanitized Python identifier.
     """
     base = key.strip() or "param"
     base = _py_ident_rx.sub("_", base).strip("_")
@@ -61,6 +68,12 @@ def _coerce_literal(v: Optional[str]):
       - "true"/"false"/"1"/"0"/"yes"/"no" → bool
       - ints, floats → numeric
       - else → repr(string)
+    
+    Args:
+        v (Optional[str]): The string value to coerce.
+
+    Returns:
+        str: The coerced literal as a string.
     """
     if v is None:
         return "None"
@@ -92,6 +105,12 @@ def _coerce_literal(v: Optional[str]):
 def _collect_model_params(model_el: ET._Element) -> List[Tuple[str, str]]:
     """
     Return a list of (py_name, py_literal) extracted from all <entry> under the model config.
+    
+    Args:
+        model_el (ET._Element): The XML element representing the model configuration.
+
+    Returns:
+        List[Tuple[str, str]]: A list of tuples containing Python names and their corresponding literals.
     """
     used: set[str] = set()
     out: List[Tuple[str, str]] = []
@@ -110,6 +129,12 @@ def _collect_model_params(model_el: ET._Element) -> List[Tuple[str, str]]:
 # ----------------------------
 
 def generate_imports() -> List[str]:
+    """
+    Generate a list of imports required for the node.
+    
+    Returns:
+        List[str]: A list of import statements.
+    """
     # No mandatory imports for the stub; keep it minimal.
     return []
 
@@ -117,6 +142,12 @@ def generate_imports() -> List[str]:
 def _emit_params_block(node_dir: Optional[Path]) -> List[str]:
     """
     Build the lines that declare variables for all <entry> under <config key="model">.
+    
+    Args:
+        node_dir (Optional[Path]): The directory containing the node's settings.
+
+    Returns:
+        List[str]: A list of lines declaring the parameters.
     """
     lines: List[str] = []
 
@@ -158,6 +189,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the Python body for the node, including parameters from settings.xml.
+    
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory containing the node's settings.
+        in_ports (List[object]): The list of incoming ports.
+        out_ports (Optional[List[str]]): The list of outgoing ports.
+
+    Returns:
+        List[str]: A list of lines representing the Python body of the node.
+    """
     ndir = Path(node_dir) if node_dir else None
 
     lines: List[str] = []
@@ -176,14 +219,35 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for the Jupyter notebook cell corresponding to the node.
+    
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory containing the node's settings.
+        in_ports (List[object]): The list of incoming ports.
+        out_ports (Optional[List[str]]): The list of outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) unconditionally (catch-all handler).
-    Must be the LAST handler in get_handlers() so specific handlers take precedence.
+    Handle the node processing, returning imports and body lines.
+    
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path to the node.
+        incoming: The incoming ports.
+        outgoing: The outgoing ports.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the list of imports and the body lines.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

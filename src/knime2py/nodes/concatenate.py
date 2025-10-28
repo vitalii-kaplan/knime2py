@@ -31,6 +31,7 @@ FACTORY = "org.knime.base.node.preproc.append.row.AppendedRowsNodeFactory"
 # --------------------------------------------------------------------------------------------------
 
 def generate_imports():
+    """Generate a list of imports required for the concatenation operation."""
     return [
         "import pandas as pd",
     ]
@@ -51,7 +52,16 @@ def generate_py_body(
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
     """
-    Read all inputs in their target-port order (1,2,3,...) and row-bind them.
+    Generate the Python code body for the concatenation operation.
+
+    Args:
+        node_id (str): The identifier for the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The list of incoming ports.
+        out_ports (Optional[List[str]]): The list of outgoing ports.
+
+    Returns:
+        List[str]: The generated lines of Python code.
     """
     # Order inputs by target port index when available (1,2,3,...)
     ordered: List[Tuple[int, str, str]] = []
@@ -101,17 +111,35 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for the Jupyter notebook representation of the node.
+
+    Args:
+        node_id (str): The identifier for the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The list of incoming ports.
+        out_ports (Optional[List[str]]): The list of outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) if this module can handle the node; None otherwise.
+    Handle the node and return the necessary imports and body lines.
 
-    Ports:
-      • Inputs 1..N → tables to be row-bound in port order
-      • Output 1    → concatenated table
+    Args:
+        ntype: The type of the node.
+        nid: The identifier for the node.
+        npath: The path of the node.
+        incoming: The incoming edges.
+        outgoing: The outgoing edges.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

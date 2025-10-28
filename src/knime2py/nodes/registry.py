@@ -18,6 +18,12 @@ def _iter_factories(mod: ModuleType) -> List[str]:
       - FACTORY: str (may be empty "" to mean 'default handler')
       - FACTORIES: iterable[str]
     Empty string ("") is preserved to represent the default handler.
+
+    Args:
+        mod (ModuleType): The module from which to collect factory IDs.
+
+    Returns:
+        List[str]: A list of factory IDs collected from the module.
     """
     vals: List[str] = []
 
@@ -50,6 +56,15 @@ def _iter_factories(mod: ModuleType) -> List[str]:
 
 
 def _has_handle(mod: ModuleType) -> bool:
+    """
+    Check if the given module has a callable 'handle' function.
+
+    Args:
+        mod (ModuleType): The module to check.
+
+    Returns:
+        bool: True if the module has a callable 'handle' function, False otherwise.
+    """
     return callable(getattr(mod, "handle", None))
 
 
@@ -58,6 +73,9 @@ def discover_handlers() -> Dict[str, ModuleType]:
     Import every .py in knime2py/nodes/ and map FACTORY -> module.
     FACTORY == "" is allowed and denotes the default "not implemented" handler.
     Lower PRIORITY (int) wins on duplicates; ties by module name.
+
+    Returns:
+        Dict[str, ModuleType]: A dictionary mapping factory IDs to their corresponding modules.
     """
     candidates: List[tuple[int, str, str, ModuleType]] = []
 
@@ -122,7 +140,12 @@ _HANDLERS_MAP: Dict[str, ModuleType] | None = None
 
 
 def get_handlers() -> Dict[str, ModuleType]:
-    """Return { FACTORY_ID: module }, including possibly mapping[''] for the default handler."""
+    """
+    Return { FACTORY_ID: module }, including possibly mapping[''] for the default handler.
+
+    Returns:
+        Dict[str, ModuleType]: A dictionary mapping factory IDs to their corresponding modules.
+    """
     global _HANDLERS_MAP
     if _HANDLERS_MAP is None:
         _HANDLERS_MAP = discover_handlers()
@@ -130,5 +153,10 @@ def get_handlers() -> Dict[str, ModuleType]:
 
 
 def get_default_handler() -> ModuleType | None:
-    """Return the default handler module (FACTORY == ''), or None if not present."""
+    """
+    Return the default handler module (FACTORY == ''), or None if not present.
+
+    Returns:
+        ModuleType | None: The default handler module or None if not found.
+    """
     return get_handlers().get("")

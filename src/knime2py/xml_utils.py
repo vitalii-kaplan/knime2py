@@ -18,18 +18,42 @@ def _findall_any(parent, names: Tuple[str, ...]):
     """
     Namespace-agnostic search using XPath local-name().
     Returns a list of elements whose local-name is in `names`.
+
+    Args:
+        parent: The parent element to search within.
+        names: A tuple of local names to search for.
+
+    Returns:
+        A list of matching elements.
     """
     expr = " | ".join([f".//*[local-name()='{n}']" for n in names])
     return parent.xpath(expr)
 
 def _get_entry_value_by_key(config_el, key_name: str) -> Optional[str]:
+    """
+    Retrieves the value of an entry element by its key.
+
+    Args:
+        config_el: The configuration element to search within.
+        key_name: The key of the entry to find.
+
+    Returns:
+        The value of the entry if found, otherwise None.
+    """
     vals = config_el.xpath(".//*[local-name()='entry' and @key=$k]/@value", k=key_name)
     return vals[0] if vals else None
 
 def parse_settings_xml(node_dir: Path) -> Tuple[Optional[str], Optional[str]]:
     """
-    Returns: (name, factory) from settings.xml when present.
-    Accepts a node directory or a direct settings.xml path.
+    Parses the settings.xml file to extract the node name and factory.
+
+    Returns:
+        A tuple containing the node name and factory. If not found, returns (None, None).
+        Accepts a node directory or a direct settings.xml path.
+
+    Args:
+        node_dir: The directory containing the settings.xml file or the path to the settings.xml file.
+
     """
     settings = node_dir / "settings.xml"
     if not settings.exists():

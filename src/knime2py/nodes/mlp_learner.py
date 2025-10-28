@@ -51,17 +51,20 @@ class RPropMLPSettings:
     random_state: int = 1
 
 def _to_int(s: Optional[str], default: int) -> int:
+    """Convert a string to an integer, returning a default value if conversion fails."""
     try:
         return int(s) if s is not None else default
     except Exception:
         return default
 
 def _to_bool(s: Optional[str], default: bool = False) -> bool:
+    """Convert a string to a boolean, returning a default value if conversion fails."""
     if s is None:
         return default
     return str(s).strip().lower() in {"1", "true", "yes", "y"}
 
 def parse_rprop_settings(node_dir: Optional[Path]) -> RPropMLPSettings:
+    """Parse the RProp settings from the settings.xml file in the given directory."""
     if not node_dir:
         return RPropMLPSettings()
 
@@ -97,6 +100,7 @@ def parse_rprop_settings(node_dir: Optional[Path]) -> RPropMLPSettings:
 # --------------------------------------------------------------------------------------------------
 
 def generate_imports():
+    """Generate a list of import statements required for the MLP learner."""
     return [
         "import pandas as pd",
         "import numpy as np",
@@ -113,6 +117,7 @@ HUB_URL = (
 )
 
 def _emit_train_code(cfg: RPropMLPSettings) -> List[str]:
+    """Generate the training code for the MLP model based on the provided configuration settings."""
     lines: List[str] = []
     lines.append("out_df = df.copy()")
     if not cfg.target:
@@ -217,6 +222,7 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """Generate the Python code body for the MLP learner based on the node ID and input/output ports."""
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_rprop_settings(ndir)
 
@@ -253,10 +259,12 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """Generate the code for a Jupyter notebook cell based on the node ID and input/output ports."""
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 def handle(ntype, nid, npath, incoming, outgoing):
+    """Handle the processing of a node, generating imports and the body of the code."""
     explicit_imports = collect_module_imports(generate_imports)
 
     in_ports  = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in (incoming or [])]

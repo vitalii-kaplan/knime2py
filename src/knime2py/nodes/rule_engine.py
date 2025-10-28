@@ -71,9 +71,11 @@ _RE_LIKE = re.compile(
 )
 
 def _strip_quotes(s: str) -> str:
+    """Remove surrounding quotes from a string if they are present."""
     return s[1:-1] if (len(s) >= 2 and s[0] == s[-1] and s[0] in "'\"") else s
 
 def _parse_one_rule(line: str) -> Optional[Rule]:
+    """Parse a single rule line and return a Rule object or None if invalid."""
     s = html.unescape(line or "").strip()
     if not s or _RULE_COMMENT.match(s):
         return None
@@ -94,6 +96,7 @@ def _parse_one_rule(line: str) -> Optional[Rule]:
     return None
 
 def parse_rule_engine_settings(node_dir: Optional[Path]) -> RuleEngineSettings:
+    """Parse the settings.xml file and return RuleEngineSettings."""
     if not node_dir:
         return RuleEngineSettings(rules=[], append=True, new_col=None, replace_col=None)
 
@@ -145,6 +148,7 @@ def parse_rule_engine_settings(node_dir: Optional[Path]) -> RuleEngineSettings:
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """Generate a list of imports required for the generated code."""
     return ["import pandas as pd"]
 
 HUB_URL = (
@@ -153,6 +157,7 @@ HUB_URL = (
 )
 
 def _literal_py(val: str) -> str:
+    """Convert a value to its Python literal representation."""
     s = str(val).strip()
     if re.fullmatch(r"[+-]?\d+", s):
         return s
@@ -161,10 +166,12 @@ def _literal_py(val: str) -> str:
     return repr(s)
 
 def _wildcard_to_regex(pat: str) -> str:
+    """Convert a wildcard pattern to a regex pattern."""
     esc = re.escape(pat)
     return "^" + esc.replace(r"\*", ".*") + "$"
 
 def _emit_rule_code(settings: RuleEngineSettings) -> List[str]:
+    """Generate the code that evaluates the rules defined in RuleEngineSettings."""
     lines: List[str] = []
     lines.append("out_df = df.copy()")
     lines.append("res = pd.Series(pd.NA, index=out_df.index, dtype='object')")
@@ -205,6 +212,7 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """Generate the Python code body for the node based on its configuration and input ports."""
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_rule_engine_settings(ndir)
 
@@ -227,13 +235,13 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """Generate the complete code for a Jupyter notebook cell for the node."""
     return "\n".join(generate_py_body(node_id, node_dir, in_ports, out_ports)) + "\n"
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Return (imports, body_lines) if we can handle this node; otherwise None.
+    Handle the node and return (imports, body_lines) if we can handle this node; otherwise None.
     """
-
     explicit_imports = collect_module_imports(generate_imports)
 
     in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in (incoming or [])]

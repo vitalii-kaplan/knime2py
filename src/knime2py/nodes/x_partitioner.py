@@ -72,12 +72,32 @@ class XPartSettings:
 
 
 def _bool(v: Optional[str], default: bool) -> bool:
+    """
+    Convert a string value to a boolean.
+
+    Args:
+        v (Optional[str]): The string value to convert.
+        default (bool): The default value to return if v is None.
+
+    Returns:
+        bool: The converted boolean value.
+    """
     if v is None:
         return default
     return str(v).strip().lower() in {"true", "1", "yes", "y"}
 
 
 def _to_int(v: Optional[str], default: int) -> int:
+    """
+    Convert a string value to an integer.
+
+    Args:
+        v (Optional[str]): The string value to convert.
+        default (int): The default value to return if v is None or conversion fails.
+
+    Returns:
+        int: The converted integer value.
+    """
     try:
         return int(v) if v is not None else default
     except Exception:
@@ -85,6 +105,16 @@ def _to_int(v: Optional[str], default: int) -> int:
 
 
 def _to_long(v: Optional[str], default: Optional[int]) -> Optional[int]:
+    """
+    Convert a string value to a long integer.
+
+    Args:
+        v (Optional[str]): The string value to convert.
+        default (Optional[int]): The default value to return if v is None or conversion fails.
+
+    Returns:
+        Optional[int]: The converted long integer value.
+    """
     try:
         return int(v) if v is not None else default
     except Exception:
@@ -92,6 +122,15 @@ def _to_long(v: Optional[str], default: Optional[int]) -> Optional[int]:
 
 
 def parse_xpart_settings(node_dir: Optional[Path]) -> XPartSettings:
+    """
+    Parse the settings from the settings.xml file.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        XPartSettings: An instance of XPartSettings populated with values from the settings.xml.
+    """
     if not node_dir:
         return XPartSettings()
 
@@ -128,6 +167,12 @@ def parse_xpart_settings(node_dir: Optional[Path]) -> XPartSettings:
 # --------------------------------------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary import statements for the code.
+
+    Returns:
+        list[str]: A list of import statements.
+    """
     return [
         "import pandas as pd",
         "import numpy as np",
@@ -144,6 +189,14 @@ HUB_URL = (
 def _emit_xpart_code(cfg: XPartSettings, node_id: str, src_var: str) -> list[str]:
     """
     Emit loop setup and iteration using `src_var` as the frozen source DataFrame.
+
+    Args:
+        cfg (XPartSettings): The configuration settings for the partitioner.
+        node_id (str): The unique identifier for the node.
+        src_var (str): The variable name for the frozen source DataFrame.
+
+    Returns:
+        list[str]: A list of code lines for the loop setup and iteration.
     """
     lines: list[str] = []
     lines.append("# Plan cross-validation folds and open the loop")
@@ -236,6 +289,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the Python code body for the node.
+
+    Args:
+        node_id (str): The unique identifier for the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports for the node.
+        out_ports (Optional[List[str]]): The outgoing ports for the node.
+
+    Returns:
+        List[str]: A list of code lines for the node's body.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_xpart_settings(ndir)
 
@@ -259,13 +324,35 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell.
+
+    Args:
+        node_id (str): The unique identifier for the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports for the node.
+        out_ports (Optional[List[str]]): The outgoing ports for the node.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) if this module can handle the node; else None.
+    Handle the node and return the necessary imports and body lines.
+
+    Args:
+        ntype: The type of the node.
+        nid: The unique identifier for the node.
+        npath: The path to the node.
+        incoming: The incoming connections to the node.
+        outgoing: The outgoing connections from the node.
+
+    Returns:
+        tuple: A tuple containing the imports and body lines if this module can handle the node; else None.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

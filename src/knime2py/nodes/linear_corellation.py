@@ -43,6 +43,16 @@ class CorrSettings:
     possible_values_count: int
 
 def _collect_name_list(root: ET._Element, key: str) -> List[str]:
+    """
+    Collects a list of unique names from the XML configuration based on the provided key.
+
+    Args:
+        root (ET._Element): The root element of the XML.
+        key (str): The key to search for in the XML.
+
+    Returns:
+        List[str]: A list of unique names found in the XML configuration.
+    """
     base = first_el(
         root,
         ".//*[local-name()='config' and @key='model']"
@@ -68,6 +78,15 @@ def _collect_name_list(root: ET._Element, key: str) -> List[str]:
     return out
 
 def parse_corr_settings(node_dir: Optional[Path]) -> CorrSettings:
+    """
+    Parses the correlation settings from the settings.xml file.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        CorrSettings: An instance of CorrSettings populated with values from the XML.
+    """
     defaults = CorrSettings(
         include_names=[],
         exclude_names=[],
@@ -123,6 +142,12 @@ def parse_corr_settings(node_dir: Optional[Path]) -> CorrSettings:
 # --------------------------------------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generates a list of necessary imports for the correlation computation.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return ["import pandas as pd", "import numpy as np"]
 
 HUB_URL = (
@@ -131,6 +156,16 @@ HUB_URL = (
 )
 
 def _emit_corr_code(df_var: str, cfg: CorrSettings) -> List[str]:
+    """
+    Emits the correlation computation code based on the provided DataFrame variable and settings.
+
+    Args:
+        df_var (str): The variable name of the input DataFrame.
+        cfg (CorrSettings): The correlation settings.
+
+    Returns:
+        List[str]: A list of code lines for the correlation computation.
+    """
     lines: List[str] = []
     lines.append("out_df = df.copy()  # passthrough copy")
     lines.append("")
@@ -282,6 +317,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generates the Python body for the node, including imports and correlation computation.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        List[str]: A list of code lines for the node's Python body.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_corr_settings(ndir)
 
@@ -313,11 +360,33 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generates the code for a Jupyter notebook cell for the node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     return "\n".join(generate_py_body(node_id, node_dir, in_ports, out_ports)) + "\n"
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) if this module can handle the node.
+    Handles the node processing and returns the necessary imports and body lines.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

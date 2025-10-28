@@ -59,6 +59,12 @@ def parse_normalizer_settings(node_dir: Optional[Path]) -> NormalizerSettings:
         dataColumnFilterConfig / data-column-filter.
       - new-min/new-max (or newMin/newMax) also taken outside the filter-config subtree.
       - Column filter: ONLY read manualFilter/manuallyDeselected (fallback: excluded_names).
+    
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        NormalizerSettings: The parsed normalization settings.
     """
     if not node_dir:
         return NormalizerSettings()
@@ -92,6 +98,7 @@ def parse_normalizer_settings(node_dir: Optional[Path]) -> NormalizerSettings:
 
     # -------- new-min / new-max (exclude filter-config subtree) --------
     def _float_entry_excl(keys: List[str], default: float) -> float:
+        """Retrieve a float entry from the model, excluding certain subtrees."""
         for k in keys:
             v = first(
                 model,
@@ -136,6 +143,7 @@ def parse_normalizer_settings(node_dir: Optional[Path]) -> NormalizerSettings:
 # --------------------------------------------------------------------------------------------------
 
 def generate_imports():
+    """Generate the necessary imports for the normalization process."""
     return ["import pandas as pd"]
 
 HUB_URL = (
@@ -151,6 +159,12 @@ def _emit_normalize_code(cfg: NormalizerSettings) -> List[str]:
     Build `out_df` by:
       - starting from ALL columns, dropping only excludes
       - normalizing numeric/boolean columns among the remaining set
+    
+    Args:
+        cfg (NormalizerSettings): The normalization settings to apply.
+
+    Returns:
+        List[str]: The lines of code to normalize the DataFrame.
     """
     lines: List[str] = []
     lines.append("out_df = df.copy()")
@@ -210,6 +224,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the Python code body for the normalization process.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        List[str]: The lines of code for the node's body.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_normalizer_settings(ndir)
 
@@ -235,6 +261,18 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        str: The generated code for the notebook cell.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
@@ -243,6 +281,16 @@ def handle(ntype, nid, npath, incoming, outgoing):
     Central entry used by emitters:
       - returns (imports, body_lines) if this module can handle the node type
       - returns None otherwise
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        tuple: A tuple containing the imports and body lines, or None if not handled.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

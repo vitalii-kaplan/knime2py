@@ -65,18 +65,21 @@ class SVMLearnerSettings:
 # Helpers ------------------------------------------------------------------------------------------
 
 def _to_float(v: Optional[str], default: float | None = None) -> Optional[float]:
+    """Convert a string to a float, returning a default value if conversion fails."""
     try:
         return float(v) if v is not None and v != "" else default
     except Exception:
         return default
 
 def _to_int(v: Optional[str], default: int | None = None) -> Optional[int]:
+    """Convert a string to an integer, returning a default value if conversion fails."""
     try:
         return int(float(v)) if v is not None and v != "" else default
     except Exception:
         return default
 
 def _sigma_to_gamma(sigma: Optional[float]) -> Optional[float]:
+    """Convert sigma to gamma for RBF kernel."""
     if sigma is None or sigma <= 0:
         return None
     return 1.0 / (2.0 * sigma * sigma)
@@ -92,6 +95,7 @@ _KERNEL_MAP = {
 }
 
 def _entries_dict(el: ET._Element) -> Dict[str, str]:
+    """Extract entries from an XML element into a dictionary."""
     d: Dict[str, str] = {}
     for k, v in iter_entries(el):
         if k not in d:
@@ -101,6 +105,7 @@ def _entries_dict(el: ET._Element) -> Dict[str, str]:
 # Parse settings.xml -------------------------------------------------------------------------------
 
 def parse_svm_settings(node_dir: Optional[Path]) -> SVMLearnerSettings:
+    """Parse the settings.xml file and return an SVMLearnerSettings object."""
     if not node_dir:
         return SVMLearnerSettings()
 
@@ -170,6 +175,7 @@ def parse_svm_settings(node_dir: Optional[Path]) -> SVMLearnerSettings:
 # Code generators ----------------------------------------------------------------------------------
 
 def generate_imports():
+    """Generate import statements for the SVM learner."""
     return [
         "import pandas as pd",
         "import numpy as np",
@@ -177,6 +183,7 @@ def generate_imports():
     ]
 
 def _emit_train_code(cfg: SVMLearnerSettings) -> List[str]:
+    """Generate the training code for the SVM model based on the provided configuration."""
     lines: List[str] = []
     lines.append("out_df = df.copy()")
 
@@ -271,19 +278,13 @@ def _emit_train_code(cfg: SVMLearnerSettings) -> List[str]:
     lines.append("}")
     return lines
 
-def generate_imports():
-    return [
-        "import pandas as pd",
-        "import numpy as np",
-        "from sklearn.svm import SVC",
-    ]
-
 def generate_py_body(
     node_id: str,
     node_dir: Optional[str],
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """Generate the Python body for the SVM learner, including imports and training code."""
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_svm_settings(ndir)
 
@@ -321,11 +322,22 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """Generate the code for a Jupyter notebook cell for the SVM learner."""
     return "\n".join(generate_py_body(node_id, node_dir, in_ports, out_ports)) + "\n"
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines).
+    Handle the SVM learner node, returning the necessary imports and body lines.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path to the node.
+        incoming: Incoming ports.
+        outgoing: Outgoing ports.
+
+    Returns:
+        A tuple containing the imports and body lines.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

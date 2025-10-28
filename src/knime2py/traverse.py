@@ -21,9 +21,16 @@ def _id_sort_key(s: str) -> Tuple[int, str]:
 def _build_edge_maps(edges: Iterable) -> Tuple[dict, dict]:
     """
     Build incoming/outgoing maps for quick neighbor lookups.
+    
     Returns (incoming_map, outgoing_map) where:
       incoming_map[target_id] -> [Edge...]
       outgoing_map[source_id] -> [Edge...]
+    
+    Args:
+        edges (Iterable): An iterable of edges with source and target attributes.
+
+    Returns:
+        Tuple[dict, dict]: A tuple containing the incoming and outgoing edge maps.
     """
     inc = defaultdict(list)
     out = defaultdict(list)
@@ -36,13 +43,22 @@ def _build_edge_maps(edges: Iterable) -> Tuple[dict, dict]:
 
 def depth_order(nodes: Dict[str, object], edges: Iterable) -> List[str]:
     """
-    Depth-biased traversal that *emits* a node only after all of its predecessors
-    have been visited. It explores as deep as possible along outgoing edges, but
-    will recursively visit unvisited predecessors first (backtracking as needed).
+    Perform a depth-biased traversal of nodes, emitting each node only after 
+    all of its predecessors have been visited.
+
+    This function explores as deep as possible along outgoing edges, 
+    recursively visiting unvisited predecessors first (backtracking as needed).
 
     - Deterministic: numeric node IDs first, then lexicographic.
     - Safe on cycles: nodes in the current recursion stack are not re-entered.
     - Covers disconnected components.
+
+    Args:
+        nodes (Dict[str, object]): A dictionary of nodes indexed by their IDs.
+        edges (Iterable): An iterable of edges connecting the nodes.
+
+    Returns:
+        List[str]: A list of node IDs in the order they should be processed.
     """
     # Build predecessor/successor maps
     succ = defaultdict(list)   # u -> [v...]
@@ -69,6 +85,7 @@ def depth_order(nodes: Dict[str, object], edges: Iterable) -> List[str]:
     onstack = set()  # cycle guard
 
     def dfs(u: str):
+        """Depth-first search helper to visit nodes."""
         if u in visited or u in onstack:
             return
         onstack.add(u)
@@ -104,8 +121,17 @@ def depth_order(nodes: Dict[str, object], edges: Iterable) -> List[str]:
 
 def derive_title_and_root(nid: str, n) -> tuple[str, str]:
     """
-    Return (title, root_id) from folder name like 'CSV Reader (#1)' when available,
-    else from node.name, else short class name from node.type, else 'node_<nid>'.
+    Derive the title and root ID from a node.
+
+    This function attempts to extract the title and root ID from the node's 
+    path if available, otherwise it falls back to the node's name or type.
+
+    Args:
+        nid (str): The ID of the node.
+        n: The node object from which to derive the title and root ID.
+
+    Returns:
+        tuple[str, str]: A tuple containing the title and root ID.
     """
     root_id = nid
     title = None
@@ -127,17 +153,16 @@ def derive_title_and_root(nid: str, n) -> tuple[str, str]:
 
 def traverse_nodes(g) -> Iterator[dict]:
     """
-    Yield per-node context dicts in depth-ready order:
-      {
-        "nid": str,
-        "node": Node,
-        "title": str,
-        "root_id": str,
-        "state": Optional[str],
-        "comments": Optional[str],
-        "incoming": list[(src_id, Edge)],
-        "outgoing": list[(dst_id, Edge)],
-      }
+    Yield per-node context dictionaries in depth-ready order.
+
+    Each dictionary contains information about the node, including its ID, 
+    the node object, title, root ID, state, comments, and incoming/outgoing edges.
+
+    Args:
+        g: A graph object containing nodes and edges.
+
+    Yields:
+        Iterator[dict]: A generator yielding dictionaries with node context.
     """
     order = depth_order(g.nodes, g.edges)
     incoming_map, outgoing_map = _build_edge_maps(g.edges)
@@ -163,3 +188,4 @@ def traverse_nodes(g) -> Iterator[dict]:
             "incoming": incoming,
             "outgoing": outgoing,
         }
+

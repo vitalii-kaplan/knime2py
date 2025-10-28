@@ -46,6 +46,15 @@ class LogisticRegressionSettings:
 
 
 def _collect_numeric_name_entries(cfg: ET._Element) -> List[str]:
+    """
+    Collects numeric column names from the given XML configuration element.
+
+    Args:
+        cfg (ET._Element): The XML configuration element to parse.
+
+    Returns:
+        List[str]: A list of numeric column names.
+    """
     out: List[str] = []
     for k, v in iter_entries(cfg):
         if k.isdigit() and v:
@@ -64,6 +73,16 @@ _SOLVER_MAP = {
 
 
 def _to_int(s: Optional[str], default: int) -> int:
+    """
+    Converts a string to an integer, returning a default value if conversion fails.
+
+    Args:
+        s (Optional[str]): The string to convert.
+        default (int): The default value to return on failure.
+
+    Returns:
+        int: The converted integer or the default value.
+    """
     try:
         return int(s) if s is not None else default
     except Exception:
@@ -71,6 +90,16 @@ def _to_int(s: Optional[str], default: int) -> int:
 
 
 def _to_float(s: Optional[str], default: float) -> float:
+    """
+    Converts a string to a float, returning a default value if conversion fails.
+
+    Args:
+        s (Optional[str]): The string to convert.
+        default (float): The default value to return on failure.
+
+    Returns:
+        float: The converted float or the default value.
+    """
     try:
         return float(s) if s is not None else default
     except Exception:
@@ -78,6 +107,15 @@ def _to_float(s: Optional[str], default: float) -> float:
 
 
 def parse_logreg_settings(node_dir: Optional[Path]) -> LogisticRegressionSettings:
+    """
+    Parses the logistic regression settings from the settings.xml file.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        LogisticRegressionSettings: The parsed settings.
+    """
     if not node_dir:
         return LogisticRegressionSettings()
 
@@ -141,6 +179,12 @@ def parse_logreg_settings(node_dir: Optional[Path]) -> LogisticRegressionSetting
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generates the necessary import statements for the logistic regression learner.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return [
         "import pandas as pd",
         "import numpy as np",
@@ -156,11 +200,13 @@ HUB_URL = (
 
 def _emit_train_code(cfg: LogisticRegressionSettings) -> List[str]:
     """
-    Emit lines that:
-      - select X, y (using includes if present; else numeric columns minus target)
-      - fit sklearn LogisticRegression
-      - produce coef table & a small summary table
-      - build a *bundle* dict with estimator + metadata for downstream Predictor
+    Emits the training code for the logistic regression model based on the provided settings.
+
+    Args:
+        cfg (LogisticRegressionSettings): The settings for the logistic regression model.
+
+    Returns:
+        List[str]: A list of code lines for training the model.
     """
     lines: List[str] = []
     lines.append("out_df = df.copy()")
@@ -238,6 +284,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generates the Python code body for the logistic regression learner.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        List[str]: A list of code lines for the Python body.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_logreg_settings(ndir)
 
@@ -279,15 +337,36 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generates the code for a Jupyter notebook cell for the logistic regression learner.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) if this module can handle the node; None otherwise.
-    """
+    Handles the node processing and returns the necessary imports and body lines.
 
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines, or None if not handled.
+    """
     explicit_imports = collect_module_imports(generate_imports)
 
     in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in (incoming or [])]

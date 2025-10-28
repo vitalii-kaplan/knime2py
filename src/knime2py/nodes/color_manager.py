@@ -38,7 +38,12 @@ HUB_URL = (
 # ---------------------------------------------------------------------
 
 def generate_imports():
-    # No extra libraries needed for passthrough
+    """
+    Generate a list of imports required for the node.
+
+    Returns:
+        List: An empty list since no extra libraries are needed for passthrough.
+    """
     return []
 
 # ---------------------------------------------------------------------
@@ -52,7 +57,16 @@ def generate_py_body(
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
     """
-    Read input dataframe from the first upstream port and publish it to all outputs unchanged.
+    Generate the Python code body for the node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The list of incoming ports.
+        out_ports (Optional[List[str]]): The list of outgoing ports.
+
+    Returns:
+        List[str]: A list of strings representing the Python code body.
     """
     pairs = normalize_in_ports(in_ports)
     src_id, in_port = pairs[0]  # first input
@@ -74,6 +88,18 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for the Jupyter notebook cell.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The list of incoming ports.
+        out_ports (Optional[List[str]]): The list of outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
@@ -83,7 +109,17 @@ def generate_ipynb_code(
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines).
+    Handle the node processing and return the necessary imports and body lines.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple: A tuple containing the imports and body lines.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

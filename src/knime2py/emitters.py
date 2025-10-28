@@ -114,7 +114,15 @@ def _not_impl_list_for_graph(g, blocks: List[NodeBlock]) -> List[str]:
 # Graph emitters
 # ----------------------------
 def write_graph_json(g, out_dir: Path) -> Path:
-    """Write the graph structure to a JSON file."""
+    """Write the graph structure to a JSON file.
+
+    Args:
+        g: The graph object containing workflow information.
+        out_dir: The output directory where the JSON file will be saved.
+
+    Returns:
+        The path to the created JSON file.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}.json"
     payload = {
@@ -128,7 +136,15 @@ def write_graph_json(g, out_dir: Path) -> Path:
 
 
 def write_graph_dot(g, out_dir: Path) -> Path:
-    """Write the graph structure to a DOT file for visualization."""
+    """Write the graph structure to a DOT file for visualization.
+
+    Args:
+        g: The graph object containing workflow information.
+        out_dir: The output directory where the DOT file will be saved.
+
+    Returns:
+        The path to the created DOT file.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}.dot"
     lines = ["digraph knime {", "  rankdir=LR;"]
@@ -174,9 +190,13 @@ def write_graph_dot(g, out_dir: Path) -> Path:
 # Workbook block builder (shared by .py and .ipynb writers)
 # ----------------------------
 def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
-    """
-    Build render-ready blocks for each node (same content used by .py and .ipynb writers).
-    Also aggregates per-node imports into a single preamble list for the whole document.
+    """Build render-ready blocks for each node and aggregate imports.
+
+    Args:
+        g: The graph object containing workflow information.
+
+    Returns:
+        A tuple containing a list of NodeBlock instances and a list of aggregated imports.
     """
     aggregated_imports: set[str] = set()
     handlers = get_handlers()  # dict: { FACTORY_ID: module }, may include "" for default
@@ -329,8 +349,16 @@ def write_workbook_py(
     blocks: Optional[List[NodeBlock]] = None,
     imports: Optional[List[str]] = None,
 ) -> Path:
-    """
-    Write a linear .py script: each node -> banner + code (with loop indentation).
+    """Write a linear .py script: each node -> banner + code (with loop indentation).
+
+    Args:
+        g: The graph object containing workflow information.
+        out_dir: The output directory where the .py file will be saved.
+        blocks: Optional list of NodeBlock instances to write.
+        imports: Optional list of import statements to include.
+
+    Returns:
+        The path to the created .py file.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.py"
@@ -395,13 +423,16 @@ def write_workbook_ipynb(
     blocks: Optional[List[NodeBlock]] = None,
     imports: Optional[List[str]] = None,
 ) -> Path:
-    """
-    Write a Jupyter notebook:
-      • Outside loops: one markdown cell per node + one code cell per node.
-      • Inside a loop (from LOOP='start' to LOOP='finish'): a single markdown cell is emitted
-        containing the comments for ALL nodes in the loop, followed by ONE code cell that
-        contains the combined code for the whole loop region (banners included). Nested loops
-        are supported via a stack.
+    """Write a Jupyter notebook with markdown and code cells for each node.
+
+    Args:
+        g: The graph object containing workflow information.
+        out_dir: The output directory where the .ipynb file will be saved.
+        blocks: Optional list of NodeBlock instances to write.
+        imports: Optional list of import statements to include.
+
+    Returns:
+        The path to the created .ipynb file.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fp = out_dir / f"{g.workflow_id}_workbook.ipynb"

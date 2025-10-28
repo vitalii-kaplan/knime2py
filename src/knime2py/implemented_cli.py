@@ -18,6 +18,12 @@ def _read_file(path: Path) -> str:
     """
     Read the contents of a file at the given path and return it as a string.
     If an error occurs during reading, return an empty string.
+    
+    Args:
+        path (Path): The path to the file to be read.
+    
+    Returns:
+        str: The contents of the file as a string, or an empty string if an error occurs.
     """
     try:
         return path.read_text(encoding="utf-8", errors="replace")
@@ -32,6 +38,12 @@ def _extract_header_block(src: str) -> List[str]:
     Extract the header comment block from the source code.
     Returns a list of raw comment lines without leading '#', stopping at the first non-comment line.
     Blank comment lines are preserved as empty strings.
+    
+    Args:
+        src (str): The source code as a string.
+    
+    Returns:
+        List[str]: A list of comment lines extracted from the header.
     """
     lines = src.splitlines()
     out: List[str] = []
@@ -94,6 +106,12 @@ def _split_paragraphs(comment_lines: List[str]) -> List[List[str]]:
     """
     Split header comment lines into paragraphs based on blank lines.
     Each paragraph is represented as a list of non-empty lines with whitespace trimmed.
+    
+    Args:
+        comment_lines (List[str]): A list of comment lines to be split into paragraphs.
+    
+    Returns:
+        List[List[str]]: A list of paragraphs, each represented as a list of lines.
     """
     paras: List[List[str]] = []
     buf: List[str] = []
@@ -112,6 +130,12 @@ def _first_sentence_from_header(paras: List[List[str]]) -> str:
     """
     Extract the first non-empty line from the header paragraphs.
     If that line contains a period, return the substring before the first period; otherwise, return the line as-is.
+    
+    Args:
+        paras (List[List[str]]): A list of paragraphs, each represented as a list of lines.
+    
+    Returns:
+        str: The first sentence extracted from the header paragraphs.
     """
     for para in paras:
         for ln in para:
@@ -126,6 +150,12 @@ def _third_paragraph_as_notes(paras: List[List[str]]) -> str:
     """
     Return the third paragraph (index 2) from the header paragraphs, joined with <br>.
     If the third paragraph is not available, return an empty string.
+    
+    Args:
+        paras (List[List[str]]): A list of paragraphs, each represented as a list of lines.
+    
+    Returns:
+        str: The third paragraph as a string, or an empty string if not available.
     """
     if len(paras) >= 3:
         return "<br>".join(html.escape(ln) for ln in paras[2])
@@ -139,6 +169,12 @@ def _third_paragraph_as_notes(paras: List[List[str]]) -> str:
 def _split_camel(s: str) -> str:
     """
     Split a camel case string into words, dropping trailing version digits and the 'Node Factory' suffix.
+    
+    Args:
+        s (str): The camel case string to be split.
+    
+    Returns:
+        str: The split string with words separated by spaces.
     """
     s = re.sub(r"(\d+)$", "", s)  # drop trailing version digits
     s = re.sub(r"Node\s*Factory$", "", s, flags=re.I)  # drop NodeFactory suffix
@@ -149,6 +185,12 @@ def _humanize_module_name(mod_name: str) -> str:
     """
     Convert a module name into a more human-readable format by replacing underscores and dashes with spaces,
     and capitalizing the words.
+    
+    Args:
+        mod_name (str): The module name to be converted.
+    
+    Returns:
+        str: The human-readable format of the module name.
     """
     base = mod_name.split(".")[-1]
     return base.replace("_", " ").replace("-", " ").strip().title()
@@ -157,6 +199,12 @@ def _iter_factory_like_attrs(mod: Any) -> Iterable[str]:
     """
     Iterate over attributes of a module and yield those that are likely to represent factory names.
     This includes attributes ending with 'FACTORY' or 'FACTORIES'.
+    
+    Args:
+        mod (Any): The module from which to iterate attributes.
+    
+    Yields:
+        str: Factory-like attribute names found in the module.
     """
     for attr in dir(mod):
         if not attr:
@@ -176,6 +224,12 @@ def _guess_knime_node_name(mod: Any) -> str:
     Attempt to guess the KNIME node name from the module's attributes.
     Checks for specific attributes that are likely to contain the node name,
     and falls back to the module name if none are found.
+    
+    Args:
+        mod (Any): The module from which to guess the KNIME node name.
+    
+    Returns:
+        str: The guessed KNIME node name.
     """
     for key in ("NODE_NAME", "KNIME_NODE_NAME", "FRIENDLY_NAME", "TITLE", "NAME"):
         v = getattr(mod, key, None)
@@ -203,6 +257,9 @@ def _collect_modules() -> List[Tuple[str, str, str]]:
     Collect information about KNIME nodes and their corresponding modules.
     Returns a list of tuples containing the KNIME node name, module filename, and notes in HTML format.
     Skips the default fallback/not_implemented handler and deduplicates modules that serve multiple FACTORY IDs.
+    
+    Returns:
+        List[Tuple[str, str, str]]: A list of tuples with KNIME node name, module filename, and notes.
     """
     rows: List[Tuple[str, str, str]] = []
 
@@ -256,6 +313,12 @@ def _render_html(rows: List[Tuple[str, str, str]]) -> str:
     """
     Render the collected module information into an HTML table format.
     Returns the complete HTML as a string.
+    
+    Args:
+        rows (List[Tuple[str, str, str]]): A list of tuples containing KNIME node names, module filenames, and notes.
+    
+    Returns:
+        str: The complete HTML representation of the module information.
     """
     head = """<!doctype html>
 <html lang="en">
@@ -312,6 +375,12 @@ def run_cli(argv: Optional[List[str]] = None) -> int:
     Run the command-line interface for generating an HTML page listing implemented node generators.
     Accepts an optional list of command-line arguments.
     Returns an exit code indicating success or failure.
+    
+    Args:
+        argv (Optional[List[str]]): A list of command-line arguments. If None, uses sys.argv.
+    
+    Returns:
+        int: The exit code indicating success (0) or failure (non-zero).
     """
     ap = argparse.ArgumentParser(description="Generate an HTML page listing implemented node generators (parsed from header comments).")
     ap.add_argument("--out", type=Path, default=Path("../../docs/implemented.html"),

@@ -45,12 +45,31 @@ class XAggSettings:
 
 
 def _bool(v: Optional[str], default: bool) -> bool:
+    """
+    Convert a string value to a boolean.
+
+    Args:
+        v (Optional[str]): The string value to convert.
+        default (bool): The default boolean value if v is None.
+
+    Returns:
+        bool: The converted boolean value.
+    """
     if v is None:
         return default
     return str(v).strip().lower() in {"true", "1", "yes", "y"}
 
 
 def parse_xagg_settings(node_dir: Optional[Path]) -> XAggSettings:
+    """
+    Parse the settings from the settings.xml file.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        XAggSettings: An instance of XAggSettings populated with the parsed values.
+    """
     if not node_dir:
         return XAggSettings()
 
@@ -76,6 +95,12 @@ def parse_xagg_settings(node_dir: Optional[Path]) -> XAggSettings:
 # --------------------------------------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary import statements for the code.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return ["import pandas as pd", "import numpy as np"]
 
 
@@ -88,8 +113,14 @@ HUB_URL = (
 def _emit_xagg_code(cfg: XAggSettings, node_id: str, out_ports: List[str]) -> List[str]:
     """
     Emit code that aggregates per-fold data and ONLY publishes outputs on the final fold.
-    It binds to the *active* loop (prefer a loop that isn't complete) and resets the accumulator
-    on the first fold to avoid row multiplication across re-runs.
+
+    Args:
+        cfg (XAggSettings): The settings for the X-Aggregator.
+        node_id (str): The ID of the node.
+        out_ports (List[str]): The output ports.
+
+    Returns:
+        List[str]: The generated code lines.
     """
     ports = [str(p or "1") for p in (out_ports or ["1"])]
     ports = list(dict.fromkeys(ports)) or ["1"]
@@ -179,6 +210,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the Python code body for the node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        List[str]: The generated code lines for the body.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_xagg_settings(ndir)
 
@@ -202,13 +245,35 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) if this module can handle the node; else None.
+    Handle the node and return the necessary imports and body lines.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

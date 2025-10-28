@@ -40,13 +40,27 @@ class WorkflowGraph:
 
 
 def discover_workflows(root: Path) -> List[Path]:
+    """
+    Discover all workflow.knime files in the given root directory and return their paths sorted.
+
+    Args:
+        root (Path): The root directory to search for workflow files.
+
+    Returns:
+        List[Path]: A sorted list of paths to workflow.knime files.
+    """
     return sorted((p for p in root.rglob("workflow.knime") if p.is_file()), key=lambda p: str(p))
 
 
 def _clean_annotation_text(s: str) -> str:
     """
-    KNIME encodes line breaks as the literal token '%%00010'.
-    We strip/normalize it to a single space and collapse whitespace.
+    Clean the annotation text by replacing KNIME encoded line breaks and collapsing whitespace.
+
+    Args:
+        s (str): The annotation text to clean.
+
+    Returns:
+        str: The cleaned annotation text.
     """
     s = s.replace("%%00010", " ")
     return " ".join(s.split()).strip()
@@ -54,9 +68,13 @@ def _clean_annotation_text(s: str) -> str:
 
 def _read_state_and_annotation_from_settings(settings_ref: Path) -> tuple[Optional[str], Optional[str]]:
     """
-    Read <entry key="state" .../> and nodeAnnotation/text from settings.xml.
-    Accepts either a settings.xml file path or the node directory path.
-    Returns (STATE|None, COMMENTS|None).
+    Read the execution state and annotation text from the settings.xml file.
+
+    Args:
+        settings_ref (Path): The path to the settings.xml file or its directory.
+
+    Returns:
+        tuple[Optional[str], Optional[str]]: A tuple containing the state and comments, or (None, None) if not found.
     """
     settings = settings_ref / "settings.xml" if settings_ref.is_dir() else settings_ref
     if not settings.exists():
@@ -84,6 +102,16 @@ def _read_state_and_annotation_from_settings(settings_ref: Path) -> tuple[Option
 
 
 def _parse_knime5_structure(root, workflow_file: Path) -> Tuple[Dict[str, Node], List[Edge]]:
+    """
+    Parse the structure of a KNIME 5 workflow and extract nodes and edges.
+
+    Args:
+        root: The root element of the parsed XML.
+        workflow_file (Path): The path to the workflow file.
+
+    Returns:
+        Tuple[Dict[str, Node], List[Edge]]: A tuple containing a dictionary of nodes and a list of edges.
+    """
     nodes: Dict[str, Node] = {}
     edges: List[Edge] = []
 
@@ -165,10 +193,33 @@ def _parse_knime5_structure(root, workflow_file: Path) -> Tuple[Dict[str, Node],
 
 
 def _parse_legacy_structure(root: ET._Element, workflow_file: Path) -> Tuple[Dict[str, Node], List[Edge]]:
+    """
+    Parse the structure of a legacy KNIME workflow format.
+
+    Args:
+        root (ET._Element): The root element of the parsed XML.
+        workflow_file (Path): The path to the workflow file.
+
+    Raises:
+        ValueError: If the workflow format is unsupported.
+
+    Returns:
+        Tuple[Dict[str, Node], List[Edge]]: This function is not implemented and will raise an error.
+    """
     raise ValueError(f"Unsupported/legacy workflow format. File: {workflow_file}")
 
 
 def _weakly_connected_components(nodes: Dict[str, Node], edges: List[Edge]) -> List[List[str]]:
+    """
+    Find weakly connected components in the workflow graph.
+
+    Args:
+        nodes (Dict[str, Node]): A dictionary of nodes in the graph.
+        edges (List[Edge]): A list of edges in the graph.
+
+    Returns:
+        List[List[str]]: A list of weakly connected components, each represented as a list of node IDs.
+    """
     if not nodes:
         return []
 
@@ -201,6 +252,18 @@ def _weakly_connected_components(nodes: Dict[str, Node], edges: List[Edge]) -> L
 
 def _split_into_subgraphs(workflow_id: str, workflow_path: str,
                           nodes: Dict[str, Node], edges: List[Edge]) -> List[WorkflowGraph]:
+    """
+    Split the workflow graph into subgraphs based on weakly connected components.
+
+    Args:
+        workflow_id (str): The ID of the workflow.
+        workflow_path (str): The path to the workflow file.
+        nodes (Dict[str, Node]): A dictionary of nodes in the graph.
+        edges (List[Edge]): A list of edges in the graph.
+
+    Returns:
+        List[WorkflowGraph]: A list of WorkflowGraph objects representing the subgraphs.
+    """
     comps = _weakly_connected_components(nodes, edges)
     if not comps:
         return []
@@ -221,8 +284,13 @@ def _split_into_subgraphs(workflow_id: str, workflow_path: str,
 
 def parse_workflow_components(workflow_file: Path) -> List[WorkflowGraph]:
     """
-    Parse a single workflow.knime and return one WorkflowGraph per weakly connected component.
-    Component IDs are suffixed as '__g01', '__g02', …
+    Parse a single workflow.knime file and return one WorkflowGraph per weakly connected component.
+
+    Args:
+        workflow_file (Path): The path to the workflow file.
+
+    Returns:
+        List[WorkflowGraph]: A list of WorkflowGraph objects, each representing a weakly connected component.
     """
     root = ET.parse(str(workflow_file), parser=XML_PARSER).getroot()
     nodes, edges = _parse_knime5_structure(root, workflow_file)
@@ -236,7 +304,12 @@ def parse_workflow_components(workflow_file: Path) -> List[WorkflowGraph]:
 def parse_workflow(workflow_file: Path) -> WorkflowGraph:
     """
     Backward-compatible parser that returns the combined graph for the workflow.
-    Use parse_workflow_components(...) if you need per-component subgraphs.
+
+    Args:
+        workflow_file (Path): The path to the workflow file.
+
+    Returns:
+        WorkflowGraph: A WorkflowGraph object representing the entire workflow.
     """
     root = ET.parse(str(workflow_file), parser=XML_PARSER).getroot()
     nodes, edges = _parse_knime5_structure(root, workflow_file)

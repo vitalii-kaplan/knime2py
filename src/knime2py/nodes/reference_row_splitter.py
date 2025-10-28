@@ -50,12 +50,31 @@ class RefRowSplitSettings:
 
 
 def _bool(s: Optional[str], default: bool = False) -> bool:
+    """
+    Convert a string to a boolean value.
+
+    Args:
+        s (Optional[str]): The string to convert.
+        default (bool): The default value to return if s is None.
+
+    Returns:
+        bool: The converted boolean value.
+    """
     if s is None:
         return default
     return str(s).strip().lower() in {"true", "1", "yes", "y"}
 
 
 def parse_refsplit_settings(node_dir: Optional[Path]) -> RefRowSplitSettings:
+    """
+    Parse the settings from the settings.xml file for the reference row splitter.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        RefRowSplitSettings: The parsed settings.
+    """
     if not node_dir:
         return RefRowSplitSettings()
     settings_path = node_dir / "settings.xml"
@@ -88,6 +107,12 @@ def parse_refsplit_settings(node_dir: Optional[Path]) -> RefRowSplitSettings:
 # -------------------------------------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary imports for the Python code.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return ["import pandas as pd"]
 
 
@@ -98,6 +123,16 @@ HUB_URL = (
 
 
 def _emit_split_code(cfg: RefRowSplitSettings, node_id: str) -> List[str]:
+    """
+    Emit the code for splitting the data based on the configuration settings.
+
+    Args:
+        cfg (RefRowSplitSettings): The configuration settings for the splitter.
+        node_id (str): The ID of the node.
+
+    Returns:
+        List[str]: The lines of code to perform the split.
+    """
     lines: List[str] = []
 
     # Serialize config
@@ -142,6 +177,18 @@ def generate_py_body(
     in_ports: List[object],        # two inputs: data, reference
     out_ports: Optional[List[str]] = None,  # ignored; fixed [1,2]
 ) -> List[str]:
+    """
+    Generate the Python body code for the node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports (ignored).
+
+    Returns:
+        List[str]: The lines of Python code for the node.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_refsplit_settings(ndir)
 
@@ -166,18 +213,35 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports (ignored).
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) if this module can handle the node.
+    Handle the node and return the necessary imports and body lines.
 
-    Port mapping:
-      - target port 1 → data
-      - target port 2 → reference
-      Outputs are fixed: 1=matching, 2=non-matching.
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

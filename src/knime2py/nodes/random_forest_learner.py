@@ -59,6 +59,7 @@ class RandomForestSettings:
 
 
 def _to_int(s: Optional[str], default: int) -> int:
+    """Convert a string to an integer, returning a default value if conversion fails."""
     try:
         return int(s) if s is not None else default
     except Exception:
@@ -66,6 +67,7 @@ def _to_int(s: Optional[str], default: int) -> int:
 
 
 def _to_float(s: Optional[str], default: Optional[float]) -> Optional[float]:
+    """Convert a string to a float, returning a default value if conversion fails."""
     try:
         return float(s) if s is not None else default
     except Exception:
@@ -73,12 +75,14 @@ def _to_float(s: Optional[str], default: Optional[float]) -> Optional[float]:
 
 
 def _to_bool(s: Optional[str], default: bool = False) -> bool:
+    """Convert a string to a boolean, returning a default value if conversion fails."""
     if s is None:
         return default
     return str(s).strip().lower() in {"1", "true", "yes", "y"}
 
 
 def _collect_name_entries(cfg: ET._Element) -> List[str]:
+    """Collect non-empty name entries from the given XML element."""
     out: List[str] = []
     for k, v in iter_entries(cfg):
         if k.isdigit() and v:
@@ -91,7 +95,7 @@ def _map_max_features(mode: str,
                       absolute: Optional[int],
                       use_diff_attrs: bool) -> Optional[object]:
     """
-    KNIME 'columnSamplingMode' → sklearn RandomForestClassifier(max_features)
+    Map KNIME 'columnSamplingMode' to sklearn RandomForestClassifier(max_features).
 
     - SquareRoot  → 'sqrt'
     - Log2        → 'log2'
@@ -123,6 +127,7 @@ def _map_max_features(mode: str,
 
 
 def parse_rf_settings(node_dir: Optional[Path]) -> RandomForestSettings:
+    """Parse the Random Forest settings from the settings.xml file in the given directory."""
     if not node_dir:
         return RandomForestSettings()
 
@@ -206,6 +211,7 @@ def parse_rf_settings(node_dir: Optional[Path]) -> RandomForestSettings:
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """Generate import statements for the Random Forest learner."""
     return [
         "import pandas as pd",
         "import numpy as np",
@@ -226,6 +232,12 @@ def _emit_train_code(cfg: RandomForestSettings) -> List[str]:
       - fit sklearn RandomForestClassifier
       - produce feature_importances table & a small summary
       - build a *bundle* dict with estimator + metadata for downstream Predictor
+
+    Args:
+        cfg (RandomForestSettings): The configuration settings for the Random Forest model.
+
+    Returns:
+        List[str]: The lines of code to train the model and generate outputs.
     """
     lines: List[str] = []
     lines.append("out_df = df.copy()")
@@ -335,6 +347,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the Python code body for the Random Forest learner.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        List[str]: The lines of code for the node's functionality.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_rf_settings(ndir)
 
@@ -379,13 +403,35 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell for the Random Forest learner.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) if this module can handle the node; None otherwise.
+    Handle the node and return the necessary imports and body lines.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines if this module can handle the node; None otherwise.
     """
 
     explicit_imports = collect_module_imports(generate_imports)

@@ -50,6 +50,15 @@ class ColumnAppenderSettings:
 
 
 def _to_int_or_none(s: Optional[str]) -> Optional[int]:
+    """
+    Convert a string to an integer or return None if conversion fails.
+
+    Args:
+        s (Optional[str]): The string to convert.
+
+    Returns:
+        Optional[int]: The converted integer or None.
+    """
     try:
         return int(s) if s is not None else None
     except Exception:
@@ -57,6 +66,15 @@ def _to_int_or_none(s: Optional[str]) -> Optional[int]:
 
 
 def parse_column_appender_settings(node_dir: Optional[Path]) -> ColumnAppenderSettings:
+    """
+    Parse the settings.xml file to extract ColumnAppenderSettings.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        ColumnAppenderSettings: The parsed settings.
+    """
     if not node_dir:
         return ColumnAppenderSettings()
     settings_path = node_dir / "settings.xml"
@@ -83,6 +101,12 @@ def parse_column_appender_settings(node_dir: Optional[Path]) -> ColumnAppenderSe
 # --------------------------------------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary imports for the Python code.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return ["import pandas as pd"]
 
 
@@ -93,10 +117,14 @@ HUB_URL = (
 
 def _emit_append_many_code(cfg: ColumnAppenderSettings, right_count: int) -> List[str]:
     """
-    Return python lines that create out_df by appending columns of each right_df[k] to out_df.
-    - Try index (row ID) alignment for IDENTICAL mode.
-    - KNIME-style collision renaming with per-right suffix: ' (<#k>)'.
-    - Ensure final column names are unique even if the right df already contains similar suffixes.
+    Generate Python code lines for appending columns from multiple right DataFrames to a left DataFrame.
+
+    Args:
+        cfg (ColumnAppenderSettings): The settings for the column appender.
+        right_count (int): The number of right DataFrames.
+
+    Returns:
+        List[str]: The generated Python code lines.
     """
     lines: List[str] = []
     lines.append("out_df = left_df.copy()")
@@ -148,6 +176,18 @@ def generate_py_body(
     in_ports: List[object],        # Port 1 = left, Ports 2..N = rights
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the body of the Python code for the node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The input ports.
+        out_ports (Optional[List[str]]): The output ports.
+
+    Returns:
+        List[str]: The generated Python code lines.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_column_appender_settings(ndir)
 
@@ -202,18 +242,35 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The input ports.
+        out_ports (Optional[List[str]]): The output ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Returns (imports, body_lines) if this module can handle the node; None otherwise.
+    Handle the node and return the necessary imports and body lines.
 
-    Port mapping:
-      - Input 1 → left table
-      - Input 2..N → right tables to append
-      - Output 1 → appended table
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming edges.
+        outgoing: The outgoing edges.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines.
     """
     explicit_imports = collect_module_imports(generate_imports)
 

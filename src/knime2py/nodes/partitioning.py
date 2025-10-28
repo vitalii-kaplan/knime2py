@@ -44,6 +44,16 @@ class PartitionSettings:
 
 
 def _to_float(s: Optional[str], default: float) -> float:
+    """
+    Convert a string to a float, returning a default value if conversion fails.
+
+    Args:
+        s (Optional[str]): The string to convert.
+        default (float): The default value to return on failure.
+
+    Returns:
+        float: The converted float value or the default.
+    """
     try:
         return float(s) if s is not None else default
     except Exception:
@@ -51,6 +61,16 @@ def _to_float(s: Optional[str], default: float) -> float:
 
 
 def _to_int(s: Optional[str], default: Optional[int]) -> Optional[int]:
+    """
+    Convert a string to an integer, returning a default value if conversion fails.
+
+    Args:
+        s (Optional[str]): The string to convert.
+        default (Optional[int]): The default value to return on failure.
+
+    Returns:
+        Optional[int]: The converted integer value or the default.
+    """
     try:
         return int(s) if s is not None else default
     except Exception:
@@ -58,6 +78,15 @@ def _to_int(s: Optional[str], default: Optional[int]) -> Optional[int]:
 
 
 def parse_partition_settings(node_dir: Optional[Path]) -> PartitionSettings:
+    """
+    Parse the partition settings from the settings.xml file.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        PartitionSettings: The parsed partition settings.
+    """
     if not node_dir:
         return PartitionSettings()
 
@@ -93,6 +122,12 @@ def parse_partition_settings(node_dir: Optional[Path]) -> PartitionSettings:
 # ---------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary import statements for the partitioning code.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     # now depends on scikit-learn
     return [
         "import pandas as pd",
@@ -113,6 +148,12 @@ def _emit_partition_code(cfg: PartitionSettings) -> List[str]:
       - method: RELATIVE/ABSOLUTE
       - sampling_method: RANDOM | LINEAR | STRATIFIED
       - random_seed, class_column (for STRATIFIED)
+
+    Args:
+        cfg (PartitionSettings): The partition settings configuration.
+
+    Returns:
+        List[str]: The emitted lines of code for partitioning.
     """
     lines: List[str] = []
     lines.append("# Copy not strictly required, but keeps pattern consistent")
@@ -171,6 +212,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the Python code body for the partitioning node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The list of incoming ports.
+        out_ports (Optional[List[str]]): The list of outgoing ports.
+
+    Returns:
+        List[str]: The generated lines of Python code.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_partition_settings(ndir)
 
@@ -212,15 +265,36 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell for the partitioning node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The list of incoming ports.
+        out_ports (Optional[List[str]]): The list of outgoing ports.
+
+    Returns:
+        str: The generated code as a string.
+    """
     body = generate_py_body(node_id, node_dir, in_ports, out_ports)
     return "\n".join(body) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Central entry used by emitters:
-      - returns (imports, body_lines) if this module can handle the node type
-      - returns None otherwise
+    Central entry used by emitters to handle the node type.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines if this module can handle the node type,
+        or None otherwise.
     """
 
     explicit_imports = collect_module_imports(generate_imports)

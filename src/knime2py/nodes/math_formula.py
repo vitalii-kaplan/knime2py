@@ -46,12 +46,31 @@ class MathFormulaSettings:
 
 
 def _bool(v: Optional[str], default: bool) -> bool:
+    """
+    Convert a string value to a boolean.
+
+    Args:
+        v (Optional[str]): The string value to convert.
+        default (bool): The default boolean value to return if v is None.
+
+    Returns:
+        bool: The converted boolean value.
+    """
     if v is None:
         return default
     return str(v).strip().lower() in {"true", "1", "yes", "y"}
 
 
 def parse_math_settings(node_dir: Optional[Path]) -> MathFormulaSettings:
+    """
+    Parse the settings.xml file to extract MathFormulaSettings.
+
+    Args:
+        node_dir (Optional[Path]): The directory containing the settings.xml file.
+
+    Returns:
+        MathFormulaSettings: The parsed settings.
+    """
     if not node_dir:
         return MathFormulaSettings()
     sp = node_dir / "settings.xml"
@@ -86,10 +105,13 @@ _COL_TOKEN = re.compile(r"\$(.+?)\$")  # non-greedy: $...$
 
 def _translate_expression(expr: str) -> str:
     """
-    Translate a subset of KNIME/JEP to Python:
-      - $col$ → df[<repr col>]
-      - '^' → '**'
-      - ln(), log(), log10(), sqrt(), exp(), round(), ceil(), floor() mapped to numpy
+    Translate a subset of KNIME/JEP to Python.
+
+    Args:
+        expr (str): The KNIME/JEP expression to translate.
+
+    Returns:
+        str: The translated Python expression.
     """
     s = (expr or "").strip()
 
@@ -126,6 +148,12 @@ def _translate_expression(expr: str) -> str:
 # --------------------------------------------------------------------------------------------------
 
 def generate_imports():
+    """
+    Generate the necessary import statements for the Python code.
+
+    Returns:
+        List[str]: A list of import statements.
+    """
     return ["import pandas as pd", "import numpy as np"]
 
 HUB_URL = (
@@ -135,11 +163,13 @@ HUB_URL = (
 
 def _emit_math_code(cfg: MathFormulaSettings) -> List[str]:
     """
-    Emit Python that:
-      - copies input df → out_df
-      - evaluates translated expression into _res (Series or scalar broadcast)
-      - optionally converts to Int64
-      - writes to target column (append or replace)
+    Emit Python code that evaluates the translated expression and writes the result to the target column.
+
+    Args:
+        cfg (MathFormulaSettings): The configuration settings for the math formula.
+
+    Returns:
+        List[str]: The generated Python code lines.
     """
     lines: List[str] = []
     lines.append("out_df = df.copy()")
@@ -169,6 +199,18 @@ def generate_py_body(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
+    """
+    Generate the body of the Python code for the node.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        List[str]: The generated Python code lines.
+    """
     ndir = Path(node_dir) if node_dir else None
     cfg = parse_math_settings(ndir)
 
@@ -195,12 +237,34 @@ def generate_ipynb_code(
     in_ports: List[object],
     out_ports: Optional[List[str]] = None,
 ) -> str:
+    """
+    Generate the code for a Jupyter notebook cell.
+
+    Args:
+        node_id (str): The ID of the node.
+        node_dir (Optional[str]): The directory of the node.
+        in_ports (List[object]): The incoming ports.
+        out_ports (Optional[List[str]]): The outgoing ports.
+
+    Returns:
+        str: The generated code for the notebook cell.
+    """
     return "\n".join(generate_py_body(node_id, node_dir, in_ports, out_ports)) + "\n"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """
-    Return (imports, body_lines) if we can handle this node; otherwise None.
+    Handle the node and return the imports and body lines.
+
+    Args:
+        ntype: The type of the node.
+        nid: The ID of the node.
+        npath: The path of the node.
+        incoming: The incoming connections.
+        outgoing: The outgoing connections.
+
+    Returns:
+        Tuple[List[str], List[str]]: A tuple containing the imports and body lines if the node can be handled; otherwise None.
     """
     explicit_imports = collect_module_imports(generate_imports)
 
