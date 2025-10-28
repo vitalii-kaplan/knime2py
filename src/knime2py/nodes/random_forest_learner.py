@@ -83,6 +83,7 @@ For more information, refer to the KNIME documentation and the following
 link: 
 https://hub.knime.com/knime/extensions/org.knime.features.ensembles/latest/
 org.knime.base.node.mine.treeensemble2.node.randomforest.learner.classification.RandomForestClassificationLearnerNodeFactory2
+"""
 ####################################################################################################
 
 
