@@ -1,5 +1,75 @@
 from __future__ import annotations
 
+"""
+Emitters for generating Python code from KNIME nodes.
+
+Overview
+--------
+This module contains functions to emit Python code and related artifacts from KNIME nodes,
+integrating into the knime2py generator pipeline.
+
+Node Identity
+--------------
+Handles nodes identified by KNIME factory IDs, which are managed through the `get_handlers`
+function. Special flags include `LOOP`, which indicates the start or end of a loop in the
+workflow.
+
+Configuration (settings.xml)
+----------------------------
+The module uses the `NodeBlock` dataclass to represent node information. Important fields
+include:
+- `nid`: Node identifier.
+- `title`: Title of the node.
+- `root_id`: Root identifier for the node.
+- `not_implemented`: Flag indicating if the node has a dedicated exporter.
+- `state`: Current state of the node.
+- `comment_line`: Comments associated with the node.
+- `input_line`: Input details for the node.
+- `output_line`: Output details for the node.
+- `code_lines`: Lines of code to be generated for the node.
+
+The `parse_*` functions extract configuration values from `settings.xml` using paths and
+xpaths, with appropriate fallbacks.
+
+Runtime Behavior
+----------------
+The generated code reads input DataFrames or context keys specified in the node's input
+lines. Outputs are written to the `context` dictionary, mapping node IDs and ports to
+DataFrames.
+
+Key algorithms may include mappings to sklearn or imbalanced-learn equivalents, with
+specific rules for column selection and handling of class imbalances.
+
+Edge Cases
+----------
+The code implements safeguards against empty or constant columns, NaNs, and class
+imbalances, ensuring robust behavior in various scenarios.
+
+Dependencies
+------------
+The generated code requires external libraries such as pandas, numpy, sklearn, and
+imbalanced-learn.
+
+Usage
+-----
+This module is typically invoked by the knime2py emitter, which processes upstream
+nodes to generate corresponding Python code. An example of expected context access
+might look like:
+```python
+df = context['<node_id>:<port>']
+```
+
+Limitations
+-----------
+Certain options available in KNIME may not be fully supported or approximated in the
+generated code.
+
+References
+----------
+For more information, refer to the KNIME documentation and the following URL:
+HUB_URL: https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+"""
+
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path

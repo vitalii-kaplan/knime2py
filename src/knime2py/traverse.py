@@ -1,4 +1,78 @@
 #!/usr/bin/env python3
+"""
+Traverse nodes in a directed graph and yield their context in depth-first order.
+
+Overview
+----------------------------
+This module provides functionality to traverse nodes in a directed graph, 
+emitting each node's context only after all of its predecessors have been 
+visited. It fits into the knime2py generator pipeline by ensuring that 
+nodes are processed in a logical order based on their dependencies.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The module reads a graph object containing nodes and edges, where nodes 
+  are indexed by their IDs.
+
+Outputs:
+- The module yields dictionaries containing information about each node, 
+  including its ID, the node object, title, root ID, state, comments, 
+  and incoming/outgoing edges.
+
+Key algorithms:
+- The depth-first search (DFS) algorithm is used to traverse the graph, 
+  ensuring that all predecessors are visited before a node is emitted. 
+  The traversal is deterministic, sorting numeric IDs before non-numeric 
+  ones.
+
+Edge Cases
+----------------------------
+The code handles cycles in the graph by maintaining a recursion stack to 
+prevent re-entering nodes. It also covers disconnected components by 
+ensuring that all nodes are visited, even if they are not connected to 
+the root nodes.
+
+Generated Code Dependencies
+----------------------------
+The generated code may depend on external libraries such as pandas, 
+numpy, and others, depending on the specific context and operations 
+performed. These dependencies are required by the generated code, not 
+by this module.
+
+Usage
+----------------------------
+This module is typically invoked by the emitter as part of the 
+knime2py workflow. An example of expected context access might be:
+```python
+context['node_id'] = node['nid']
+```
+
+Node Identity
+----------------------------
+This module generates code based on the settings defined in 
+`settings.xml`. The KNIME factory IDs and any special flags are 
+defined within the context of the nodes being processed.
+
+Configuration
+----------------------------
+The settings are managed using a `@dataclass`, which includes fields 
+that define the behavior of the nodes. The `parse_*` functions extract 
+these values from the provided paths or xpaths, with appropriate 
+fallbacks.
+
+Limitations
+----------------------------
+Certain options available in KNIME may not be fully supported or may 
+be approximated in the generated code. Users should be aware of these 
+differences.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and relevant 
+terminology related to graph traversal and node processing.
+"""
+
 from __future__ import annotations
 
 import re
@@ -188,4 +262,3 @@ def traverse_nodes(g) -> Iterator[dict]:
             "incoming": incoming,
             "outgoing": outgoing,
         }
-

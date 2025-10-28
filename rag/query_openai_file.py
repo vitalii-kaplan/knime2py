@@ -12,7 +12,8 @@
 # - Dynamically computes max_output_tokens = min(requested, context_window - input_tokens - safety).
 # - Enforces token budget and fails fast if there is no headroom.
 # - Prints ONLY the updated file content to stdout (if the markers are present).
-# - If --rewrite is provided, also overwrites the target file with the updated content.
+# - If --rewrite is provided, overwrites the target file with the updated content and
+#   **does not print** the updated file content to stdout.
 #
 # Usage
 # -----
@@ -25,7 +26,7 @@
 #   --max-output TOKENS           (default: 10000) upper bound; actual value is computed to fit
 #   --safety TOKENS               (default: 1024) safety margin for prompt budgeting
 #   --raw                         print model response as-is (don’t parse markers)
-#   --rewrite                     overwrite the target file with the updated content
+#   --rewrite                     overwrite the target file with the updated content (suppress stdout of file)
 #
 # Requirements
 # ------------
@@ -257,7 +258,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     global OPENAI_MODEL, OPENAI_CONTEXT_WINDOW
 
     p = argparse.ArgumentParser(
-        description="Rewrite a SINGLE file with OpenAI and print the FULL updated file to stdout."
+        description="Rewrite a SINGLE file with OpenAI. Prints the FULL updated file to stdout unless --rewrite is specified."
     )
     p.add_argument("path", help="Path to the target file to edit (must exist).")
     p.add_argument(
@@ -272,7 +273,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     p.add_argument("--max-output", type=int, default=OPENAI_MAX_OUTPUT_DEFAULT, help="Upper bound for output tokens.")
     p.add_argument("--safety", type=int, default=RAG_SAFETY_MARGIN_TOKENS_DEFAULT, help="Safety margin tokens.")
     p.add_argument("--raw", action="store_true", help="Print raw model response (don’t parse markers).")
-    p.add_argument("--rewrite", action="store_true", help="Overwrite the target file with the updated content.")
+    p.add_argument("--rewrite", action="store_true", help="Overwrite the target file with the updated content (no stdout of the file).")
 
     args = p.parse_args(argv)
 
@@ -334,9 +335,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             except Exception:
                 nbytes = "?"
             print(f"[RAG] wrote {target_path} ({nbytes} bytes)", file=sys.stderr, flush=True)
+        else:
+            # Print to stdout only when not rewriting
+            print(updated, end="" if updated.endswith("\n") else "\n")
 
-        # Always print to stdout (keep old behavior; you can redirect if desired)
-        print(updated, end="" if updated.endswith("\n") else "\n")
         return 0
 
     except KeyboardInterrupt:

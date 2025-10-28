@@ -3,6 +3,58 @@
 # knime2py.cli — KNIME → Python/Notebook codegen & graph exporter (CLI entry)
 # -----------------------------------------------------------------------------
 
+"""
+KNIME workflow CLI parser and exporter.
+
+Overview
+--------
+This module parses a KNIME workflow and emits graph representations and 
+workbooks for isolated subgraphs in Python or Jupyter Notebook formats.
+
+Node Identity
+-------------
+This module does not define specific KNIME factory IDs or special flags.
+
+Configuration (settings.xml)
+----------------------------
+This module does not parse a settings.xml file.
+
+Runtime Behavior
+----------------
+Inputs: The generated code reads a single KNIME workflow file or a directory 
+containing it, specifically looking for 'workflow.knime'.
+
+Outputs: The module writes output to specified directories, generating JSON 
+and DOT graph files, as well as Python and Jupyter Notebook workbooks. The 
+output includes mappings of nodes and edges.
+
+Edge Cases
+----------
+The code handles cases where no nodes or edges are found in the workflow, 
+and it raises appropriate errors for invalid paths.
+
+Dependencies
+------------
+This module requires the following external libraries: argparse, json, 
+pathlib, and typing.
+
+Usage
+-----
+This module is typically invoked from the command line, allowing users to 
+specify the path to a KNIME workflow. For example, the context can be accessed 
+as follows: `args.path`.
+
+Limitations
+-----------
+This module does not support recursive searches for workflow files in 
+directories and assumes a specific file structure.
+
+References
+----------
+Refer to the KNIME documentation for more details on workflow structures 
+and node configurations.
+"""
+
 from __future__ import annotations
 
 import argparse

@@ -1,5 +1,68 @@
 # knime2py/parse_knime.py
 #!/usr/bin/env python3
+"""
+Parse KNIME workflow files and extract their structure.
+
+Overview
+----------------------------
+This module parses KNIME workflow files to extract nodes and edges, producing a 
+graph representation of the workflow. It fits into the knime2py generator pipeline 
+by enabling the conversion of KNIME workflows into Python code.
+
+Node Identity
+----------------------------
+The module handles various KNIME node types, identified by their unique IDs. 
+Special flags include LOOP, which indicates the start or end of a loop in the 
+workflow.
+
+Configuration
+----------------------------
+The `Node` dataclass is used for settings, with important fields including:
+- id: Unique identifier for the node.
+- name: Optional name of the node.
+- type: Optional type of the node.
+- path: Optional path to the node's settings.
+- state: Execution state of the node (EXECUTED, CONFIGURED, IDLE).
+- comments: Optional annotation text for the node.
+
+The `parse_settings_xml` function extracts these values using XPaths from the 
+settings.xml file, with fallbacks for missing data.
+
+Runtime Behavior
+----------------------------
+Inputs include DataFrames or context keys that the generated code reads. Outputs 
+are written to `context[...]`, with port mappings and types defined by the 
+workflow structure. The module implements key algorithms for node processing, 
+including handling of various KNIME node types.
+
+Edge Cases
+----------------------------
+The code implements safeguards for empty or constant columns, NaNs, and class 
+imbalances, ensuring robust processing of workflow data.
+
+Dependencies
+----------------------------
+This module requires the following external libraries: lxml.
+
+Usage
+----------------------------
+Typical usage involves invoking this module as part of the workflow parsing 
+process. An example of expected context access might be:
+```python
+data = context['input_table']
+```
+
+Limitations
+----------------------------
+Certain KNIME features may not be fully supported or approximated in the 
+conversion process.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and search for relevant 
+terminology related to workflow parsing and node processing.
+"""
+
 from __future__ import annotations
 
 import uuid
