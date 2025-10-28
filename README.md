@@ -181,9 +181,14 @@ dot -Tpng <base>__g01.dot -o component01.png
 
 ---
 
-## Implemented node generators
+## Documentation
 
-List of all implemented nodes is here: https://vitaly-chibrikov.github.io/knime2py/implemented.html
+MkDocs documentation is here: https://vitalii-kaplan.github.io/knime2py/
+
+
+## Implemented node exporters
+
+List of all implemented nodes is here: https://vitalii-kaplan.github.io/knime2py/src/knime2py/nodes/
 
 > If a node type isn’t implemented, a clear TODO stub is emitted with all paramaters from node's settings.xml file initialized.
 
