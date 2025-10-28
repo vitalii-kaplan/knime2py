@@ -1,6 +1,6 @@
 [project]
 name = "knime2py"
-version = "0.1.9"
+version = "0.1.11"
 description = "KNIME → Python workbook converter (graphs, DOT, and ipynb/py emitters)"
 readme = "README.md"
 requires-python = ">=3.10"

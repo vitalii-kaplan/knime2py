@@ -16,12 +16,12 @@ jobs:
         py: ["3.11"]
     runs-on: ${{ matrix.os }}
     env:
-      # keep PEX chatty for easier debugging
-      PEX_VERBOSE: "9"
       PEX_IGNORE_RCFILES: "1"
+      PEX_VERBOSE: "9"
       PIP_NO_INPUT: "1"
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
-      PEX_VERSION: "2.66.0"        # <- pin to a real published version
+      PYTHONIOENCODING: "UTF-8"
+
     steps:
       - uses: actions/checkout@v4
 
@@ -29,10 +29,13 @@ jobs:
         with:
           python-version: ${{ matrix.py }}
 
-      - name: Install build tools (pinned)
+      - name: Install build tools
         run: |
-          python -m pip install -U "pip>=24,<26"
-          pip install "build==1.2.1" "pex==${{ env.PEX_VERSION }}"
+          python -m pip install --upgrade pip
+          pip install build pex
+
+      - name: Print PEX version
+        run: pex --version
 
       - name: Build wheel
         run: |
@@ -44,48 +47,53 @@ jobs:
         run: |
           set -euo pipefail
           case "${{ matrix.os }}" in
-            macos-13) OS_OUT="k2p-macos-x86_64.pex" ;;
-            macos-14) OS_OUT="k2p-macos-arm64.pex" ;;
-            ubuntu-22.04) OS_OUT="k2p-linux.pex" ;;
-            windows-2022) OS_OUT="k2p-windows.pex" ;;
+            macos-13)   OS_OUT="k2p-macos-x86_64.pex"; VENV_OPTS="--venv prepend --strip-pex-env"; VALIDATE="--validate-entry-point" ;;
+            macos-14)   OS_OUT="k2p-macos-arm64.pex";  VENV_OPTS="--venv prepend --strip-pex-env"; VALIDATE="--validate-entry-point" ;;
+            ubuntu-22.04) OS_OUT="k2p-linux.pex";     VENV_OPTS="--venv prepend --strip-pex-env"; VALIDATE="--validate-entry-point" ;;
+            windows-2022) OS_OUT="k2p-windows.pex";   VENV_OPTS="--venv none";                     VALIDATE="" ;;
+            *) echo "Unknown runner: ${{ matrix.os }}"; exit 2 ;;
           esac
 
-          # On Windows, DO NOT use PEX venv mode (zipapp only). On Unix, use venv mode.
-          VENV_FLAGS=""
-          if [ "${{ matrix.os }}" != "windows-2022" ]; then
-            VENV_FLAGS="--venv prepend --strip-pex-env"
-          fi
-
+          # Build from the wheel we just produced; target only CPython 3.11
           pex dist/*.whl \
             -c k2p \
             -o "dist/${OS_OUT}" \
-            ${VENV_FLAGS} \
-            --validate-entry-point \
+            ${VENV_OPTS} \
+            ${VALIDATE} \
             --interpreter-constraint 'CPython==3.11.*'
 
           echo "Produced dist/${OS_OUT}"
           ls -l dist
 
-      # Smoke test via interpreter mode ONLY (avoids invoking CLI that requires a path)
+      # Unix smoke test: --help + interpreter-mode import for version
       - name: Smoke test PEX (Unix)
         if: matrix.os != 'windows-2022'
         shell: bash
         run: |
           set -euo pipefail
           for f in dist/*.pex; do
-            echo "Interpreter test $f"
-            PEX_INTERPRETER=1 python3 "$f" -c "import importlib, sys; m=importlib.import_module('knime2py'); v=getattr(m,'__version__','unknown'); print(v)"
+            echo "Testing $f"
+            python3 "$f" --help >/dev/null
+            ver="$(PEX_INTERPRETER=1 python3 "$f" -c "import knime2py; print(getattr(knime2py,'__version__','unknown'))")"
+            echo "knime2py version: $ver"
+            test -n "$ver"
           done
 
+      # Windows smoke test: no venv, no validate during build; we still import via interpreter mode.
       - name: Smoke test PEX (Windows)
         if: matrix.os == 'windows-2022'
         shell: pwsh
         run: |
           Get-ChildItem dist\*.pex | ForEach-Object {
-            Write-Host "Interpreter test $($_.FullName)"
+            Write-Host "Testing $($_.FullName)"
+            python $_.FullName --help | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "k2p --help failed: $LASTEXITCODE" }
+
             $env:PEX_INTERPRETER = "1"
-            python $_.FullName -c "import importlib, sys; m=importlib.import_module('knime2py'); print(getattr(m,'__version__','unknown'))"
-            if ($LASTEXITCODE -ne 0) { throw 'import knime2py failed' }
+            $ver = python $_.FullName -c "import knime2py; import sys; sys.stdout.write(getattr(knime2py,'__version__','unknown'))"
+            if ($LASTEXITCODE -ne 0) { throw "interpreter-mode import failed: $LASTEXITCODE" }
+            if ([string]::IsNullOrWhiteSpace($ver)) { throw 'empty version output' }
+            Write-Host ("knime2py version: {0}" -f $ver)
             Remove-Item Env:\PEX_INTERPRETER -ErrorAction SilentlyContinue
           }
 
