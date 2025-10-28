@@ -5,6 +5,64 @@ import subprocess
 import sys
 from pathlib import Path
 
+"""
+Test the end-to-end functionality of the DT scorer.
+
+Overview
+----------------------------
+This module generates a Python workbook from a KNIME project, executes it, and validates
+the output CSV file.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The generated code reads a single input DataFrame from the context.
+
+Outputs:
+- The module writes the output to `context[...]`, specifically mapping the output to
+  a CSV file named "Score.csv".
+
+Key algorithms or mappings:
+- The module implements logic to handle the scoring of data based on decision tree
+  algorithms.
+
+Edge Cases
+----------------------------
+The code implements safeguards against empty or constant columns, NaNs, and class
+imbalance by ensuring that the input data is valid before processing.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires external libraries such as pandas and numpy. These
+dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter. An example of expected
+context access is:
+```python
+score = context['Score']
+```
+
+Node Identity
+----------------------------
+- KNIME factory id(s): Not specified in this module.
+- Special flags: None.
+
+Configuration
+----------------------------
+- The settings are parsed using the `parse_settings` function, which extracts values
+  from the `settings.xml` file.
+
+Limitations
+----------------------------
+This module does not support certain options available in KNIME, and some behavior
+may be approximated.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the HUB_URL constant.
+"""
 
 def test_end_to_end_dt_scorer():
     """

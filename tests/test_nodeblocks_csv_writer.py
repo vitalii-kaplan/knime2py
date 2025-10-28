@@ -1,4 +1,61 @@
 # tests/test_nodeblocks_csv_writer.py
+"""Test for the CSV Writer NodeBlock in the knime2py generator.
+
+Overview
+----------------------------
+This module tests the functionality of the CSV Writer NodeBlock, ensuring it correctly
+utilizes settings and context keys to write data to specified paths.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the upstream context key corresponding to the CSV Reader NodeBlock.
+
+Outputs:
+- Writes the output DataFrame to the path specified in its settings.xml, using the context key
+  for the writer NodeBlock.
+
+Key algorithms or mappings:
+- The generated code maps the input DataFrame to the output path and applies the specified
+  parameters for writing the CSV file.
+
+Edge Cases
+----------------------------
+- The code handles scenarios such as empty DataFrames and ensures that the output path is valid.
+
+Generated Code Dependencies
+----------------------------
+- The generated code requires the following external libraries: pandas. These dependencies
+  are required by the generated code, not by this test module.
+
+Usage
+----------------------------
+- This module is typically invoked by the knime2py emitter when processing a KNIME workflow
+  containing a CSV Writer node.
+- Example of expected context access:
+  ```python
+  df = context['1393:1']
+  ```
+
+Node Identity
+----------------------------
+- KNIME factory id: CSVWriter2NodeFactory (referenced as FACTORY).
+- No special flags are used in this context.
+
+Configuration
+----------------------------
+- The settings are parsed using the `parse_smote_settings` function, which extracts values
+  from the settings.xml file.
+
+Limitations
+----------------------------
+- This module does not support all possible configurations available in KNIME for CSV writing.
+
+References
+----------------------------
+- For more information, refer to the KNIME documentation on CSV Writer nodes.
+"""
+
 import re
 from pathlib import Path
 import sys

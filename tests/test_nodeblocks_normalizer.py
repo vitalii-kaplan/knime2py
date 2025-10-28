@@ -1,4 +1,65 @@
 # tests/test_nodeblocks_normalizer.py
+"""
+Test the Normalizer NodeBlock functionality.
+
+Overview
+----------------------------
+This module tests the behavior of the Normalizer NodeBlock within the knime2py generator
+pipeline, ensuring that it correctly processes input DataFrames and emits the expected
+output to the context.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context key '1393:1', which is expected to be provided by
+  an upstream CSV Reader node.
+
+Outputs:
+- Writes the resulting DataFrame to the context key '3101:1', corresponding to the Normalizer
+  node's output port.
+
+Key algorithms or mappings:
+- The module implements min-max normalization, selecting numeric and boolean columns from the
+  input DataFrame.
+
+Edge Cases
+----------------------------
+The code handles potential edge cases such as empty or constant columns, NaN values, and
+ensures that the normalization process does not fail under these conditions.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas, numpy. These
+dependencies are necessary for the generated code, not for this test module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter when testing the Normalizer node.
+An example of expected context access is:
+```python
+df = context['1393:1']
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- org.knime.base.node.preproc.normalize3.Normalizer3NodeFactory
+
+Configuration
+----------------------------
+The Normalizer node generates code based on settings defined in settings.xml. The relevant
+@dataclass for settings is not explicitly defined in this module.
+
+Limitations
+----------------------------
+This module does not implement all possible normalization techniques available in KNIME,
+focusing instead on min-max normalization.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation on normalization techniques.
+"""
+
 import re
 import sys
 from pathlib import Path

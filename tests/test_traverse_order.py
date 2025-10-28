@@ -1,4 +1,55 @@
 # tests/test_traverse_order.py
+"""
+Test the depth-first traversal order of nodes in a KNIME workflow.
+
+Overview
+----------------------------
+This module tests the depth-first traversal order of nodes in a KNIME workflow,
+ensuring that nodes are traversed in the expected order based on their numeric IDs.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The module reads a KNIME workflow file, which contains nodes and edges.
+
+Outputs:
+- The test verifies the order of node traversal and checks for duplicates.
+
+Key algorithms:
+- The depth-first traversal is implemented using the `depth_order` function.
+
+Edge Cases
+----------------------------
+The code checks for the existence of the workflow file and skips the test if it is missing.
+
+Generated Code Dependencies
+----------------------------
+This module does not generate code directly, but the generated code may depend on
+external libraries such as pandas, numpy, and others.
+
+Usage
+----------------------------
+This module is typically invoked by the test suite to validate the traversal order.
+Example context access:
+- `g = k2p.parse_workflow(wf)`
+
+Node Identity
+----------------------------
+This module does not generate code based on `settings.xml`.
+
+Configuration
+----------------------------
+This module does not generate code based on `settings.xml`.
+
+Limitations
+----------------------------
+No options are currently unsupported.
+
+References
+----------------------------
+Refer to the KNIME documentation for more information on workflow structures.
+"""
+
 from pathlib import Path
 import pytest
 import knime2py.parse_knime as k2p

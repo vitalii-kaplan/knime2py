@@ -1,17 +1,66 @@
 #!/usr/bin/env python3
 """
-clean_knime_project.py
+Clean KNIME project directories and files.
 
-Usage:
-  python clean_knime_project.py /path/to/knime/project
+Overview
+----------------------------
+This module provides functionality to clean a KNIME project directory by removing
+unwanted files and directories while preserving essential configuration files.
 
-Behavior:
-1) For each immediate subdirectory of the given path, delete everything inside it
-   except the file 'settings.xml'. (Subdirectories inside those are removed entirely.)
-2) In the given path itself, delete all files (including hidden) except 'workflow.knime'.
-   Directories in the given path are **not** deleted.
+Runtime Behavior
+----------------------------
+Inputs:
+- The module reads the path to a KNIME project directory provided as a command line
+  argument.
 
-Hidden files are processed like any other (i.e., deleted unless explicitly preserved).
+Outputs:
+- The module does not produce direct outputs but modifies the filesystem by deleting
+  files and directories. It preserves 'settings.xml' in node directories and
+  'workflow.knime' in the root directory.
+
+Key algorithms:
+- The cleaning process iterates through directories and files, applying rules to
+  determine which items to delete based on their names.
+
+Edge Cases
+----------------------------
+- The code handles cases where directories may not exist or are empty.
+- It also manages exceptions during file deletions, logging warnings without halting
+  execution.
+
+Generated Code Dependencies
+----------------------------
+This module does not generate code that has external dependencies. However, the
+generated code may require libraries such as pandas, numpy, or others depending on
+the specific KNIME nodes being processed.
+
+Usage
+----------------------------
+This module is typically invoked from the command line, providing the path to the
+KNIME project directory. An example of expected context access is:
+```python
+python clean_knime_project.py /path/to/knime/project
+```
+
+Node Identity
+----------------------------
+This module does not generate code based on `settings.xml` and does not have
+associated KNIME factory IDs.
+
+Configuration
+----------------------------
+This module does not utilize a `@dataclass` for settings, as it operates directly
+on the filesystem without configuration extraction.
+
+Limitations
+----------------------------
+The module does not support recursive cleaning of subdirectories beyond the first
+level and does not handle specific KNIME node configurations.
+
+References
+----------------------------
+For more information on KNIME project structures, refer to the official KNIME
+documentation.
 """
 
 from __future__ import annotations
@@ -119,3 +168,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

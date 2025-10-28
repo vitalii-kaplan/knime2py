@@ -1,5 +1,61 @@
 # tests/parse/test_discovery_and_parse.py
 
+"""Test suite for parsing and discovering KNIME workflows.
+
+Overview
+----------------------------
+This module contains tests for discovering and parsing KNIME workflows, specifically
+focusing on the single CSV reader node.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The module reads the path to a single CSV workflow.
+
+Outputs:
+- The tests assert the structure of the parsed workflow, including the number of nodes
+  and edges, as well as the state of the nodes.
+
+Key algorithms or mappings:
+- The module verifies that the discovered workflows include the expected sample workflow
+  and checks the properties of the nodes in the parsed graph.
+
+Edge Cases
+----------------------------
+The code checks for the presence of nodes and edges, ensuring that the graph structure
+is as expected. It also verifies that the node state is correctly parsed.
+
+Generated Code Dependencies
+----------------------------
+The generated code may depend on external libraries such as pandas and pytest. These
+dependencies are required for the generated code, not for this test module.
+
+Usage
+----------------------------
+This module is typically invoked during testing of the knime2py package. It is used to
+validate the functionality of the workflow parsing.
+
+Node Identity
+----------------------------
+The tests focus on the single CSV reader node, ensuring that it is correctly identified
+and parsed.
+
+Configuration
+----------------------------
+The tests do not generate code based on settings.xml, but they validate the parsing
+of the single CSV reader node.
+
+Limitations
+----------------------------
+This module does not cover all possible KNIME nodes or workflows, focusing instead on
+the single CSV reader.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the knime2py project.
+
+"""
+
 import re
 from pathlib import Path
 

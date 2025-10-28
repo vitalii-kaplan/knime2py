@@ -5,6 +5,59 @@ import knime2py.parse_knime as k2p
 import pytest
 import knime2py.parse_knime as k2p
 
+"""Test suite for validating the structure and discovery of KNIME workflows with multiple graphs.
+
+Overview
+----------------------------
+This module contains tests to ensure that KNIME workflows with two graphs are correctly 
+discovered and that their components adhere to expected structures.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The module reads the path to a KNIME workflow containing two graphs.
+
+Outputs:
+- The tests assert the discovery of the workflow and validate the structure of its components, 
+  including node and edge configurations.
+
+Key algorithms or mappings:
+- The tests check for specific node types (CSV Reader and CSV Writer) and their connections.
+
+Edge Cases
+----------------------------
+The tests ensure that components are disjoint by node IDs and that the expected number of nodes 
+and edges are present.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas, numpy, and pytest. 
+These dependencies are required for the generated code, not for this test module.
+
+Usage
+----------------------------
+This module is typically invoked by the pytest framework to run the defined test cases. 
+An example of expected context access is:
+```python
+assert any(p.samefile(wf_two_graphs_path) for p in found)
+```
+
+Node Identity
+----------------------------
+This module does not generate code based on `settings.xml`.
+
+Configuration
+----------------------------
+This module does not generate code based on `settings.xml`.
+
+Limitations
+----------------------------
+No options are currently unsupported, and all expected behaviors are implemented.
+
+References
+----------------------------
+Refer to the KNIME documentation for more information on workflow structures and node types.
+"""
 
 @pytest.fixture(scope="session")
 def wf_two_graphs_path(workflow) -> Path:

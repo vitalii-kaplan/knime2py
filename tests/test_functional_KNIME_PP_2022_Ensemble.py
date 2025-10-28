@@ -5,6 +5,67 @@ import subprocess
 import sys
 from pathlib import Path
 
+"""
+Test the end-to-end functionality of the ensemble scorer.
+
+Overview
+----------------------------
+This module generates a Python workbook from a KNIME project, executes the workbook, 
+and validates the output score CSV file.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The module reads input DataFrames from the specified KNIME project.
+
+Outputs:
+- The generated code writes results to `context[...]`, mapping output ports to 
+  corresponding DataFrame columns.
+
+Key algorithms or mappings:
+- The module implements logic to handle ensemble scoring, including potential 
+  mappings to sklearn or imbalanced-learn equivalents.
+
+Edge Cases
+----------------------------
+The code implements safeguards against empty or constant columns, NaNs, and class 
+imbalance, ensuring robust execution.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires external libraries such as pandas, numpy, sklearn, 
+and imblearn. These dependencies are necessary for the generated code, not for 
+this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter, which generates 
+workbooks from KNIME workflows. An example of expected context access is:
+```python
+context['output'] = some_dataframe
+```
+
+Node Identity
+----------------------------
+The module generates code based on `settings.xml` and may include KNIME factory 
+IDs such as FACTORY. Special flags like LOOP = "start" or "end" indicate the 
+beginning or end of a loop in the workflow.
+
+Configuration
+----------------------------
+The module uses a `@dataclass` for settings, which includes fields for 
+configuration parameters. The `parse_*` functions extract these values using 
+specified paths or fallbacks.
+
+Limitations
+----------------------------
+Certain options may not be supported or may only approximate KNIME behavior.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and search for relevant 
+terminology related to ensemble scoring.
+"""
 
 def test_end_to_end_ensemble_scorer():
     """
@@ -82,4 +143,3 @@ def test_end_to_end_ensemble_scorer():
     assert rows[0] == ["no", "yes"], f"Header mismatch: {rows[0]}"
     assert rows[1] == ["465", "183"], f"First data row mismatch: {rows[1]}"
     assert rows[2] == ["243", "712"], f"Second data row mismatch: {rows[2]}"
-

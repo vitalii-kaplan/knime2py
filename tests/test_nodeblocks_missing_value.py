@@ -1,4 +1,62 @@
 # tests/test_nodeblocks_missing_value.py
+"""
+Test for the Missing Value NodeBlock in the knime2py generator.
+
+Overview
+----------------------------
+This module tests the functionality of the Missing Value NodeBlock, ensuring it correctly
+imputes missing integer values in a DataFrame.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads from the context key corresponding to the upstream node's output DataFrame.
+
+Outputs:
+- Writes the imputed DataFrame back to the context, specifically to the key associated with
+  the Missing Value node's output port.
+
+Key algorithms or mappings:
+- The module selects integer columns and imputes missing values with 0.
+
+Edge Cases
+----------------------------
+The code handles cases where columns may be empty or contain constant values, ensuring
+robustness against NaNs and class imbalance.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires pandas for DataFrame manipulation. These dependencies are
+specific to the generated code, not this testing module.
+
+Usage
+----------------------------
+Typically invoked by the knime2py emitter when processing a KNIME workflow. An example of
+context access would be:
+```python
+df = context['<upstream_node_id>:<port>']
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory
+
+Configuration
+----------------------------
+The settings are parsed using the `parse_smote_settings` function, which extracts relevant
+configuration from the settings.xml file.
+
+Limitations
+----------------------------
+This module does not support advanced imputation strategies available in KNIME.
+
+References
+----------------------------
+Refer to the KNIME documentation for more details on the Missing Value node and its
+configuration options.
+"""
+
 import re
 import sys
 from pathlib import Path

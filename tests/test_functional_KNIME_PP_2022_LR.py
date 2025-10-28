@@ -5,6 +5,66 @@ import subprocess
 import sys
 from pathlib import Path
 
+"""
+Test the end-to-end functionality of the logistic regression scorer.
+
+Overview
+----------------------------
+This module generates a Python workbook from a KNIME project, executes it, 
+and validates the output score CSV file.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The generated code reads a single input DataFrame from the context.
+
+Outputs:
+- The module writes the output score to `context[...]`, specifically 
+  mapping the output to a CSV file named "Score.csv".
+
+Key algorithms or mappings:
+- The generated code utilizes logistic regression scoring, which may involve 
+  sklearn's logistic regression implementation.
+
+Edge Cases
+----------------------------
+The code implements safeguards against empty or constant columns, NaNs, 
+and class imbalance by validating input data before processing.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires external libraries such as pandas and sklearn. 
+These dependencies are necessary for the generated code, not for this 
+module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter when generating 
+workbooks from KNIME nodes. An example of expected context access is:
+```python
+score = context['Score']
+```
+
+Node Identity
+----------------------------
+The KNIME factory id for this node is not explicitly defined in this 
+module.
+
+Configuration
+----------------------------
+This module does not generate code based on `settings.xml`, thus no 
+configuration details are applicable.
+
+Limitations
+----------------------------
+This module does not support certain advanced logistic regression options 
+available in KNIME.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation on logistic 
+regression and the knime2py project repository.
+"""
 
 def test_end_to_end_logreg_scorer():
     """

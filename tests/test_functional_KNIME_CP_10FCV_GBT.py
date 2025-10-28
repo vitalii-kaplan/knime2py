@@ -1,7 +1,71 @@
 #!/usr/bin/env python3
-# -----------------------------------------------------------------------------
-# knime2py.cli — KNIME → Python/Notebook codegen & graph exporter (CLI entry)
-# -----------------------------------------------------------------------------
+"""
+KNIME to Python code generator and graph exporter.
+
+Overview
+----------------------------
+This module processes a KNIME workflow and emits corresponding graph and workbook files
+for isolated subgraphs within the workflow.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The module reads a single KNIME workflow file or a directory containing exactly one
+  workflow.knime file.
+
+Outputs:
+- The generated code writes to context[...] with mappings for input and output ports.
+- The output includes JSON and DOT representations of the workflow graph, as well as
+  Python and Jupyter Notebook workbooks.
+
+Key algorithms:
+- The module utilizes the `discover_workflows` and `parse_workflow_components` functions
+  to extract workflow details and generate the corresponding code.
+
+Edge Cases
+----------------------------
+The code handles various edge cases, including:
+- Validating the existence of the workflow file.
+- Ensuring that the directory contains exactly one workflow file.
+- Reporting errors for invalid paths or empty workflows.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+- numpy
+- Any other libraries used in the generated code, which are not dependencies of this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter, which processes the workflow
+and generates the corresponding outputs. An example of expected context access is:
+```python
+context['input_table'] = df
+```
+
+Node Identity
+----------------------------
+The module generates code based on the settings defined in the workflow. The KNIME factory
+IDs and any special flags are determined from the workflow's configuration.
+
+Configuration
+----------------------------
+The settings are defined using a `@dataclass`, which includes important fields such as:
+- `input_table`: The input DataFrame for processing.
+- `output_table`: The resulting DataFrame after processing.
+
+The `parse_*` functions extract these values from the workflow's settings.xml file.
+
+Limitations
+----------------------------
+Certain options may not be supported or may only approximate KNIME behavior. Users should
+refer to the documentation for specific limitations.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the HUB_URL constant if available.
+"""
 
 from __future__ import annotations
 

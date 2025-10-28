@@ -4,7 +4,6 @@ set -euo pipefail
 # Usage:
 #   ./rag_query_files.sh [DIRECTORY]
 # If DIRECTORY is not provided, defaults to TARGET_DIR.
-
 TARGET_DIR="${1:-tests/}"
 
 # Build the multi-line edit text safely.
@@ -90,8 +89,6 @@ Acceptance criteria:
 PROMPT
 set -e
 
-#   --edit "Add meaningful docstrings to all public functions based on the code." \
-
 # Recursively find all .py files under TARGET_DIR whose basenames do NOT start with "__"
 # and rewrite each file using the RAG editor.
 find "$TARGET_DIR" -type f -name '*.py' ! -name '__*.py' -print0 \
@@ -99,6 +96,6 @@ find "$TARGET_DIR" -type f -name '*.py' ! -name '__*.py' -print0 \
   echo "[RAG] Editing: $PYFILE"
   python -m rag.query_openai_file \
     "$PYFILE" \
-    --edit "$EDIT_TEXT" \ 
+    --edit "$EDIT_TEXT" \
     --rewrite
 done

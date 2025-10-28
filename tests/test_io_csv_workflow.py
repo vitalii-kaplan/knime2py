@@ -1,4 +1,63 @@
 # tests/test_io_csv_workflow.py
+"""Test suite for CSV I/O workflows in KNIME.
+
+Overview
+----------------------------
+This module contains tests to verify the functionality of CSV input and output nodes
+within KNIME workflows, ensuring that the expected nodes are present and in the correct
+state.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The module reads the path to a KNIME workflow that includes CSV Reader and Writer nodes.
+
+Outputs:
+- The tests assert the presence and state of the CSV Reader and Writer nodes in the
+  workflow, checking their execution and configuration states.
+
+Key algorithms or mappings:
+- The tests utilize regular expressions to identify nodes based on their labels.
+
+Edge Cases
+----------------------------
+The tests check for the presence of exactly one CSV Reader and one CSV Writer, ensuring
+that no additional nodes interfere with the expected workflow structure.
+
+Generated Code Dependencies
+----------------------------
+The generated code depends on the following external libraries:
+- pandas
+- pytest
+These dependencies are required for the generated code, not for this test module.
+
+Usage
+----------------------------
+This module is typically invoked by the pytest framework to run the defined test cases.
+An example of expected context access is:
+```python
+workflow("KNIME_io_csv")
+```
+
+Node Identity
+----------------------------
+The tests focus on nodes identified as CSV Reader and CSV Writer, ensuring they are
+correctly labeled and functioning.
+
+Configuration
+----------------------------
+No specific configuration is required for this test module.
+
+Limitations
+----------------------------
+This module does not cover all possible edge cases or configurations of CSV nodes in
+KNIME workflows.
+
+References
+----------------------------
+Refer to the KNIME documentation for more information on CSV Reader and Writer nodes.
+"""
+
 import re
 from pathlib import Path
 
@@ -73,3 +132,4 @@ def test_io_csv_writer_state_configured(wf_io_csv_path: Path):
 
     _, writer = writers[0]
     assert writer.state == "CONFIGURED", f"CSV Writer state expected CONFIGURED, got {writer.state!r}"
+

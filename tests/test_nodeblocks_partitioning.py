@@ -1,4 +1,73 @@
 # tests/test_nodeblocks_partitioning.py
+"""
+Test for the Partitioning NodeBlock in the knime2py generator.
+
+Overview
+----------------------------
+This module tests the generation of code for the Partitioning NodeBlock, which is part of the 
+knime2py pipeline. It verifies that the generated code correctly implements a stratified 
+train/test split based on the settings defined in the provided settings.xml file.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context, specifically the 'Dependent' column for stratification.
+
+Outputs:
+- Writes to context keys for train and test DataFrames, mapping them to the appropriate ports:
+  - `context['4001:1']` for the training DataFrame.
+  - `context['4001:2']` for the testing DataFrame.
+
+Key algorithms:
+- Utilizes `train_test_split` from sklearn for stratified sampling based on the 'Dependent' column.
+
+Edge Cases
+----------------------------
+The code handles cases such as:
+- Empty or constant columns in the input DataFrame.
+- NaN values in the 'Dependent' column, replacing them with a placeholder.
+- Class imbalance by ensuring stratified sampling.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+- sklearn
+These dependencies are required by the generated code, not by this test module.
+
+Usage
+----------------------------
+This module is typically invoked by the emitter during the generation of the KNIME workflow. 
+An example of expected context access is:
+```python
+train_df = context['4001:1']
+test_df = context['4001:2']
+```
+
+Node Identity
+----------------------------
+The file generates code based on the settings.xml for the Partitioning node:
+- KNIME factory id: `org.knime.base.node.preproc.partition.PartitionNodeFactory`
+- Special flags: None.
+
+Configuration
+----------------------------
+The settings are parsed using the `parse_smote_settings` function, which extracts values 
+from the settings.xml file. Important fields include:
+- `seed`: The random seed for reproducibility (default: 1).
+- `fraction`: The fraction of data to be used for training (default: 0.7).
+
+Limitations
+----------------------------
+Currently, the implementation does not support advanced options available in KNIME, such as 
+custom stratification logic or multiple input DataFrames.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation on the Partitioning node and 
+stratified sampling techniques.
+"""
+
 import re
 import sys
 from pathlib import Path

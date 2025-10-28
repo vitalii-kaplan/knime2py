@@ -1,4 +1,59 @@
 # conftest.py
+"""Test configuration for the knime2py project.
+
+Overview
+----------------------------
+This module provides fixtures and helper functions for testing the knime2py project, 
+including paths to workflows and data directories.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The module reads paths to workflow files and node directories based on the project 
+  structure.
+
+Outputs:
+- The module provides paths to the repository root, data directory, and specific node 
+  directories, which can be accessed in tests.
+
+Edge Cases
+----------------------------
+The module ensures that required paths exist and raises errors if they do not. It also 
+cleans up output directories before tests to avoid conflicts.
+
+Generated Code Dependencies
+----------------------------
+The generated code may depend on external libraries such as pytest, but these are not 
+dependencies of this module.
+
+Usage
+----------------------------
+This module is typically invoked by test files to access common fixtures. For example, 
+to get the path to a workflow, one might use:
+```python
+workflow_path = workflow('KNIME_single_csv')
+```
+
+Node Identity
+----------------------------
+This module does not generate code based on `settings.xml`, so there are no KNIME 
+factory IDs or special flags.
+
+Configuration
+----------------------------
+This module does not generate code based on `settings.xml`, so there are no dataclasses 
+or configuration fields to describe.
+
+Limitations
+----------------------------
+This module does not implement any specific node functionality; it serves as a 
+configuration and utility module for tests.
+
+References
+----------------------------
+For more information on KNIME terminology, refer to the official KNIME documentation.
+"""
+
 from __future__ import annotations
 
 import os

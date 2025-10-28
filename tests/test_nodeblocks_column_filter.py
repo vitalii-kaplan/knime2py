@@ -1,4 +1,66 @@
 # tests/test_nodeblocks_column_filter.py
+"""
+Test module for the Column Filter NodeBlock.
+
+Overview
+----------------------------
+This module tests the functionality of the Column Filter NodeBlock within the knime2py
+generator pipeline. It verifies that the generated NodeBlock emits the expected exclude_cols
+line based on the settings defined in the corresponding settings.xml file.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The module reads input DataFrames from the context, specifically the settings defined in
+  the settings.xml file for the Column Filter node.
+
+Outputs:
+- The generated code writes to context[...] with the mapping of columns to exclude, which
+  is specified in the settings.xml file.
+
+Key algorithms or mappings:
+- The module implements column selection rules based on the settings defined in the
+  settings.xml file, specifically for excluding specified columns.
+
+Edge Cases
+----------------------------
+The code handles edge cases such as empty or constant columns, NaNs, and ensures that
+the generated code accounts for class imbalance and fallback paths.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires external libraries such as pandas for DataFrame manipulation.
+These dependencies are required by the generated code, not by this test module.
+
+Usage
+----------------------------
+This module is typically invoked by the emitter during the generation of NodeBlocks for
+the Column Filter node. An example of expected context access is:
+```python
+exclude_cols = context['exclude_cols']
+```
+
+Node Identity
+----------------------------
+- KNIME factory id(s): 
+  - org.knime.base.node.preproc.filter.column.DataColumnSpecFilterNodeFactory
+- Special flags: None.
+
+Configuration
+----------------------------
+- The settings are parsed using the `parse_smote_settings` function, which extracts values
+  from the settings.xml file, including paths and xpaths.
+
+Limitations
+----------------------------
+This module does not support all options available in KNIME and may approximate certain
+behaviors.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the HUB_URL constant.
+"""
+
 import re
 import sys
 from pathlib import Path

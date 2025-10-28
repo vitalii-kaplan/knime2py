@@ -12,6 +12,66 @@ import pytest
 from knime2py.parse_knime import WorkflowGraph, Node, Edge
 from knime2py.emitters import build_workbook_blocks
 
+"""
+Test the generation of a NodeBlock for the Rule Engine node.
+
+Overview
+----------------------------
+This module tests the generation of a NodeBlock for the Rule Engine node in the knime2py
+pipeline, ensuring that the generated code correctly implements the specified rules and
+outputs the expected results.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context key corresponding to the CSV Reader node.
+
+Outputs:
+- Writes results to the context, specifically to the 'Dependent' column of the output DataFrame.
+
+Key algorithms:
+- Implements conditional logic for rules defined in the Rule Engine node, mapping them to
+  Python expressions.
+
+Edge Cases
+----------------------------
+The code handles scenarios such as empty or constant columns, ensuring that the generated
+code does not fail under these conditions.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+
+These dependencies are required by the generated code, not by this test module.
+
+Usage
+----------------------------
+This module is typically invoked by the emitter during the conversion of KNIME workflows to
+Python code. An example of expected context access is:
+```python
+df = context['1393:1']
+```
+
+Node Identity
+----------------------------
+KNIME factory id(s):
+- org.knime.base.node.rules.engine.RuleEngineNodeFactory
+
+Configuration
+----------------------------
+The settings are parsed using the `parse_smote_settings` function, which extracts values
+from the settings.xml file.
+
+Limitations
+----------------------------
+This module does not support all possible configurations of the Rule Engine node and may
+approximate certain behaviors.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation on Rule Engine nodes.
+"""
 
 def test_rule_engine_generates_compare_and_default(node_csv_reader_dir: Path):
     """

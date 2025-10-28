@@ -1,6 +1,69 @@
 # tests/support/csv_compare.py
 from __future__ import annotations
 
+"""
+Compare CSV files for equality with tolerance for numeric discrepancies.
+
+Overview
+----------------------------
+This module provides functionality to compare two CSV files, allowing for
+relative tolerance in numeric cells. It is designed to be used within the
+knime2py generator pipeline to ensure that generated outputs match expected
+results.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads two CSV files specified by their paths.
+
+Outputs:
+- Asserts equality of the two CSV files, checking row counts, headers, and
+  individual cell values. Any discrepancies are reported with details.
+
+Key algorithms:
+- Compares numeric values with a specified relative tolerance.
+- Normalizes near-zero values to zero for comparison.
+
+Edge Cases
+----------------------------
+The code handles:
+- Empty rows in the CSV files.
+- Special float values like NaN and infinity.
+- Finite values below a defined zero tolerance are treated as zero.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+- numpy
+These dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter when validating
+output CSV files against expected results. An example of context access:
+```python
+compare_csv(got_path, exp_path)
+```
+
+Node Identity
+----------------------------
+This module does not generate code based on `settings.xml`.
+
+Configuration
+----------------------------
+This module does not utilize a dataclass for settings.
+
+Limitations
+----------------------------
+The module does not support advanced CSV features such as quoted fields or
+escaped characters.
+
+References
+----------------------------
+Refer to the KNIME documentation for CSV handling and comparison techniques.
+"""
+
 import csv
 import math
 import os
