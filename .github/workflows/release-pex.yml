@@ -32,7 +32,7 @@ jobs:
       - name: Install build tools
         run: |
           python -m pip install --upgrade pip
-          pip install build pex
+          pip install build pex==2.66.0
 
       - name: Print PEX version
         run: pex --version
@@ -47,14 +47,13 @@ jobs:
         run: |
           set -euo pipefail
           case "${{ matrix.os }}" in
-            macos-13)   OS_OUT="k2p-macos-x86_64.pex"; VENV_OPTS="--venv prepend --strip-pex-env"; VALIDATE="--validate-entry-point" ;;
-            macos-14)   OS_OUT="k2p-macos-arm64.pex";  VENV_OPTS="--venv prepend --strip-pex-env"; VALIDATE="--validate-entry-point" ;;
-            ubuntu-22.04) OS_OUT="k2p-linux.pex";     VENV_OPTS="--venv prepend --strip-pex-env"; VALIDATE="--validate-entry-point" ;;
-            windows-2022) OS_OUT="k2p-windows.pex";   VENV_OPTS="--venv none";                     VALIDATE="" ;;
+            macos-13)     OS_OUT="k2p-macos-x86_64.pex"; VENV_OPTS="--venv prepend --strip-pex-env"; VALIDATE="--validate-entry-point" ;;
+            macos-14)     OS_OUT="k2p-macos-arm64.pex";  VENV_OPTS="--venv prepend --strip-pex-env"; VALIDATE="--validate-entry-point" ;;
+            ubuntu-22.04) OS_OUT="k2p-linux.pex";        VENV_OPTS="--venv prepend --strip-pex-env"; VALIDATE="--validate-entry-point" ;;
+            windows-2022) OS_OUT="k2p-windows.pex";      VENV_OPTS="";                                 VALIDATE="" ;;
             *) echo "Unknown runner: ${{ matrix.os }}"; exit 2 ;;
           esac
 
-          # Build from the wheel we just produced; target only CPython 3.11
           pex dist/*.whl \
             -c k2p \
             -o "dist/${OS_OUT}" \
@@ -79,7 +78,7 @@ jobs:
             test -n "$ver"
           done
 
-      # Windows smoke test: no venv, no validate during build; we still import via interpreter mode.
+      # Windows smoke test: zipapp mode (no venv), import via interpreter mode
       - name: Smoke test PEX (Windows)
         if: matrix.os == 'windows-2022'
         shell: pwsh
