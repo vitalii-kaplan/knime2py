@@ -1,21 +1,68 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Statistics (Extended) — KNIME-like separation of "No. missings" vs "No. NaNs"
-#
-# Port 1: per-numeric-column stats with columns:
-#   ['Column','Min','Max','Mean','Std. deviation','Variance','Skewness','Kurtosis',
-#    'Overall sum','No. missings','No. NaNs','No. +∞s','No. -∞s','Median','Row count']
-# Port 2: Nominal Histogram Table (Column, Values, Missing)
-# Port 3: Occurrences Table (wide; one row per nominal column; columns are category labels)
-#
-# Notes:
-# - "No. missings" counts true missing cells (nullable <NA>) where possible.
-# - "No. NaNs" counts IEEE NaN values among non-missing entries.
-#   For numpy float dtypes (no separate missing marker), we set missings=0 and NaNs=series.isnan().
-#
-####################################################################################################
+"""
+Statistics (Extended) — KNIME-like separation of "No. missings" vs "No. NaNs".
+
+Overview
+----------------------------
+This module generates Python code for computing extended statistics on numeric and nominal
+columns from a DataFrame, producing outputs suitable for KNIME workflows.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the key format `context['<source_id>:<port>']`.
+
+Outputs:
+- Writes three DataFrames back to the context:
+  - `port1`: Numeric statistics DataFrame.
+  - `port2`: Nominal histogram DataFrame.
+  - `port3`: Occurrences table DataFrame.
+
+Key algorithms include robust handling of NaNs and missing values, as well as
+calculating various statistical measures for numeric columns.
+
+Edge Cases
+----------------------------
+The code handles empty columns, constant columns, and NaN values. It includes fallback
+mechanisms for cases where data types may not support certain operations.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas, numpy. These
+dependencies are required by the generated code, not by this module itself.
+
+Usage
+----------------------------
+This module is typically invoked by the KNIME emitter to generate code for a statistics
+node. An example of context access is:
+```python
+df = context['source_id:1']  # input table
+```
+
+Node Identity
+----------------------------
+KNIME factory id: `FACTORY = "org.knime.base.node.stats.viz.extended.ExtendedStatisticsNodeFactory"`.
+
+Configuration
+----------------------------
+The settings are defined in the `StatsSettings` dataclass, which includes:
+- `compute_median`: Whether to compute the median (default: True).
+- `nominal_included`: List of nominal columns to include (default: None).
+- `max_nominal_out`: Maximum number of nominal outputs (default: 20).
+
+The `parse_stats_settings` function extracts these values from the `settings.xml` file.
+
+Limitations
+----------------------------
+This module does not support all KNIME features and may approximate certain behaviors.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.stats/latest/
+org.knime.base.node.stats.viz.extended.ExtendedStatisticsNodeFactory
+"""
 
 from __future__ import annotations
 

@@ -1,5 +1,69 @@
 from __future__ import annotations
 
+"""
+Module for generating Python scripts from KNIME workflows.
+
+Overview
+----------------------------
+This module emits Python scripts or Jupyter notebooks based on user selections
+from a KNIME workflow. It integrates with the knime2py generator pipeline to
+convert KNIME nodes into executable Python code.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a single-column selection table from the first input table, which
+  specifies the desired output formats (e.g., .py, .ipynb, .dot, .json).
+
+Outputs:
+- Writes the standard output and error messages to the context output tables.
+  - Output Table 0: stdout (string)
+  - Output Table 1: stderr (string)
+
+Key algorithms:
+- Determines the output format based on user selection and constructs the
+  appropriate command to execute the PEX binary.
+
+Edge Cases
+----------------------------
+- Raises an error if the selection table does not contain exactly one column.
+- Handles cases where no valid output formats are selected by raising an error.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+
+These dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+This module is typically invoked by the KNIME emitter node. An example of
+expected context access is:
+```python
+knio.flow_variables["k2p_bin"]
+```
+
+Node Identity
+----------------------------
+- KNIME factory id(s): Not specified in this module.
+- Special flags: None.
+
+Configuration
+----------------------------
+- This module does not utilize a @dataclass for settings.
+
+Limitations
+----------------------------
+- The module does not support generating multiple output formats simultaneously
+  beyond the specified logic.
+
+References
+----------------------------
+- For more information, refer to the KNIME documentation and the knime2py
+  project repository.
+"""
+
 import knime.scripting.io as knio
 
 import os

@@ -1,5 +1,76 @@
 #!/usr/bin/env python3
 
+"""
+K Nearest Neighbor (trainer + scorer).
+
+Overview
+----------------------------
+This module generates Python code for the K Nearest Neighbor (KNN) algorithm, which can be
+used for both training and scoring tasks within the knime2py generator pipeline.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The generated code reads DataFrames or context keys for training and testing data,
+  depending on the number of connected input ports.
+
+Outputs:
+- The code writes the scored output DataFrame to `context[...]`, with the output port
+  mapping to the specified output key.
+
+Key algorithms or mappings:
+- The module utilizes the `KNeighborsClassifier` from `sklearn` for model fitting and
+  prediction. It selects numeric and boolean columns from the training DataFrame while
+  ensuring that the target column is excluded from feature selection.
+
+Edge Cases
+----------------------------
+The code implements safeguards against empty or constant columns, NaNs, and class
+imbalance. It also provides fallback paths for missing features in the test DataFrame.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas, numpy, and sklearn.
+These dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter when generating code for KNN
+nodes. An example of expected context access is:
+```
+context['train_key'] = train_df
+context['test_key'] = test_df
+```
+
+Node Identity
+----------------------------
+The KNIME factory ID for this module is defined by the constant FACTORY:
+`FACTORY = "org.knime.base.node.mine.knn.KnnNodeFactory2"`.
+
+Configuration
+----------------------------
+The module uses the `KNNSettings` dataclass for configuration, which includes the following
+important fields:
+- `target_col`: The name of the target column (default: None).
+- `k`: The number of neighbors to use (default: 3).
+- `weight_by_distance`: Whether to weight by distance (default: False).
+- `output_probs`: Whether to output class probabilities (default: True).
+
+The `parse_knn_settings` function extracts these values from the `settings.xml` file using
+XPath queries, with fallbacks for missing values.
+
+Limitations
+----------------------------
+This module does not support certain advanced KNN features available in KNIME, such as
+stratified sampling or specific distance metrics beyond the default.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the KNN node at:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.mine.knn.KnnNodeFactory2
+"""
+
 ####################################################################################################
 #
 # K Nearest Neighbor (trainer + scorer)

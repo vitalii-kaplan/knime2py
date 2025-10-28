@@ -1,23 +1,89 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Gradient Boosted Trees (Classification) Predictor
-#
-# Scores an input table using a GradientBoostingClassifier produced by the GBT Learner. Consumes a
-# model bundle (or bare estimator), writes a prediction column, and optionally appends class
-# probabilities and a confidence column. Outputs the scored table to the node's context.
-#
-# - Bundle keys (if present): {'estimator','features','target','classes',...}; falls back gracefully
-#   to bare estimator and infers features if needed (raises KeyError if required columns are missing).
-# - Prediction column name: custom if configured, else "Prediction (<target>)".
-# - Probabilities: adds per-class "P (<target>=<class>)<suffix>" when predict_proba is available; may
-#   also append "<prediction> (confidence)" as max probability.
-# - Optional: append number of boosted estimators as "<prediction> (models)".
-# - Ignored flag: 'useSoftVoting' (not applicable to sklearn GBT).
-#
-####################################################################################################
+"""Gradient Boosted Trees (Classification) Predictor.
 
+Overview
+----------------------------
+This module generates Python code to score an input table using a
+GradientBoostingClassifier produced by the GBT Learner. It consumes a
+model bundle (or bare estimator), writes a prediction column, and
+optionally appends class probabilities and a confidence column. The
+scored table is output to the node's context.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a model bundle and input data from the context using keys
+  derived from input ports.
+
+Outputs:
+- Writes the scored DataFrame to `context[...]` with the predicted
+  values and optional probabilities and confidence scores. The output
+  is mapped to the specified output ports.
+
+Key algorithms or mappings:
+- The module handles the normalization of features and predictions,
+  including fallback mechanisms for missing features and handling of
+  class probabilities.
+
+Edge Cases
+----------------------------
+The code implements safeguards against missing feature columns,
+constant columns, and NaN values. It also includes logic for class
+imbalance and provides fallback paths for feature selection.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+These dependencies are required by the generated code, not by this
+module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter as part of
+the code generation process for KNIME nodes. An example of expected
+context access is:
+```python
+context['model_key'] = model_obj
+context['data_key'] = df
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.mine.treeensemble2.node.gradientboosting.predictor.classification.GradientBoostingClassificationPredictorNodeFactory3"
+
+Configuration
+----------------------------
+The module uses the `PredictorSettings` dataclass for configuration,
+which includes important fields such as:
+- `has_custom_name`: Indicates if a custom prediction column name is used (default: False).
+- `custom_name`: The custom name for the prediction column (default: None).
+- `include_probs`: Whether to include class probabilities (default: True).
+- `include_confidence`: Whether to include prediction confidence (default: True).
+- `prob_suffix`: Suffix for probability column names (default: "_GB").
+- `append_model_count`: Whether to append the number of models used (default: False).
+- `use_soft_voting`: Indicates if soft voting is used (default: False).
+
+The `parse_predictor_settings` function extracts these values from
+the `settings.xml` file using XPath queries and provides fallbacks
+for missing entries.
+
+Limitations
+----------------------------
+The module does not support certain options available in KNIME, such
+as soft voting for sklearn's GradientBoostingClassifier, which is
+not applicable.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the
+following URL: 
+https://hub.knime.com/knime/extensions/org.knime.features.ensembles/latest/
+org.knime.base.node.mine.treeensemble2.node.gradientboosting.predictor.classification.
+GradientBoostingClassificationPredictorNodeFactory3
+"""
 
 from __future__ import annotations
 

@@ -1,44 +1,78 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# X-Validation Partitioner (Loop Start)
-#
-# Maps KNIME’s “X-Partitioner” node to Python. Plans cross-validation folds and opens a loop that
-# emits a pair of tables (train/test) per fold to this node’s output ports.
-# What it does
-# • Freezes the incoming DataFrame for the entire loop to avoid mutation across iterations.
-# • Builds folds using:
-#     – LeaveOneOut when leave_one_out=True and n_samples ≥ 2.
-#     – StratifiedKFold when stratified=True, class_col is present, and each class has ≥ k samples.
-#     – Otherwise falls back to plain KFold.
-# • Supports random (shuffled) sampling when random_sampling=True; the seed is honored only in that case.
-# • If no valid split is possible, falls back to a single fold: all rows in train, empty test.
-# Settings mapping (from settings.xml)
-# • k                ← entry key="validations" (minimum enforced: 2 when not leave-one-out)
-# • random_sampling  ← entry key="randomSampling"  → splitter.shuffle
-# • leave_one_out    ← entry key="leaveOneOut"
-# • stratified       ← entry key="stratifiedSampling"
-# • class_col        ← entry key="classColumn" (used for stratification; NaNs mapped to “__NA__”)
-# • use_seed/seed    ← entry keys "useRandomSeed"/"randomSeed" (used only when shuffle=True)
-# Loop mechanics & flow variables
-# • Persists loop state under context['__loop__:{node_id}'] with fields: k, current, folds, etc.
-# • Publishes flow variables compatible with KNIME semantics:
-#     – '__flowvar__:{node_id}:maxIterations'  (total number of folds)
-#     – '__flowvar__:{node_id}:currentIteration' (0-based index per iteration)
-# • Clears any stale X-Aggregator buffers for this loop id:
-#     – '__xagg__:{node_id}:accum', '__xagg__:{node_id}:is_complete'
-# Ports
-# • Output 1 → train_df for the current fold
-# • Output 2 → test_df  for the current fold
-#
-# Dependencies & helpers
-# • Uses scikit-learn splitters: KFold, StratifiedKFold, LeaveOneOut.
-# • Relies on lxml for settings parsing and project helpers (first, first_el, normalize_in_ports,
-#   collect_module_imports, split_out_imports, iter_entries).
-#
-####################################################################################################
+"""
+X-Validation Partitioner module.
 
+Overview
+----------------------------
+This module maps KNIME’s “X-Partitioner” node to Python, emitting code that plans 
+cross-validation folds and opens a loop that produces train/test DataFrames for 
+each fold.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the key corresponding to the input port.
+
+Outputs:
+- Writes train and test DataFrames to the context with keys formatted as 
+  '{node_id}:1' and '{node_id}:2', respectively.
+
+Key algorithms:
+- Utilizes scikit-learn's KFold, StratifiedKFold, and LeaveOneOut for partitioning.
+- Implements stratified sampling based on a specified class column.
+
+Edge Cases
+----------------------------
+- Handles cases with empty or constant columns, NaNs, and class imbalance.
+- Provides fallback paths for scenarios where valid splits cannot be created.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas, numpy, 
+sklearn. These dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+Typically invoked by the knime2py emitter, this module is used in workflows 
+that require cross-validation partitioning. An example of context access is:
+```python
+train_df = context['{node_id}:1']
+```
+
+Node Identity
+----------------------------
+KNIME factory id: 
+- FACTORY = "org.knime.base.node.meta.xvalidation.XValidatePartitionerFactory"
+
+Special flags:
+- LOOP = "start": Indicates the beginning of a loop for cross-validation.
+
+Configuration
+----------------------------
+The settings are defined in the `XPartSettings` dataclass, which includes:
+- k: Number of folds (default: 10).
+- random_sampling: Whether to shuffle data (default: False).
+- leave_one_out: Whether to use Leave-One-Out strategy (default: False).
+- stratified: Whether to use stratified sampling (default: True).
+- class_col: Column name for stratification (default: None).
+- use_seed: Whether to use a random seed (default: False).
+- seed: Random seed value (default: None).
+
+The `parse_xpart_settings` function extracts these values from the settings.xml 
+file using XPath queries, with appropriate fallbacks.
+
+Limitations
+----------------------------
+Currently, this module does not support certain advanced KNIME features and 
+approximates behavior in some cases.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.meta.xvalidation.XValidatePartitionerFactory
+"""
 
 from __future__ import annotations
 

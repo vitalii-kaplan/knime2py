@@ -1,20 +1,79 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Partitioning
-#
-# Splits an input table into train/test using settings.xml. Supports RELATIVE (fraction) or ABSOLUTE
-# (row count) sizing with RANDOM, LINEAR (no shuffle), or STRATIFIED sampling. Emits two outputs:
-# train_df and test_df, written to the node's context.
-#
-# - Implementation: sklearn.model_selection.train_test_split; seed honored when provided.
-# - STRATIFIED: uses class_column; NaN treated as a separate class; falls back to non-stratified if
-#   stratification is infeasible (e.g., tiny classes).
-# - RELATIVE: fraction is clamped to [0,1]. ABSOLUTE: train_size is an integer bounded by len(df).
-# 
-####################################################################################################
+"""
+Partitioning module for splitting input tables into train/test sets.
 
+Overview
+----------------------------
+This module emits Python code that splits an input DataFrame into training and testing sets
+using specified partitioning settings. It integrates into the knime2py generator pipeline to
+convert KNIME node configurations into executable Python code.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The generated code reads a DataFrame from the context using the specified input port.
+
+Outputs:
+- The code writes two DataFrames, `train_df` and `test_df`, back to the context, mapped to
+  specified output ports.
+
+Key algorithms:
+- Utilizes `sklearn.model_selection.train_test_split` for partitioning.
+- Supports RELATIVE (fraction) and ABSOLUTE (row count) sizing with RANDOM, LINEAR, or
+  STRATIFIED sampling methods.
+
+Edge Cases
+----------------------------
+The code handles various edge cases, including:
+- Empty or constant columns.
+- NaN values treated as a separate class in stratified sampling.
+- Fallback mechanisms for class imbalance or when stratification is infeasible.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+- sklearn
+These dependencies are required for the generated code, not for this module itself.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter for partitioning nodes. An example
+of expected context access is:
+```python
+df = context['input_port']  # Accessing the input DataFrame
+```
+
+Node Identity
+----------------------------
+KNIME factory ID:
+- FACTORY = "org.knime.base.node.preproc.partition.PartitionNodeFactory"
+
+Configuration
+----------------------------
+The module uses the `PartitionSettings` dataclass for configuration, which includes:
+- method: Partitioning method (default: "RELATIVE").
+- sampling_method: Sampling strategy (default: "RANDOM").
+- fraction: Fraction of data for training (default: 0.7).
+- count: Number of rows for training (default: 100).
+- random_seed: Seed for random number generation (default: None).
+- class_column: Column used for stratification (default: None).
+
+The `parse_partition_settings` function extracts these values from the `settings.xml` file
+using XPath queries with fallbacks to default values.
+
+Limitations
+----------------------------
+Currently, the module does not support certain partitioning methods or configurations that
+may be available in KNIME.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.preproc.partition.PartitionNodeFactory
+"""
 
 from __future__ import annotations
 

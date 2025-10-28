@@ -1,35 +1,70 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Row Filter
-#
-# Filters rows of the input table according to predicates parsed from KNIME settings.xml.
-# The generated pandas code builds a boolean mask from the list of predicates, combines them
-# with AND/OR (matchCriteria), optionally inverts for NON_MATCHING output, and writes the
-# result to this node's context output port(s).
-#
-# Supported operators (heuristic mapping):
-#   - IS_MISSING                  →  df[col].isna()
-#   - IS_NOT_MISSING              →  df[col].notna()
-#   - EQ, EQUAL(S), =             →  numeric compare when possible; otherwise string compare
-#   - NE, NOT_EQUAL, <>, !=       →  numeric compare when possible; otherwise string compare
-#   - GT,  GREATER, >             →  to_numeric(df[col]) >  to_numeric(value)
-#   - GE,  GREATER_EQUAL, >=      →  to_numeric(df[col]) >= to_numeric(value)
-#   - LT,  LESS, <                →  to_numeric(df[col]) <  to_numeric(value)
-#   - LE,  LESS_EQUAL, <=         →  to_numeric(df[col]) <= to_numeric(value)
-#   - CONTAINS                    →  df[col].astype('string').str.contains(value, case=True, na=False)
-#   - STARTS_WITH / ENDS_WITH     →  df[col].astype('string').str.startswith/endswith(value, na=False)
-#
-# Notes:
-#   - We read *only* the <entry key="value" .../> items under predicateValues, avoiding
-#     KNIME’s typeIdentifier entries like "org.knime.core.data.def.LongCell".
-#   - Column names are resolved robustly (case-insensitive and normalized by dropping
-#     non-alphanumerics). Missing configured columns produce a neutral predicate:
-#         * AND-mode: neutral = True
-#         * OR-mode:  neutral = False
-#
-####################################################################################################
+"""Row Filter module for KNIME to Python conversion.
+
+Overview
+----------------------------
+This module generates Python code that filters rows of an input DataFrame based on
+predicates defined in a KNIME settings.xml file. The generated code constructs a boolean
+mask from the predicates, applies it to the DataFrame, and outputs the filtered result.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the key format 'src_id:in_port'.
+
+Outputs:
+- Writes the filtered DataFrame to the context using the key format 'node_id:out_port'.
+
+Key algorithms or mappings:
+- The module supports various comparison operators (e.g., equality, greater than) and
+  handles column normalization and missing values.
+
+Edge Cases
+----------------------------
+The code implements safeguards for missing columns, empty predicates, and NaN values,
+ensuring that the filtering logic remains robust under various input conditions.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+These dependencies are required for the generated code, not for this module itself.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter as part of the conversion
+process from KNIME workflows to Python code. An example of expected context access:
+```python
+df = context['src_id:in_port']  # input table
+```
+
+Node Identity
+----------------------------
+KNIME factory ID:
+- FACTORY = "org.knime.base.node.preproc.filter.row3.RowFilterNodeFactory"
+
+Configuration
+----------------------------
+The settings are defined in the `RowFilterSettings` dataclass, which includes:
+- match_and: bool (default=True) - Determines if predicates are combined with AND or OR.
+- output_mode: str (default="MATCHING") - Specifies whether to output matching or non-matching rows.
+- predicates: List[Predicate] - Contains the filtering criteria.
+
+The `parse_row_filter_settings` function extracts these values from the settings.xml file
+using XPath queries.
+
+Limitations
+----------------------------
+This module does not support all KNIME filtering options and may approximate behavior
+in certain cases.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following hub URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.preproc.filter.row3.RowFilterNodeFactory
+"""
 
 from __future__ import annotations
 

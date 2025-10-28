@@ -1,19 +1,71 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Decision Tree Predictor
-#
-# Applies a fitted Decision Tree model bundle to an input table to produce predictions and, when
-# available, class probability columns. The estimator and metadata are taken from the upstream
-# learner bundle (scikit-learn compatible). Features are resolved from the bundle; if absent,
-# the code falls back to all columns except the target.
-#
-# The estimator itself must be scikit-learn-like.
-# Scope: classification predictor only. Multi-output and regression variants are not handled
-#
-####################################################################################################
+"""
+Decision Tree Predictor module.
 
+Overview
+----------------------------
+This module generates Python code to apply a fitted Decision Tree model bundle to an input
+table, producing predictions and class probability columns. It fits into the knime2py generator
+pipeline by converting KNIME node configurations into executable Python code.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads model bundle and data from context keys, which are expected to be DataFrames.
+
+Outputs:
+- Writes the predicted DataFrame to context with the mapping of output ports to the predicted
+  values.
+
+Key algorithms:
+- The module handles feature selection, including fallback mechanisms for missing features,
+  and supports class probability outputs if the estimator allows it.
+
+Edge Cases
+----------------------------
+The code implements safeguards against empty or constant columns, NaNs, and class imbalance.
+Fallback paths are provided for missing features and class names.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas. These dependencies are
+necessary for the generated code, not for this module itself.
+
+Usage
+----------------------------
+Typically, this module is invoked by the emitter in a KNIME workflow. An example of expected
+context access is:
+```
+context['model_key'] = model_bundle
+context['data_key'] = input_data
+```
+
+Node Identity
+----------------------------
+KNIME factory id: org.knime.base.node.mine.decisiontree2.predictor2.DecTreePredictorNodeFactory.
+
+Configuration
+----------------------------
+The settings are managed by the `PredictorSettings` dataclass, which includes:
+- has_custom_name: Indicates if a custom name is provided (default: False).
+- custom_name: The name for the prediction column (default: None).
+- include_probs: Whether to include class probabilities (default: True).
+- prob_suffix: Suffix for probability columns (default: "_DT").
+The `parse_predictor_settings` function extracts these values from the settings.xml file using
+XPath queries and provides fallbacks.
+
+Limitations
+----------------------------
+This module currently supports only classification predictions and does not handle multi-output
+or regression variants.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.mine.decisiontree2.predictor2.DecTreePredictorNodeFactory
+"""
 
 from __future__ import annotations
 

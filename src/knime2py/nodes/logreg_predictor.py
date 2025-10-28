@@ -1,22 +1,77 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Logistic Regression Predictor
-#
-# Scores an input table using a LogisticRegression estimator produced by the LR Learner. Consumes a
-# model bundle (or bare estimator), writes a prediction column, and optionally appends per-class
-# probability columns. Outputs the scored table to this node's context.
-#
-# - Bundle keys (if present): {'estimator','features','target','classes',...}; falls back to a bare
-#   estimator and infers features if absent (raises KeyError if required columns are missing).
-# - Prediction column name: custom if configured; otherwise "Prediction (<target>)".
-# - Probabilities: when predict_proba exists, adds "P (<target>=<class>)<suffix>" columns.
-# - XML quirks: reads KNIME’s misspelled keys verbatim
-#   (has_custom_predicition_name, include_probabilites, propability_columns_suffix).
-# 
-####################################################################################################
+"""
+Logistic Regression Predictor.
 
+Overview
+----------------------------
+This module generates Python code to score an input table using a LogisticRegression
+estimator produced by the LR Learner. It consumes a model bundle, writes a prediction
+column, and optionally appends per-class probability columns, outputting the scored
+table to the node's context.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a model bundle and input data from the context using specified keys.
+
+Outputs:
+- Writes the scored DataFrame to context with the key format `context['<node_id>:<port>']`.
+
+Key algorithms or mappings:
+- The module handles model loading, feature extraction, and prediction using the
+  provided estimator. It includes logic for fallback feature selection and
+  probability column generation.
+
+Edge Cases
+----------------------------
+The code implements safeguards against missing feature columns, empty DataFrames,
+and class imbalance. It provides fallback paths for feature extraction and handles
+cases where the model may not provide expected attributes.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas, numpy,
+sklearn, imblearn, matplotlib, lxml. These dependencies are required for the
+functionality of the generated code, not this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter, which generates code
+for KNIME nodes. An example of expected context access is:
+```
+context['model_key'] = model_bundle
+context['data_key'] = input_data
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.mine.regression.logistic.predictor.LogisticRegressionPredictorNodeFactory"
+
+Configuration
+----------------------------
+The settings are encapsulated in the `PredictorSettings` dataclass, which includes:
+- `has_custom_name`: Indicates if a custom prediction column name is used (default: False).
+- `custom_name`: The custom name for the prediction column (default: None).
+- `include_probs`: Flag to include probability columns (default: True).
+- `prob_suffix`: Suffix for probability column names (default: "_LR").
+
+The `parse_predictor_settings` function extracts these values from the settings.xml
+file using XPath queries, with fallbacks for missing entries.
+
+Limitations
+----------------------------
+This module does not support certain advanced configurations available in KNIME,
+such as custom handling of class imbalance or specific model types not covered
+by the standard Logistic Regression implementation.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.mine.regression.logistic.predictor.LogisticRegressionPredictorNodeFactory
+"""
 
 from __future__ import annotations
 

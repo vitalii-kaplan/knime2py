@@ -12,6 +12,76 @@
 #
 ####################################################################################################
 
+"""
+Concatenates multiple input DataFrames into a single output DataFrame.
+
+Overview
+----------------------------
+This module generates Python code that concatenates multiple input tables 
+(row-binds them) and publishes the result to the specified output port. 
+It fits into the knime2py generator pipeline by transforming KNIME node 
+configurations into executable Python code.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The generated code reads DataFrames from the context using keys formatted 
+  as `"{src_id}:{src_port}"`, where `src_id` is the identifier of the input 
+  port and `src_port` is the source port number.
+
+Outputs:
+- The resulting concatenated DataFrame is written to the context under the 
+  key `"{node_id}:{port}"`, where `node_id` is the identifier for the node 
+  and `port` is the output port number.
+
+Key algorithms:
+- The code uses `pandas.concat` for row-wise concatenation, ensuring that 
+  the index is reset and that union alignment is applied.
+
+Edge Cases
+----------------------------
+The code handles cases where no input DataFrames are provided by returning 
+an empty DataFrame. It does not implement safeguards for empty or constant 
+columns, NaNs, or class imbalance.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+
+These dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter when generating 
+code for concatenation nodes. An example of expected context access is:
+```python
+context['1:1']  # Accessing the first input DataFrame
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.preproc.append.row.AppendedRowsNodeFactory"
+
+Configuration
+----------------------------
+This module does not utilize a @dataclass for settings, nor does it 
+extract values from a settings.xml file.
+
+Limitations
+----------------------------
+The module does not support suffixing or renaming of columns, nor does it 
+implement any column intersection logic beyond pandas' default behavior.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following 
+link: 
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.preproc.append.row.AppendedRowsNodeFactory
+"""
+
 from __future__ import annotations
 
 from pathlib import Path

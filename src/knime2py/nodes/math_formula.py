@@ -1,21 +1,78 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Math Formula (JEP)
-#
-# Evaluates a KNIME Math Formula expression on an input table and writes the result to context.
-# Parses settings.xml and emits pandas/numpy code that:
-#   - translates KNIME/JEP expression to a Python expression
-#   - replaces $col$ references with df[<col>]
-#   - maps '^' (power) → '**', and common functions (ln/log/sqrt/exp/round/ceil/floor)
-#   - optionally converts result to Int (round → Int64) if configured
-#   - appends a new column or replaces an existing one based on settings
-#
-#   - Only a small set of functions is mapped (ln, log, log10, sqrt, exp, round, ceil, floor).
-#   - Advanced JEP functions/operators not listed above are not translated.
-#
-####################################################################################################
+"""Evaluates a KNIME Math Formula expression on an input table.
+
+Overview
+----------------------------
+This module emits Python code that evaluates a KNIME Math Formula expression
+on an input table and writes the result to the context. It translates the
+KNIME/JEP expression to a Python expression, replacing column references and
+mapping common functions.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a single DataFrame from the context using the key format
+  `context['<source_id>:<in_port>']`.
+
+Outputs:
+- Writes the resulting DataFrame back to the context with the key format
+  `context['<node_id>:<out_port>']`, where the output is either a new column
+  or an existing column based on the configuration.
+
+Key algorithms or mappings:
+- Translates KNIME/JEP expressions to Python, mapping operators and functions
+  accordingly.
+
+Edge Cases
+----------------------------
+The code handles cases such as empty or constant columns, NaNs, and ensures
+that the output is appropriately typed based on the configuration.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+- numpy
+
+These dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter, which generates
+Python code for KNIME nodes. An example of expected context access is:
+```python
+df = context['source_id:1']  # input table
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.ext.jep.JEPNodeFactory"
+
+Configuration
+----------------------------
+The module uses the `MathFormulaSettings` dataclass for settings, which
+includes the following important fields:
+- `append`: Whether to append a new column (default: False).
+- `replace_col`: The name of the column to replace (default: None).
+- `expression`: The KNIME/JEP expression to evaluate (default: "").
+- `convert_to_int`: Whether to convert the result to integer (default: False).
+- `new_col_name`: The name of the new column when appending (default: "Math Formula").
+
+The `parse_math_settings` function extracts these values from the settings.xml
+file using XPath queries and provides fallbacks where necessary.
+
+Limitations
+----------------------------
+Advanced JEP functions/operators not listed in the mappings are not translated.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.ext.jep/latest/
+org.knime.ext.jep.JEPNodeFactory
+"""
 
 from __future__ import annotations
 

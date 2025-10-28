@@ -1,25 +1,84 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Value Lookup
-#
-# Joins a "data" table (left) with a "dictionary" table (right) to look up values by key.
-# Parsed from settings.xml:
-#   - lookupCol (left key), dictKeyCol (right key)
-#   - dictValueCols (which right-side value columns to bring in)
-#   - caseSensitive (bool)
-#   - lookupReplacementCol (optional: replace/overlay a left column with looked-up values)
-#   - columnNoMatchReplacement ∈ {'RETAIN', ...}  (RETAIN keeps original where no match)
-#   - lookupColumnOutput ∈ {'RETAIN','REMOVE'} (remove left key if requested)
-#   - createFoundCol (bool) — add boolean "Found" column (any looked-up col non-null)
-#
-# Merge details:
-#   - To avoid dtype mismatches we always cast join keys to pandas 'string' dtype.
-#   - If caseSensitive is False we compare lowercased string keys.
-#   - We avoid name collisions by suffixing new columns with "_lkp" when needed.
-#
-####################################################################################################
+"""
+Value Lookup Module.
+
+Overview
+----------------------------
+This module generates Python code that performs a value lookup operation,
+joining a "data" table with a "dictionary" table based on specified keys.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads two DataFrames from the context: the left DataFrame (data table) and
+  the right DataFrame (dictionary table).
+
+Outputs:
+- Writes the resulting DataFrame to the context under the specified output
+  port(s), with the mapping: target port 1 → output DataFrame.
+
+Key algorithms include:
+- Normalization of join keys to string type to avoid dtype mismatches.
+- Handling of case sensitivity based on configuration.
+- Renaming of output columns to avoid collisions, with special handling for
+  replacement columns.
+
+Edge Cases
+----------------------------
+The code implements safeguards against empty or constant columns, NaNs, and
+ensures that no dictionary key is included in the output columns.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+
+These dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter as part of the
+code generation pipeline for KNIME nodes. An example of expected context
+access is:
+```
+df_left = context['source_id:1']  # data table
+df_right = context['source_id:2']  # dictionary table
+```
+
+Node Identity
+----------------------------
+This module generates code based on the settings.xml file for the KNIME
+factory identified by:
+- FACTORY = "org.knime.base.node.preproc.valuelookup.ValueLookupNodeFactory"
+
+Configuration
+----------------------------
+The settings are encapsulated in the `ValueLookupSettings` dataclass, which
+includes important fields such as:
+- lookup_col: The key column in the data table.
+- dict_key_col: The key column in the dictionary table.
+- dict_value_cols: The columns to bring in from the dictionary.
+- case_sensitive: Whether the lookup should be case-sensitive (default: True).
+- replace_col: An optional column to replace in the data table.
+- no_match: Behavior on no-match (default: "RETAIN").
+- lookup_col_output: Whether to retain or remove the lookup column (default: "RETAIN").
+- create_found_col: Whether to create a "Found" column (default: False).
+
+The `parse_lookup_settings` function extracts these values from the settings.xml
+file using XPath queries and provides fallbacks for missing values.
+
+Limitations
+----------------------------
+This module does not support all possible configurations available in KNIME
+and may approximate certain behaviors.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.preproc.valuelookup.ValueLookupNodeFactory
+"""
 
 from __future__ import annotations
 

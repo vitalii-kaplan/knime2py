@@ -1,20 +1,69 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Column Renamer
-#
-# Reads the renaming pairs from settings.xml and emits code that:
-#   • Loads the single input table.
-#   • Applies batch column renames using the configured (oldName → newName) pairs.
-#   • Skips mappings where oldName is not present.
-#   • Avoids target-name collisions by auto-suffixing ("_1", "_2", …) when needed.
-#   • Writes the renamed table to the first (only) output port.
-#
-# • Supports only explicit (old → new) mappings from settings.xml.
-# • No pattern/regex templating, no type-based renames, no column reordering.
-#
-####################################################################################################
+"""
+Column Renamer module.
+
+Overview
+----------------------------
+This module emits Python code that renames columns in a DataFrame based on
+explicit mappings defined in a settings.xml file. It fits into the knime2py
+generator pipeline by transforming KNIME column renaming nodes into Python code.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the key format '{source_node_id}:{source_port}'.
+
+Outputs:
+- Writes the renamed DataFrame back to the context with the key format '{node_id}:{output_port}'.
+
+Key algorithms or mappings:
+- The module applies batch column renames using (oldName → newName) pairs,
+  handles name collisions by auto-suffixing, and skips mappings where oldName
+  is not present.
+
+Edge Cases
+----------------------------
+The code safeguards against empty or constant columns, NaNs, and ensures that
+no target-name collisions occur by appending suffixes when necessary.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas. These
+dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter when processing
+column renaming nodes. An example of expected context access is:
+```python
+df = context['{source_node_id}:{source_port}']
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.preproc.column.renamer.ColumnRenamerNodeFactory"
+
+Configuration
+----------------------------
+The settings are defined in the `ColumnRenamerSettings` dataclass, which
+contains the following important fields:
+- renamings: A list of tuples representing (old, new) column name pairs.
+
+The `parse_col_renamer_settings` function extracts these values from the
+settings.xml file using XPath queries.
+
+Limitations
+----------------------------
+This module only supports explicit (old → new) mappings and does not
+implement pattern/regex templating, type-based renames, or column reordering.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and search for
+"Column Renamer" in the KNIME Hub: https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+"""
 
 from __future__ import annotations
 

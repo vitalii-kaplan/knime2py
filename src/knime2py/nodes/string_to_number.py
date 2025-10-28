@@ -1,23 +1,76 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# String to Number
-#
-# Converts selected string columns to numeric using options parsed from settings.xml.
-#
-# - Column selection: taken from model/include/included_names (present columns only).
-# - Separators: supports custom decimal separator and optional thousands separator.
-# - Target type: inferred from parse_type/cell_class (DoubleCell→Float64, Int/Long→Int64).
-# - Error handling: if fail_on_error==True → raise on any parse issue; otherwise coerce to NA.
-# - Missing values: preserved (pandas NA) via pd.to_numeric(..., errors='coerce') when not failing.
-#
-# - Preprocess each column as string: strip spaces; remove thousands sep (if any); replace decimal
-#   sep with '.' before parsing.
-# - Int target: when fail_on_error==True we verify all parsed (non-NA) values are integerish and
-#   cast to 'Int64'; when False we round before casting to nullable Int64.
-#
-####################################################################################################
+"""
+String to Number conversion module.
+
+Overview
+----------------------------
+This module generates Python code to convert selected string columns in a DataFrame to numeric
+types based on settings parsed from a KNIME node's settings.xml file. It fits into the knime2py
+generator pipeline by providing a mechanism to handle string-to-number conversions, ensuring
+data integrity and type safety.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The generated code reads a DataFrame from the context using the key format `context['{src_id}:{in_port}']`.
+
+Outputs:
+- The converted DataFrame is written back to the context with the key format `context['{node_id}:{port}']`,
+  where `port` is determined by the outgoing connections.
+
+Key algorithms or mappings:
+- The module supports custom decimal and thousands separators, inferring target types based on
+  the cell class specified in the settings. It handles errors based on the `fail_on_error` flag,
+  allowing for flexible data parsing.
+
+Edge Cases
+----------------------------
+The code implements safeguards against empty or constant columns, NaNs, and ensures that
+non-integer values are not cast to integer types when `fail_on_error` is set to True. It also
+provides fallback paths for column selection.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas. These dependencies are
+necessary for the execution of the generated code, not for this module itself.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter when processing a KNIME workflow. An
+example of expected context access is:
+```python
+df = context['{src_id}:{in_port}']  # input table
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.preproc.colconvert.stringtonumber2.StringToNumber2NodeFactory"
+
+Configuration
+----------------------------
+The `StringToNumberSettings` dataclass is used for settings, with important fields:
+- `columns`: List of columns to convert.
+- `decimal_sep`: Character used as the decimal separator (default: ".").
+- `thousands_sep`: Character used as the thousands separator (default: None).
+- `target_dtype`: Desired output type ("Float64" or "Int64", default: "Float64").
+- `fail_on_error`: Flag to raise errors on parsing issues (default: False).
+
+The `parse_string_to_number_settings` function extracts these values from the settings.xml file
+using XPath queries, providing fallbacks where necessary.
+
+Limitations
+----------------------------
+This module does not support all possible configurations available in KNIME and may approximate
+some behaviors. Users should verify the output for edge cases.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following hub URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.preproc.colconvert.stringtonumber2.StringToNumber2NodeFactory
+"""
 
 from __future__ import annotations
 

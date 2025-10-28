@@ -1,22 +1,74 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# SVM Predictor
-#
-# Scores an input table using an SVC estimator produced by the SVM Learner. Consumes a
-# model bundle (or bare estimator), writes a prediction column, and optionally appends per-class
-# probability columns. Outputs the scored table to this node's context.
-#
-# - Bundle keys (if present): {'estimator','features','target','classes',...}; falls back to a bare
-#   estimator and infers features if absent (raises KeyError if required columns are missing).
-# - Prediction column name: custom if "change prediction" is true and a name is provided;
-#   otherwise "Prediction (<target>)".
-# - Probabilities: when predict_proba exists, adds "P (<target>=<class>)<suffix>" columns.
-# - Empty-input guard: if there are 0 rows, emits empty prediction and (if classes known) empty
-#   probability columns so schema matches when concatenating.
-#
-####################################################################################################
+"""
+SVM Predictor.
+
+Overview
+----------------------------
+Scores an input table using an SVC estimator produced by the SVM Learner. This module
+emits Python code that consumes a model bundle, writes a prediction column, and optionally
+appends per-class probability columns, outputting the scored table to the context.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a model bundle from context using the key format 'model_src:model_in'.
+- Reads a DataFrame from context using the key format 'data_src:data_in'.
+
+Outputs:
+- Writes the scored DataFrame to context with the key format 'node_id:port', where
+  port defaults to '1'.
+
+Key algorithms or mappings:
+- The module handles feature selection, ensuring that the features used for prediction
+  are derived from the model bundle or the input DataFrame. It also manages class
+  probabilities if available.
+
+Edge Cases
+----------------------------
+The code implements safeguards for empty inputs, creating empty prediction and probability
+columns when the input DataFrame has zero rows. It also handles missing feature columns
+gracefully.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas. These dependencies
+are required for the generated code, not for this module.
+
+Usage
+----------------------------
+Typically, this module is invoked by the knime2py emitter, which generates code for
+the SVM predictor node. An example of expected context access is:
+```
+context['model_key'] = model_bundle
+context['data_key'] = input_dataframe
+```
+
+Node Identity
+----------------------------
+KNIME factory id: org.knime.base.node.mine.svm.predictor2.SVMPredictorNodeFactory.
+
+Configuration
+----------------------------
+The settings are defined in the `PredictorSettings` dataclass, which includes:
+- change_prediction: bool (default: False) - Indicates if the prediction column name should
+  be changed.
+- pred_name: Optional[str] (default: None) - Custom name for the prediction column.
+- add_probabilities: bool (default: True) - Indicates if probability columns should be added.
+- prob_suffix: str (default: "_SV") - Suffix for probability column names.
+
+The `parse_predictor_settings` function extracts these values from the settings.xml file.
+
+Limitations
+----------------------------
+This module does not support all features of KNIME's SVM Predictor, such as advanced
+parameter tuning or specific model types.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the hub link:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/org.knime.base.node.mine.svm.predictor2.SVMPredictorNodeFactory
+"""
 
 from __future__ import annotations
 

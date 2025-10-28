@@ -1,22 +1,74 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# One to Many (One-Hot Encoding) — KNIME-style names & placement
-#
-# Matches KNIME’s behavior:
-# - Naming: "<level>_<Column>" (value first, underscore).
-# - Level order within each source column: order of first appearance in the data (not alphabetical).
-# - Column placement:
-#     * Keep all non-transformed columns in their original order.
-#     * Append all newly created dummy columns at the END of the table.
-#       - Block order: targets in settings order (EnforceInclusion) or in table order (EnforceExclusion).
-# - removeSources:
-#     * True  → drop transformed source columns; only their dummies appear (appended at end).
-#     * False → keep sources (in place) and still append dummies at the end (KNIME-style).
-# - Missing values produce all-zero indicators for that column (dummy_na=False semantics).
-#
-####################################################################################################
+"""
+One-Hot Encoding for KNIME-style DataFrames.
+
+Overview
+----------------------------
+This module generates Python code for one-hot encoding of categorical variables
+in a DataFrame, following the naming and placement conventions of KNIME.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the key format `context['<source_id>:<port>']`.
+
+Outputs:
+- Writes the transformed DataFrame back to the context with the key format
+  `context['<node_id>:<port>']`, where `<port>` is the output port number.
+
+Key algorithms:
+- The module implements one-hot encoding with KNIME-style naming, where each
+  new column is named as `<level>_<Column>`, preserving the order of first
+  appearance in the data.
+
+Edge Cases
+----------------------------
+The code handles empty or constant columns by skipping transformation. It also
+produces all-zero indicators for columns with missing values.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+
+These dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter as part of the code
+generation process for KNIME nodes. An example of context access is:
+```python
+df = context['source_id:1']  # input table
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.preproc.columntrans2.One2ManyCol2NodeFactory"
+
+Configuration
+----------------------------
+The settings are defined in the `OneHotSettings` dataclass, which includes:
+- `include_names`: List of columns to include in the transformation.
+- `exclude_names`: List of columns to exclude from the transformation.
+- `enforce_option`: Determines whether to enforce inclusion or exclusion of columns.
+- `remove_sources`: Indicates whether to drop the original source columns.
+
+The `parse_onehot_settings` function extracts these values from the `settings.xml`
+file, with appropriate fallbacks.
+
+Limitations
+----------------------------
+This implementation does not support all KNIME features, such as advanced
+collision handling or specific configurations not covered by the settings.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.preproc.columntrans2.One2ManyCol2NodeFactory
+"""
 
 from __future__ import annotations
 

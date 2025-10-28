@@ -1,22 +1,88 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Random Forest (Classification) Learner
-#
-# Trains a scikit-learn RandomForestClassifier from KNIME settings.xml, selecting features/target,
-# then publishes three outputs: (3) a model bundle for downstream prediction, (1) a feature-
-# importance table, and (2) a compact training summary. Reads the first input table from context.
-#
-# - Feature selection: use included_names if provided; otherwise all numeric/boolean columns except
-#   the target; excluded_names are removed afterward.
-# - Hyperparameter mapping: nrModels→n_estimators; maxLevels>0→max_depth else None; minNodeSize→min_samples_split;
-#   minChildSize→min_samples_leaf; isDataSelectionWithReplacement→bootstrap; dataFraction→max_samples
-#   (only when bootstrap=True); columnSamplingMode/columnFractionPerTree/columnAbsolutePerTree plus
-#   isUseDifferentAttributesAtEachNode→max_features ('sqrt'/'log2'/1.0/fraction/int); seed→random_state.
-# - Info-only flags (not applied in sklearn RF): splitCriterion, missingValueHandling,
-#   useAverageSplitPoints, useBinaryNominalSplits; noted and ignored.
-# 
+"""Random Forest Classification Learner.
+
+Overview
+----------------------------
+This module generates Python code for a Random Forest Classifier based on 
+KNIME's settings.xml. It reads input data, trains a model, and produces 
+outputs including a model bundle, feature importance table, and training 
+summary.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a single DataFrame from the context, identified by the incoming 
+  port.
+
+Outputs:
+- Writes to context with the following mappings:
+  - Port 3: model bundle (dict containing the trained model and metadata)
+  - Port 1: feature importance DataFrame
+  - Port 2: training summary DataFrame
+
+Key algorithms or mappings include:
+- Mapping of KNIME hyperparameters to scikit-learn's RandomForestClassifier.
+- Feature selection based on included/excluded column names and numeric 
+  types.
+
+Edge Cases
+----------------------------
+The code handles cases such as:
+- No target column configured, resulting in a passthrough behavior.
+- Empty or constant columns are managed by the underlying scikit-learn 
+  implementation.
+- Class imbalance is not explicitly handled; users should preprocess data 
+  accordingly.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+- numpy
+- sklearn
+These dependencies are required for the generated code, not for this 
+module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter for Random Forest 
+nodes. An example of expected context access is:
+```python
+df = context['source_id:1']  # Accessing the input DataFrame
+```
+
+Node Identity
+----------------------------
+KNIME factory ID:
+- FACTORY = "org.knime.base.node.mine.treeensemble2.node.randomforest.learner.classification.RandomForestClassificationLearnerNodeFactory2"
+
+Configuration
+----------------------------
+The settings are defined in the `RandomForestSettings` dataclass, which 
+includes important fields such as:
+- target: The target column name (default: None).
+- n_estimators: Number of trees in the forest (default: 100).
+- max_depth: Maximum depth of the tree (default: None).
+- min_samples_split: Minimum number of samples required to split an 
+  internal node (default: 2).
+- bootstrap: Whether bootstrap samples are used (default: True).
+
+The `parse_rf_settings` function extracts these values from the settings.xml 
+using XPath queries and provides fallbacks for missing values.
+
+Limitations
+----------------------------
+Some KNIME features may not be directly supported or approximated in the 
+generated code, such as certain hyperparameter settings or specific 
+handling of missing values.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following 
+link: 
+https://hub.knime.com/knime/extensions/org.knime.features.ensembles/latest/
+org.knime.base.node.mine.treeensemble2.node.randomforest.learner.classification.RandomForestClassificationLearnerNodeFactory2
 ####################################################################################################
 
 

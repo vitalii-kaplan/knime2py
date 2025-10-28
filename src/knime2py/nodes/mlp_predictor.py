@@ -1,19 +1,75 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# MLP Predictor
-#
-# Scores an input table using a model bundle produced by the MLP Learner. Reads options from
-# settings.xml to set the prediction column name and whether to append per-class probabilities.
-# Writes the predicted table to this node’s context.
-#
-# - Settings: "change prediction" (bool), "prediction column name" (string),
-#             "append probabilities" (bool), "class probability suffix" (e.g., "_AN").
-# 
-####################################################################################################
+"""
+MLP Predictor module.
 
+Overview
+----------------------------
+This module generates Python code to score an input table using a model bundle produced by
+the MLP Learner. It reads options from settings.xml to configure the prediction column name
+and whether to append per-class probabilities, writing the predicted table to the node's
+context.
 
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a model bundle and a data table from the context using specified keys.
+
+Outputs:
+- Writes the predicted table to context with the key format `context['<node_id>:<port>']`,
+  where `<port>` is the output port number (default is "1").
+
+Key algorithms:
+- The module normalizes input features and handles fallback logic for missing features.
+- It supports optional class probability outputs based on the estimator's capabilities.
+
+Edge Cases
+----------------------------
+The code implements safeguards against empty or constant columns, NaNs, and class imbalance.
+Fallback paths are provided for feature selection if no features are specified in the model
+bundle.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas. These dependencies are
+necessary for the generated code, not for this module itself.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter, which generates code for KNIME
+nodes. An example of expected context access is:
+```
+context['model_key'] = model_bundle
+context['data_key'] = input_data
+```
+
+Node Identity
+----------------------------
+KNIME factory id: `FACTORY` is set to
+"org.knime.base.node.mine.neural.mlp2.MLPPredictorNodeFactory".
+
+Configuration
+----------------------------
+The settings are managed by the `PredictorSettings` dataclass, which includes:
+- `has_custom_name`: Indicates if a custom prediction column name is used (default: False).
+- `custom_name`: The name of the prediction column (default: None).
+- `include_probs`: Whether to include class probabilities in the output (default: True).
+- `prob_suffix`: Suffix for class probability columns (default: "_AN").
+
+The `parse_predictor_settings` function extracts these values from the settings.xml file using
+XPath queries, with fallbacks for missing entries.
+
+Limitations
+----------------------------
+Currently, the module does not support certain advanced options available in KNIME, and some
+approximations may occur in behavior compared to the original KNIME nodes.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following hub URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.mine.neural.mlp2.MLPPredictorNodeFactory
+"""
 
 from __future__ import annotations
 

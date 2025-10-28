@@ -1,31 +1,82 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# SVM Learner  — fail-fast if misconfigured (reads KNIME keys: classcol, kernel_type, c_parameter,
-#                                              kernel_param_* such as Power/Bias/Gamma/Kappa/Delta/Sigma)
-#
-# Trains a scikit-learn SVC and emits:
-#   Port 1: bundle (dict with estimator + metadata)
-#   Port 2: coefficients table (empty for non-linear kernels)
-#   Port 3: summary table
-#
-# KNIME → sklearn mapping:
-#   kernel_type:
-#     - "RBF"          → kernel='rbf',     gamma = 1/(2*sigma^2) from kernel_param_sigma (if present)
-#     - "Polynomial"   → kernel='poly',    degree from kernel_param_Power, coef0 from kernel_param_Bias,
-#                                           gamma from kernel_param_Gamma (else 'scale')
-#     - "HyperTangent" → kernel='sigmoid', gamma from kernel_param_kappa, coef0 from kernel_param_delta
-#     - "Linear"       → kernel='linear'
-#
-#   C parameter: c_parameter → C
-#
-# Notes:
-#   - If no target is configured → raise (fail-fast).
-#   - Rows with missing target are dropped prior to fit.
-#   - Probability=True to enable downstream probabilities (KNIME predictor can use them).
-#
-####################################################################################################
+"""SVM Learner module for generating Python code from KNIME configurations.
+
+Overview
+----------------------------
+This module generates Python code for an SVM learner based on configurations
+from KNIME. It emits a bundle containing the trained model, coefficients, and
+summary statistics.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the specified input port.
+
+Outputs:
+- Writes to context keys:
+  - '1': bundle (dict with estimator and metadata)
+  - '2': coefficients table (empty for non-linear kernels)
+  - '3': summary table
+
+Key algorithms or mappings:
+- Maps KNIME kernel types to scikit-learn SVC parameters.
+- Handles feature selection, ensuring only numeric or boolean columns are used.
+
+Edge Cases
+----------------------------
+- Raises errors for missing target columns or empty feature sets.
+- Drops rows with NaN target values before fitting the model.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+- numpy
+- sklearn
+
+These dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+Typically invoked by the knime2py emitter, this module is used to convert
+KNIME SVM learner configurations into Python code. Example context access:
+```python
+df = context['source_id:1']  # input table
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.mine.svm.learner.SVMLearnerNodeFactory2"
+
+Configuration
+----------------------------
+The module uses the `SVMLearnerSettings` dataclass for settings, which includes:
+- target: The target column name (default: None)
+- kernel: The kernel type (default: "rbf")
+- C: The regularization parameter (default: 1.0)
+- degree: The degree of the polynomial kernel (default: 3)
+- gamma: The kernel coefficient (default: "scale")
+- coef0: The bias term (default: 0.0)
+- probability: Whether to enable probability estimates (default: True)
+- class_weight: The class weights (default: None)
+- random_state: The random seed (default: 1)
+
+The `parse_svm_settings` function extracts these values from the settings.xml
+file using XPath queries, with fallbacks to default values.
+
+Limitations
+----------------------------
+This module does not support all KNIME SVM configurations and may approximate
+some behaviors.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following hub:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.mine.svm.learner.SVMLearnerNodeFactory2
+"""
 
 from __future__ import annotations
 

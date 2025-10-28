@@ -1,6 +1,69 @@
 # knime2py/nodes/registry.py
 from __future__ import annotations
 
+"""
+This module discovers and registers KNIME node handlers.
+
+Overview
+----------------------------
+This module imports all node definitions from the knime2py/nodes/ directory and maps
+their factory IDs to the corresponding modules. It facilitates the dynamic loading of
+node handlers based on their defined factories.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The generated code reads DataFrames or context keys as specified by the node's
+  factory.
+
+Outputs:
+- The module writes to `context[...]`, mapping the output ports to the generated
+  code's results.
+
+Key algorithms:
+- The module collects factory IDs from each node module, ensuring no duplicates
+  while preserving the order of registration.
+
+Edge Cases
+----------------------------
+The code handles cases where modules may not define a factory or where multiple
+modules define the same factory ID, logging appropriate warnings.
+
+Generated Code Dependencies
+----------------------------
+The generated code may depend on external libraries such as pandas, numpy, and
+sklearn. These dependencies are required for the execution of the generated code,
+not for this module itself.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter to dynamically load node
+handlers. An example of expected context access might look like:
+```python
+result = context["output_port"]
+```
+
+Node Identity
+----------------------------
+KNIME factory IDs are defined in the node modules as FACTORY or FACTORIES constants.
+The module supports a default handler for cases where no specific factory is defined.
+
+Configuration
+----------------------------
+The settings for each node are typically defined in a `@dataclass`, which includes
+fields such as `input_data` and `output_data`. The `parse_*` functions extract these
+values from the node's settings.xml file.
+
+Limitations
+----------------------------
+This module does not support all KNIME node features and may approximate behavior
+in certain cases.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the HUB_URL constant.
+"""
+
 import importlib
 import pkgutil
 import sys

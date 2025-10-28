@@ -1,23 +1,88 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Random Forest (Classification) Predictor
-#
-# Scores an input table using a RandomForestClassifier produced by the RF Learner. Consumes a model
-# bundle (or bare estimator), writes a prediction column, and can append per-class probabilities,
-# a confidence column, and a model-count column. Outputs the scored table to the node's context.
-#
-# - Ports: In1=model bundle, In2=data table, Out1=predicted table.
-# - Bundle keys (if present): {'estimator','features','target','classes',...}; falls back to a bare
-#   estimator and infers features if absent (raises KeyError if required columns are missing).
-# - Prediction column name: custom if configured; otherwise "Prediction (<target>)".
-# - Probabilities: when available, adds "P (<target>=<class>)<suffix>"; may also append
-#   "<prediction> (confidence)" as max probability. Optional "Model Count" from n_estimators.
-# - 'useSoftVoting' is informational; sklearn RandomForest averages probabilities by design.
-# 
-####################################################################################################
+"""
+Random Forest (Classification) Predictor.
 
+Overview
+----------------------------
+This module generates Python code to score an input table using a 
+RandomForestClassifier produced by the RF Learner. It consumes a model 
+bundle and a data table, writing a prediction column and optional 
+probabilities to the output context.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a model bundle from context using a key derived from input ports.
+- Reads a data table from context using a key derived from input ports.
+
+Outputs:
+- Writes the scored table to context under the output port mapping.
+- The output includes a prediction column and can include per-class 
+  probabilities, a confidence column, and a model count column.
+
+Key algorithms or mappings:
+- The module normalizes input features and handles missing columns by 
+  falling back to all available columns if necessary.
+- It supports custom naming for the prediction column and can append 
+  class probabilities and confidence scores based on configuration.
+
+Edge Cases
+----------------------------
+The code implements safeguards against missing feature columns, empty 
+dataframes, and class imbalance. It provides fallback paths for 
+feature selection and handles cases where the model does not provide 
+expected outputs.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: 
+pandas, numpy. These dependencies are required for the generated code 
+and not for this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter as part of 
+the code generation pipeline for KNIME nodes. An example of expected 
+context access is:
+```python
+context['model_key'] = model_obj
+context['data_key'] = df
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.mine.treeensemble2.node.randomforest.predictor.classification.RandomForestClassificationPredictorNodeFactory2"
+
+Configuration
+----------------------------
+The module uses the `PredictorSettings` dataclass for configuration, 
+which includes important fields such as:
+- has_custom_name: Indicates if a custom prediction column name is used.
+- custom_name: The name of the prediction column if custom.
+- include_probs: Whether to append class probabilities.
+- include_confidence: Whether to append prediction confidence.
+- append_model_count: Whether to include the model count.
+
+The `parse_predictor_settings` function extracts these values from 
+settings.xml using XPath queries and provides fallbacks for missing 
+entries.
+
+Limitations
+----------------------------
+This module does not support certain advanced configurations available 
+in KNIME, such as specific ensemble methods or detailed model 
+interpretation features.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the 
+following hub URL: 
+https://hub.knime.com/knime/extensions/org.knime.features.ensembles/latest/
+org.knime.base.node.mine.treeensemble2.node.randomforest.predictor.classification.
+RandomForestClassificationPredictorNodeFactory2
+"""
 
 from __future__ import annotations
 

@@ -1,5 +1,72 @@
 #!/usr/bin/env python3
 
+"""
+Column Appender module.
+
+Overview
+----------------------------
+This module generates Python code to append columns from one or more right DataFrames 
+to a single left DataFrame, based on settings defined in settings.xml. It fits into 
+the knime2py generator pipeline by transforming KNIME node configurations into executable 
+Python code.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads DataFrames from the context using keys formatted as '{source_id}:{input_port}'.
+
+Outputs:
+- Writes the resulting DataFrame to the context under the key '{node_id}:{output_port}', 
+  where output_port defaults to '1'.
+
+Key algorithms:
+- Implements collision handling for column names using KNIME-style suffixes to ensure 
+  uniqueness when appending columns.
+
+Edge Cases
+----------------------------
+The code handles scenarios such as empty or constant columns, NaNs, and ensures that 
+the output DataFrame maintains integrity even when input DataFrames have mismatched 
+indices or column names.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas. These dependencies 
+are required for the generated code, not for this module itself.
+
+Usage
+----------------------------
+Typically, this module is invoked by the knime2py emitter when processing a Column Appender 
+node. An example of expected context access is:
+```
+left_df = context['source_id:1']
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.preproc.columnappend2.ColumnAppender2NodeFactory"
+
+Configuration
+----------------------------
+The settings are encapsulated in the `ColumnAppenderSettings` dataclass, which includes:
+- rowid_mode: Determines how to align rows (default is "IDENTICAL").
+- rowid_table: Specifies the table to use for row IDs (default is None).
+- rowid_table_number: Indicates the specific row ID table number (default is None).
+The `parse_column_appender_settings` function extracts these values from settings.xml using 
+XPath queries, with fallbacks to defaults.
+
+Limitations
+----------------------------
+This module does not support all possible configurations available in KNIME and may 
+approximate behavior in certain cases.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following hub URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/org.knime.base.node.preproc.columnappend2.ColumnAppender2NodeFactory
+"""
+
 ####################################################################################################
 #
 # Column Appender

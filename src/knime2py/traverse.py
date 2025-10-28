@@ -262,3 +262,4 @@ def traverse_nodes(g) -> Iterator[dict]:
             "incoming": incoming,
             "outgoing": outgoing,
         }
+

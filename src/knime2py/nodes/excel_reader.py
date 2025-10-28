@@ -1,27 +1,76 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Excel Reader
-#
-# Reads an Excel sheet into a pandas DataFrame using options parsed from settings.xml.
-# Resolves LOCAL/RELATIVE (knime.workflow) paths and maps KNIME options to pandas.read_excel.
-#
-# Covered mappings (KNIME → pandas):
-#   • Path: LOCAL & RELATIVE (knime.workflow) via resolve_reader_path()
-#   • Sheet selection: sheet_selection ∈ {FIRST, NAME, INDEX} → sheet (0 | 'name' | index)
-#   • Header: table_contains_column_names + column_names_row_number → header (0-based) or None
-#   • Column range: read_from_column/read_to_column → usecols="A:D" (Excel A1-style column span)
-#   • Row range: read_from_row/read_to_row → skiprows / nrows (best-effort)
-#   • Dtypes: table_spec_config_Internals → dtype mapping (nullable pandas dtypes when possible)
-#   • Replace empty strings with missings: advanced_settings.replace_empty_strings_with_missings
-#
-# Notes / not mapped 1:1:
-#   • Hidden rows/cols, formula reevaluation, 15-digit precision, “fail_on_differing_specs” are not
-#     native in pandas and are ignored or commented as TODOs.
-#   • Row ID generation is not replicated; DataFrame index is left as-is.
-#
-####################################################################################################
+"""
+Excel Reader module.
+
+Overview
+----------------------------
+This module reads an Excel sheet into a pandas DataFrame using options parsed from
+settings.xml. It fits into the knime2py generator pipeline by providing a way to
+convert KNIME Excel reader node configurations into Python code.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a single DataFrame from an Excel file specified in the settings.
+
+Outputs:
+- Writes the resulting DataFrame to the context, mapped to the specified output ports.
+
+Key algorithms or mappings:
+- Maps KNIME options such as sheet selection, header presence, column and row ranges,
+  and data types to their pandas equivalents.
+
+Edge Cases
+----------------------------
+The code implements safeguards for empty or constant columns, handles NaNs, and provides
+fallback paths for missing settings.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas, lxml. These
+dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter for Excel reader nodes.
+An example of expected context access is:
+```
+context['output_port_1'] = df
+```
+
+Node Identity
+----------------------------
+KNIME factory id: FACTORY
+No special flags are defined for this node.
+
+Configuration
+----------------------------
+The settings are encapsulated in the `ExcelReaderSettings` dataclass, which includes
+the following important fields:
+- path: The file path to the Excel file (default: None).
+- sheet: The sheet to read (default: 0).
+- header: The row number to use as the column names (default: 0).
+- usecols: The columns to read (default: None).
+- skiprows: The number of rows to skip at the start (default: None).
+- nrows: The number of rows to read (default: None).
+- replace_empty_with_na: Whether to replace empty strings with NaN (default: False).
+- pandas_dtypes: A mapping of column names to pandas data types (default: empty dict).
+
+The `parse_excel_reader_settings` function extracts these values from settings.xml
+using XPath queries and provides fallbacks for missing entries.
+
+Limitations
+----------------------------
+The module does not support hidden rows/columns, formula re-evaluation, and 15-digit
+precision, which are not directly supported by pandas.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.ext.poi3.node.io.filehandling.excel.reader.ExcelTableReaderNodeFactory
+"""
 
 from __future__ import annotations
 

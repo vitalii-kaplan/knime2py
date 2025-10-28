@@ -1,31 +1,81 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Naive Bayes Predictor
-#
-# Scores an input table using a Naive Bayes model bundle produced by the NB Learner. Consumes a
-# model bundle (or bare estimator), writes a prediction column, and optionally appends per-class
-# probability columns. Outputs the scored table to this node's context.
-#
-# - Inputs:
-#     Port 1 → model bundle (dict with {'estimator','features','target','classes','meta': {...}})
-#               or a bare sklearn estimator as fallback
-#     Port 2 → data table to score
-# - Prediction column:
-#     • If settings["change prediction"] is True and a custom name is provided, uses it.
-#     • Otherwise defaults to "Prediction (<target>)".
-# - Probabilities:
-#     • If enabled, adds "P (<target>=<class>)<suffix>" per class (suffix from settings, default "_NB").
-# - Feature matrix reconstruction:
-#     • Prefer bundle['features'] (order preserved).
-#     • Else use getattr(estimator, 'feature_names_in_', None).
-#     • Else build from data: numeric columns + one-hot for all non-numeric; then align:
-#         - add missing expected columns with 0,
-#         - drop extra columns not in features,
-#       using bundle['meta'] flags when available (e.g., skip_missing) for dummy_na policy.
-#
-####################################################################################################
+"""
+Naive Bayes Predictor.
+
+Overview
+----------------------------
+This module generates Python code for scoring an input table using a Naive Bayes model
+bundle produced by the NB Learner. It consumes a model bundle or a bare estimator, writes
+a prediction column, and optionally appends per-class probability columns. The scored
+table is output to the node's context.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a model bundle (dict with {'estimator', 'features', 'target', 'classes', 'meta': {...}})
+  or a bare sklearn estimator from context.
+- Reads a data table to score from context.
+
+Outputs:
+- Writes the scored DataFrame to context with the key mapping to the output port.
+- The prediction column is named based on settings, defaulting to "Prediction (<target>)".
+- Optionally, adds probability columns for each class.
+
+Key algorithms or mappings:
+- Aligns features based on the model bundle or estimator attributes.
+- Handles missing columns by adding them with zero values and dropping extra columns.
+
+Edge Cases
+----------------------------
+The code implements safeguards for:
+- Empty or constant columns.
+- NaN values in the input data.
+- Class imbalance by providing fallback paths for predictions.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+These dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter, which generates the necessary
+Python code for KNIME nodes. An example of expected context access is:
+```
+context['model_key'] = model_bundle
+context['data_key'] = data_table
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.mine.bayes.naivebayes.predictor4.NaiveBayesPredictorNodeFactory3"
+
+Configuration
+----------------------------
+The settings are defined in the `NaiveBayesPredictorSettings` dataclass with the following
+important fields:
+- change_prediction: bool = True (determines if the prediction column name can be changed)
+- pred_col_name: Optional[str] = None (custom name for the prediction column)
+- include_probs: bool = True (determines if probability columns are included)
+- prob_suffix: str = "_NB" (suffix for probability column names)
+
+The `parse_nb_predictor_settings` function extracts these values from the settings.xml file
+using XPath queries and provides fallbacks when necessary.
+
+Limitations
+----------------------------
+This module does not support certain options available in KNIME, such as advanced
+parameter tuning or specific model configurations.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following hub URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.mine.bayes.naivebayes.predictor4.NaiveBayesPredictorNodeFactory3
+"""
 
 from __future__ import annotations
 

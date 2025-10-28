@@ -1,21 +1,84 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Linear Correlation — KNIME order + nominal↔nominal pairs with p=0.0
-#
-# Port 1 (measure):
-#   - Pair order follows source column order:
-#       * If EnforceInclusion + included_names → exactly that order (filtered to present columns)
-#       * Else → df.columns order
-#   - COMPATIBLE_PAIRS: include numeric↔numeric and eligible nominal↔nominal
-#   - For **nominal↔nominal pairs**, compute r on ordinal encoding and set **p value = 0.0**
-#   - Numeric↔numeric p-values come from SciPy (if available), alternative remapping applied.
-#
-# Port 2 (matrix): numeric-only Pearson matrix in the same source order.
-# Port 3 (model): metadata + the numeric matrix.
-#
-####################################################################################################
+"""
+Linear Correlation computation for KNIME nominal↔nominal and numeric↔numeric pairs.
+
+Overview
+----------------------------
+This module generates Python code for computing linear correlation between pairs of columns
+in a DataFrame, specifically handling both nominal and numeric data types. It fits into the
+knime2py generator pipeline by transforming KNIME node configurations into executable Python
+code.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The generated code reads a DataFrame from the context using the key format 
+  `context['<source_id>:<source_port>']`.
+
+Outputs:
+- The code writes three outputs to the context:
+  - `context['<node_id>:<port1>']`: DataFrame containing correlation measures.
+  - `context['<node_id>:<port2>']`: DataFrame containing the numeric Pearson correlation matrix.
+  - `context['<node_id>:<port3>']`: Dictionary containing model metadata.
+
+Key algorithms or mappings:
+- The code implements Pearson correlation for numeric data and ordinal encoding for nominal data.
+- It includes logic for selecting eligible columns based on user-defined settings.
+
+Edge Cases
+----------------------------
+The code handles various edge cases, including:
+- Empty or constant columns, which result in NaN correlations.
+- NaN values in the input DataFrame are preserved and managed during processing.
+- Class imbalance is addressed by ensuring that only eligible columns are considered for correlation.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+- numpy
+- scipy (optional, for p-value calculations)
+
+These dependencies are required for the generated code, not for this module itself.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter when processing a KNIME node. 
+An example of expected context access is:
+```python
+df = context['source_id:1']  # Accessing the input DataFrame
+```
+
+Node Identity
+----------------------------
+This module generates code based on the following KNIME factory ID:
+- FACTORY: "org.knime.base.node.preproc.correlation.compute2.CorrelationCompute2NodeFactory"
+
+Configuration
+----------------------------
+The `CorrSettings` dataclass is used for settings, with important fields including:
+- `include_names`: List of column names to include in the correlation.
+- `exclude_names`: List of column names to exclude from the correlation.
+- `enforce_option`: Determines whether to enforce inclusion or exclusion of columns.
+- `pval_alternative`: Specifies the alternative hypothesis for p-value calculations.
+- `pairs_filter`: Defines whether to use compatible pairs or all pairs.
+- `possible_values_count`: Maximum number of unique values allowed for nominal columns.
+
+The `parse_corr_settings` function extracts these values from the `settings.xml` file using
+XPath queries, with fallbacks to default values.
+
+Limitations
+----------------------------
+This module does not support certain advanced correlation methods or configurations available
+in KNIME. The implementation may approximate KNIME behavior but does not replicate it exactly.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.preproc.correlation.compute2.CorrelationCompute2NodeFactory
+"""
 
 from __future__ import annotations
 

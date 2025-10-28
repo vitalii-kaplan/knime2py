@@ -1,5 +1,72 @@
 #!/usr/bin/env python3
-from __future__ import annotations
+"""
+Fallback handler for any node type that we don't implement yet.
+
+Overview
+----------------------------
+This module generates Python code for KNIME nodes that are not yet implemented in
+the knime2py framework. It processes settings from an XML configuration file and
+produces a stub implementation that includes parameter initialization.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The generated code reads parameters from a settings.xml file, which is expected
+  to contain a <config key="model"> section with <entry> items.
+
+Outputs:
+- The generated code writes initialized parameters to the context, which can be
+  accessed by downstream nodes. The output includes mappings for input and output
+  ports.
+
+Key algorithms or mappings:
+- The module includes logic to sanitize parameter names and coerce string values
+  into appropriate Python types.
+
+Edge Cases
+----------------------------
+The code handles cases where the settings.xml file is missing or does not contain
+the expected structure. It also ensures that parameter names do not collide with
+Python keywords and are unique.
+
+Generated Code Dependencies
+----------------------------
+The generated code may depend on external libraries such as pandas, numpy, and
+lxml. These dependencies are required for the generated code, not for this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter when processing nodes
+that do not have a corresponding implementation. An example of expected context
+access might look like:
+```python
+value = context['input_port_name']
+```
+
+Node Identity
+----------------------------
+- KNIME factory id(s): The FACTORY constant is used to identify the node type.
+- Special flags: None.
+
+Configuration
+----------------------------
+- The settings are parsed using a dataclass that captures relevant fields from
+  the settings.xml file. Important fields include:
+  - model: The configuration for the model.
+- The parse_* functions extract values using XPath queries and provide fallbacks
+  for missing entries.
+
+Limitations
+----------------------------
+This module does not implement any specific node logic and serves only as a
+placeholder. Options such as advanced parameter handling or specific KNIME
+behavior are not supported.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the HUB_URL constant
+if available.
+"""
 
 import keyword
 import re
@@ -17,10 +84,6 @@ from .node_utils import (
 )
 
 FACTORY = ""
-
-# Fallback handler for any node type that we don't implement yet.
-# IMPORTANT: ensure this module is appended LAST in get_handlers().
-
 
 PRIORITY = 1_000_000
 

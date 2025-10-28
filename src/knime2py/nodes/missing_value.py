@@ -1,18 +1,74 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Missing Value Handler
-#
-# Applies KNIME Missing Value type-wide policies to an input table and writes the result to the
-# node’s context. Parses settings.xml to map Java cell types to simple dtypes and derives a fill
-# strategy per dtype, then generates pandas code to impute/propagate/drop accordingly.
-#
-# - Integers: mean/median/mode fills are rounded and per-column recast to nullable Int64.
-# - Skip branches always contain an executable statement (pass) to avoid IndentationError.
-# - We never emit .fillna(None).
-#
-####################################################################################################
+"""
+Missing Value Handler.
+
+Overview
+----------------------------
+This module generates Python code to handle missing values in a DataFrame
+based on KNIME's Missing Value policies. It fits into the knime2py generator
+pipeline by producing code that applies specified fill strategies to input
+tables and writes the results to the node's context.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the key format 'src_id:in_port'.
+
+Outputs:
+- Writes the processed DataFrame back to the context with the key format
+  'node_id:out_port', where out_port defaults to '1'.
+
+Key algorithms or mappings:
+- Implements fill strategies such as mean, median, mode, forward fill,
+  backward fill, and fixed value fills based on the configuration parsed
+  from settings.xml.
+
+Edge Cases
+----------------------------
+- Handles empty or constant columns by skipping them.
+- Safeguards against NaN values and class imbalance by providing fallback
+  strategies.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+
+These dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+Typically invoked by upstream KNIME nodes that require missing value handling.
+Example context access:
+```python
+df = context['input_table:1']
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory"
+
+Configuration
+----------------------------
+Settings are defined in the `MissingValueSettings` dataclass, which includes:
+- by_dtype: List of TypePolicy instances defining fill strategies per data type.
+
+The `parse_missing_value_settings` function extracts these values from the
+settings.xml file using XPath queries.
+
+Limitations
+----------------------------
+Currently, this module does not support all KNIME fill strategies and may
+approximate behavior in some cases.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory
+"""
 
 from __future__ import annotations
 

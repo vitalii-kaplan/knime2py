@@ -1,22 +1,70 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# String Manipulation (Multi Column)
-#
-# Applies a (subset of) KNIME Multi-Column String Manipulation to selected columns:
-# - Supports nested: replace(replace($$CURRENTCOLUMN$$,"Y","1"),"N","0")
-# - $$CURRENTCOLUMN$$ is the leaf expression
-# - Only 'replace(text, old, new)' is recognized; other functions fall back to identity
-# - Selected columns: taken from model/column_selection/included_names (present columns only)
-#
-# - Append vs Replace: APPEND_OR_REPLACE ∈ {"APPEND_COLUMNS","REPLACE_COLUMNS"}
-#   * Append uses APPEND_COLUMN_SUFFIX (default "_transformed")
-# - Missing handling: values are processed with pandas 'string' dtype to preserve NA
-# - Abort flag ("Abort execution on evaluation errors"): when False, per-column exceptions are
-#   swallowed; when True, exceptions raise and stop execution.
-#
-####################################################################################################
+"""String Manipulation (Multi Column).
+
+Overview
+----------------------------
+This module emits Python code that applies a subset of KNIME's Multi-Column String 
+Manipulation to selected columns of a DataFrame, producing transformed columns based 
+on specified expressions.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the key format `context['{src_id}:{in_port}']`.
+
+Outputs:
+- Writes the transformed DataFrame back to the context with keys formatted as 
+`context['{node_id}:{p}']`, where `p` is the port number.
+
+Key algorithms or mappings:
+- Supports nested replace operations, where the expression can include 
+`replace(replace($$CURRENTCOLUMN$$,"Y","1"),"N","0")`.
+- Selected columns are taken from the model's column selection in `settings.xml`.
+
+Edge Cases
+----------------------------
+- Handles missing values by processing with pandas 'string' dtype to preserve NA.
+- Implements an abort flag to control error handling during execution.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas. These 
+dependencies are required for the generated code, not for this module.
+
+Usage
+----------------------------
+Typically invoked by the KNIME emitter, this module is used in workflows that 
+require string manipulation on multiple columns. An example of context access 
+would be: `df = context['input_table:1']`.
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.preproc.stringmanipulation.multicolumn.MultiColumnStringManipulationNodeFactory".
+
+Configuration
+----------------------------
+The settings are defined in the `MCStringSettings` dataclass, which includes:
+- `columns`: List of selected columns for manipulation.
+- `expression`: The string manipulation expression to apply.
+- `mode`: Determines whether to append or replace columns (default is "REPLACE_COLUMNS").
+- `suffix`: Suffix to append to new columns (default is "_transformed").
+- `abort_on_error`: Flag to control error handling (default is True).
+- `insert_missing_as_null`: Flag to control missing value handling (default is True).
+The `parse_settings` function extracts these values from the `settings.xml` file.
+
+Limitations
+----------------------------
+Currently, only the 'replace' function is supported; other string manipulation 
+functions are not implemented.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following hub URL:
+https://hub.knime.com/knime/extensions/org.knime.features.javasnippet/latest/
+org.knime.base.node.preproc.stringmanipulation.multicolumn.MultiColumnStringManipulationNodeFactory
+"""
 
 from __future__ import annotations
 

@@ -1,26 +1,77 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# ROC Curve
-#
-# Renders ROC curves from a scored table based on settings.xml.
-#
-# Supports both KNIME view configuration variants:
-#   1) Newer:
-#       - view/targetColumnV3                      → truth column
-#       - view/predictionColumnsV2/manualFilter/manuallySelected → probability columns
-#   2) Older:
-#       - view/targetColumn/selected               → truth column
-#       - view/predictionColumns/selected_Internals → probability columns
-#       - (also checks view/predictionColumns/manualFilter/manuallySelected if present)
-#
-# Uses exactly the configured probability columns; no auto-detection or suffix guessing.
-# Computes FPR/TPR and AUC for each selected probability column and writes an image (PNG/SVG)
-# and a CSV of ROC points to the working directory (or a temp directory fallback).
-# This view node does not write to context ports.
-#
-####################################################################################################
+"""
+ROC Curve Generation Module.
+
+Overview
+----------------------------
+This module generates ROC curves from a scored table based on settings.xml,
+producing visualizations and CSV outputs for performance evaluation of models.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context containing the ground truth and probability columns.
+
+Outputs:
+- Writes the generated ROC curve image and a CSV of ROC points to the context, with
+  paths mapped to the node ID.
+
+Key algorithms:
+- Utilizes sklearn's roc_curve and auc functions to compute the false positive rate,
+  true positive rate, and area under the curve for each specified probability column.
+
+Edge Cases
+----------------------------
+The code handles missing or constant columns, NaN values, and class imbalance by
+validating inputs and providing warnings for any missing probability columns.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas, numpy, sklearn,
+matplotlib, and lxml. These dependencies are required for the generated code, not
+for this module itself.
+
+Usage
+----------------------------
+Typically invoked by upstream nodes that require ROC curve generation. An example
+of expected context access is:
+```
+df = context['input_table']
+```
+
+Node Identity
+----------------------------
+KNIME factory id: org.knime.base.views.node.roccurve.ROCCurveNodeFactory
+
+Configuration
+----------------------------
+The settings are defined in the `ROCCurveSettings` dataclass, which includes:
+- truth_col: The column representing the ground truth (default: None).
+- pos_label: The positive class label (default: None).
+- proba_cols: List of probability columns to evaluate (default: empty list).
+- title: Title for the ROC curve (default: "ROC Curve").
+- x_label: X-axis label (default: "False positive rate (1 - specificity)").
+- y_label: Y-axis label (default: "True positive rate (sensitivity)").
+- width_px: Width of the output image in pixels (default: 800).
+- height_px: Height of the output image in pixels (default: 600).
+- image_format: Format of the output image (default: "PNG").
+- line_size: Width of the ROC curve line (default: 2).
+
+The `parse_roc_settings` function extracts these values from the settings.xml file
+using XPath queries and provides fallbacks for missing entries.
+
+Limitations
+----------------------------
+This module does not support automatic detection of probability columns or suffix
+guessing; it strictly uses the columns specified in settings.xml.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.views.node.roccurve.ROCCurveNodeFactory
+"""
 
 from __future__ import annotations
 

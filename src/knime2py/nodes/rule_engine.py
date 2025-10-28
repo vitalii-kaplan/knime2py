@@ -1,5 +1,61 @@
 #!/usr/bin/env python3
 
+"""
+Rule Engine Module.
+
+Overview
+----------------------------
+This module applies a subset of KNIME Rule Engine logic to an input table and emits
+pandas code that evaluates rules defined in a settings.xml file.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the specified input port.
+
+Outputs:
+- Writes the resulting DataFrame back to the context, mapping it to the specified output
+  ports.
+
+Key algorithms:
+- Evaluates rules in order, assigning outcomes based on comparisons and pattern matching.
+
+Edge Cases
+----------------------------
+- Handles empty or constant columns, NaNs, and provides fallback paths for unsupported rules.
+
+Generated Code Dependencies
+----------------------------
+- The generated code requires pandas for DataFrame manipulation.
+
+Usage
+----------------------------
+- Typically invoked by the knime2py emitter in a KNIME workflow.
+- Example context access: `df = context['input_table:1']`.
+
+Node Identity
+----------------------------
+- KNIME factory id: `FACTORY = "org.knime.base.node.rules.engine.RuleEngineNodeFactory"`.
+
+Configuration
+----------------------------
+- Settings are defined in the `RuleEngineSettings` dataclass, which includes:
+  - `rules`: List of rules to evaluate.
+  - `append`: Whether to append results to a new column (default: True).
+  - `new_col`: Name of the new column for results (default: None).
+  - `replace_col`: Name of the column to replace with results (default: None).
+- Values are extracted from the settings.xml file using XPath queries.
+
+Limitations / Not implemented
+----------------------------
+- Does not support AND/OR chaining, between/in lists, or regex beyond LIKE wildcard.
+
+References
+----------------------------
+- For more information, visit: https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+  org.knime.base.node.rules.engine.RuleEngineNodeFactory
+"""
+
 ####################################################################################################
 #
 # Rule Engine

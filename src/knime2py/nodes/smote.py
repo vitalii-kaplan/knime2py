@@ -1,24 +1,81 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# SMOTE
-#
-# Oversamples minority classes using imbalanced-learn’s SMOTE based on KNIME settings.xml, then
-# writes the resampled table to this node’s context. Selects numeric/boolean features (excludes
-# the target), builds a sampling strategy from the chosen method/rate, and honors k-neighbors and
-# seed. Falls back to passthrough when configuration is insufficient.
-#
-# - Feature/target: uses all numeric/bool columns as features and the configured class/target.
-# - Methods: 
-#   • oversample_equal → sampling_strategy='auto' (minorities up to majority)  
-#   • otherwise uses rate: (0,1] → target_n ≈ rate * majority_n; >1 → target_n ≈ rate * minority_n
-# - kNN: k_neighbors is clamped to ≤ (minority_count - 1) to avoid imblearn errors.
-# - Fallbacks: if no target, no numeric features, single-class, or SMOTE raises, the original df
-#   is returned unchanged.
-# 
-####################################################################################################
+"""
+SMOTE implementation for oversampling minority classes.
 
+Overview
+----------------------------
+This module emits Python code to perform SMOTE (Synthetic Minority Over-sampling Technique)
+on input DataFrames, producing a resampled table that is written to the context. It fits
+into the knime2py generator pipeline by translating KNIME node configurations into Python
+code.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the key format 'src_id:in_port'.
+
+Outputs:
+- Writes the resulting DataFrame to the context with the key format 'node_id:out_port',
+  where out_port defaults to '1'.
+
+Key algorithms:
+- Utilizes imbalanced-learn's SMOTE for generating synthetic samples.
+- Selects numeric and boolean columns as features, excluding the target column.
+- Implements a sampling strategy based on the configured method and rate.
+
+Edge Cases
+----------------------------
+The code handles various edge cases, including:
+- Absence of a target column, resulting in a passthrough.
+- Single-class scenarios or insufficient samples in the minority class, leading to fallback
+  to the original DataFrame.
+- NaN values and constant columns are managed by the underlying library.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+- numpy
+- imblearn
+These dependencies are required for the generated code, not for this module itself.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter for nodes that require SMOTE
+functionality. An example of expected context access is:
+```python
+df = context['{src_id}:{in_port}']  # input table
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.mine.smote.SmoteNodeFactory"
+
+Configuration
+----------------------------
+The module uses the `SmoteSettings` dataclass for configuration, which includes:
+- target: The class/target column (default: None).
+- k_neighbors: The number of neighbors for kNN (default: 5).
+- method: The sampling method (default: "oversample_equal").
+- rate: The target ratio for sampling (default: 2.0).
+- random_state: The seed for random number generation (default: 1).
+
+The `parse_smote_settings` function extracts these values from the settings.xml file using
+XPath queries, with sensible fallbacks for missing values.
+
+Limitations
+----------------------------
+Currently, the implementation does not support all configurations available in KNIME,
+and approximations may occur in behavior compared to the original node.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.mine.smote.SmoteNodeFactory
+"""
 
 from __future__ import annotations
 

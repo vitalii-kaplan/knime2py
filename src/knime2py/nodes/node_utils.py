@@ -1,4 +1,73 @@
 #!/usr/bin/env python3
+"""
+Module for XML-based utilities in the knime2py generator.
+
+Overview
+----------------------------
+This module provides various utility functions for parsing XML configurations
+used in the knime2py generator pipeline. It focuses on extracting values,
+normalizing inputs, and handling KNIME-specific data structures.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The module reads XML configurations, extracting DataFrame-related settings
+  and context keys.
+
+Outputs:
+- The module writes context assignments to `context[...]` for each output port,
+  mapping node IDs to DataFrames.
+
+Key algorithms or mappings:
+- The module includes functions for normalizing delimiters, characters, and
+  paths, as well as extracting CSV-related settings.
+
+Edge Cases & Safeguards
+----------------------------
+The code handles various edge cases, such as:
+- Empty or constant columns.
+- NaN values in the input data.
+- Class imbalance scenarios.
+- Fallback paths for resolving file locations.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires external libraries such as pandas, numpy, lxml,
+and others. These dependencies are necessary for the generated code, not
+for this utility module.
+
+Usage
+----------------------------
+This module is typically invoked by the emitter functions that generate
+Python code from KNIME nodes. An example of expected context access is:
+```python
+context['node_id:1'] = df
+```
+
+Node Identity
+----------------------------
+This module generates code based on `settings.xml` configurations. It
+supports various KNIME factory IDs and special flags, such as:
+- FACTORY: Identifies the node type.
+- LOOP: Indicates the start or end of a loop.
+
+Configuration
+----------------------------
+The module uses a `@dataclass` for settings, which includes fields for
+various configuration options. The `parse_*` functions extract these values
+using XPath queries and provide fallbacks where necessary.
+
+Limitations / Not implemented
+----------------------------
+Certain options may not be fully supported or may approximate KNIME behavior
+due to differences in the underlying systems.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and search for
+relevant terminology related to the KNIME ecosystem.
+"""
+
 from __future__ import annotations
 
 import re

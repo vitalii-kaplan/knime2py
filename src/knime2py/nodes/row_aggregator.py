@@ -1,25 +1,73 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Row Aggregator
-#
-# Aggregates rows using a single aggregation function, optionally grouped by a category column.
-# Supported methods: COUNT (occurrence count), SUM, AVERAGE, MINIMUM, MAXIMUM. For SUM/AVERAGE a
-# weight column is honored when configured. The “aggregation columns” list is used for all methods
-# except COUNT (COUNT simply counts rows per group).
-# - Inputs: single table
-# - Output 1: aggregated table (grouped by category if provided, otherwise a single-row table)
-# - Output 2: optional “grand totals” (only if a category is configured and grandTotals=true)
-#
-# Keys used (model):
-#   categoryColumn (string | null)
-#   aggregationMethod (COUNT | SUM | AVERAGE | MINIMUM | MAXIMUM)
-#   frequencyColumns/selected_Internals + manualFilter/manuallySelected  → aggregation column names
-#   weightColumn (string | null)  — only SUM/AVERAGE use it
-#   grandTotals (boolean)
-#
-####################################################################################################
+"""
+Row Aggregator module.
+
+Overview
+----------------------------
+This module emits Python code for aggregating rows in a DataFrame using a specified
+aggregation function, optionally grouped by a category column. It fits into the knime2py
+generator pipeline by transforming KNIME node configurations into executable Python code.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the key format `context['<source_id>:<port>']`.
+
+Outputs:
+- Writes the aggregated DataFrame to `context['<node_id>:1']`.
+- Optionally writes grand totals to `context['<node_id>:2']` if configured.
+
+Key algorithms:
+- Supports COUNT, SUM, AVERAGE, MINIMUM, and MAXIMUM aggregation methods.
+- Handles grouping by a specified category column and applies weights if provided.
+
+Edge Cases
+----------------------------
+- Safeguards against empty or constant columns, NaNs, and class imbalance.
+- Fallback paths are implemented for missing or invalid configurations.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas, numpy. These
+dependencies are required for the execution of the generated code, not for this module.
+
+Usage
+----------------------------
+Typically invoked by upstream KNIME nodes that require row aggregation. An example
+of expected context access is:
+```python
+df = context['source_id:1']  # input table
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.preproc.rowagg.RowAggregatorNodeFactory"
+
+Configuration
+----------------------------
+The settings are defined in the `RowAggregatorSettings` dataclass, which includes:
+- `category_col`: Optional group-by column.
+- `method`: Aggregation method (default is "COUNT").
+- `agg_cols`: List of columns to aggregate.
+- `weight_col`: Optional weight column for SUM/AVERAGE.
+- `grand_totals`: Boolean flag for including grand totals.
+
+The `parse_row_agg_settings` function extracts these values from the `settings.xml`
+file using XPath queries and provides fallbacks for missing configurations.
+
+Limitations
+----------------------------
+Currently, this module does not support advanced aggregation options available in KNIME
+and may approximate behavior in certain cases.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following hub URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.preproc.rowagg.RowAggregatorNodeFactory
+"""
 
 from __future__ import annotations
 

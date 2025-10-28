@@ -1,21 +1,73 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Column Filter  (exclude-only)
-#
-# This exporter intentionally ignores any "include" lists in KNIME settings.xml and only applies
-# the "exclude" list. The generated code simply drops those columns (if present) from the input df,
-# preserving all remaining columns and their order.
-#
-# - Excludes are parsed heuristically from settings.xml by scanning <config> blocks whose keys
-#   contain "exclude", collecting list entries (<entry key='0' value='Col'/> or <entry key='name'/>).
-# - Dropping uses errors='ignore' so missing columns won't fail the cell.
-# - If no excludes are found, the node is a passthrough.
-#
-# Depends on: lxml for parsing; pandas at runtime.
-#
-####################################################################################################
+"""
+Column Filter module for KNIME to Python conversion.
+
+Overview
+----------------------------
+This module generates Python code that filters columns from a DataFrame based on
+exclusion criteria specified in a KNIME node's settings.xml file. It fits into the
+knime2py generator pipeline by transforming the configuration into executable Python
+code.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the key format 'src_id:in_port'.
+
+Outputs:
+- Writes the filtered DataFrame to the context using the key format 'node_id:out_port',
+  where out_port defaults to '1'.
+
+Key algorithms:
+- The module implements a column exclusion mechanism, dropping specified columns while
+  preserving the order of the remaining columns.
+
+Edge Cases
+----------------------------
+The code handles cases where:
+- No columns are specified for exclusion, resulting in a passthrough.
+- Missing columns in the DataFrame do not raise errors due to the use of
+  `errors='ignore'` in the drop operation.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+
+These dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter when processing a Column Filter
+node. An example of expected context access is:
+```python
+df = context['source_id:1']  # Accessing the input DataFrame
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.preproc.filter.column.DataColumnSpecFilterNodeFactory"
+
+Configuration
+----------------------------
+The settings are encapsulated in the `ColumnFilterSettings` dataclass, which contains:
+- excludes: List of column names to exclude (default is an empty list).
+
+The `parse_column_filter_settings` function extracts these values by scanning the
+settings.xml for configuration blocks containing 'exclude'.
+
+Limitations
+----------------------------
+This module does not support inclusion lists; it only processes exclusion criteria.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.preproc.filter.column2.ColumnFilter2NodeFactory
+"""
 
 from __future__ import annotations
 

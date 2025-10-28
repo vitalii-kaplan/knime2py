@@ -1,27 +1,84 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Naive Bayes Learner (GaussianNB with optional one-hot on categoricals)
-#
-# Trains a scikit-learn Naive Bayes classifier from KNIME settings.xml and publishes:
-#   • Port 1 → a *bundle* dict for downstream prediction:
-#       {'estimator', 'features', 'target', 'classes', 'meta': {...}}
-#   • Port 2 → a compact training summary table (pandas DataFrame).
-#
-# Settings parsed (best effort):
-#   - classifyColumn (target)
-#   - threshold → var_smoothing for GaussianNB
-#   - minSdValue, minSdThreshold (not directly supported in sklearn; documented in meta)
-#   - maxNoOfNomVals (categorical columns with > N unique values are ignored)
-#   - skipMissingVals (True → drop rows with any missing among selected features;
-#                      False → impute numeric with mean and keep dummy_na for categoricals)
-#
-# Feature selection:
-#   - Numeric/boolean columns (excluding target) are used directly.
-#   - Non-numeric columns with cardinality ≤ maxNoOfNomVals are one-hot encoded (get_dummies).
-#
-####################################################################################################
+"""Naive Bayes Learner module.
+
+Overview
+----------------------------
+This module generates Python code for a Naive Bayes learner using scikit-learn,
+based on configurations from a KNIME node's settings.xml. It produces a bundle
+for downstream predictions and a training summary DataFrame.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a training DataFrame from the context using the specified input port.
+
+Outputs:
+- Writes a bundle dict to context['{node_id}:1'] containing the trained model,
+  features, target, classes, and metadata.
+- Writes a summary DataFrame to context['{node_id}:2'] with training details.
+
+Key algorithms or mappings:
+- Utilizes GaussianNB from scikit-learn for classification.
+- Handles numeric and categorical features, applying one-hot encoding for limited
+  cardinality categorical columns.
+
+Edge Cases
+----------------------------
+The code implements safeguards against:
+- Missing target columns, raising KeyErrors if not found.
+- Empty or constant feature columns, raising ValueErrors if no usable features
+  are available.
+- NaN values in numeric features, with options to drop or impute them based on
+  configuration.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+- numpy
+- sklearn
+
+These dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+Typically invoked by a KNIME workflow, this module can be used in conjunction
+with nodes that provide training data and expect a trained model and summary
+as output. Example context access:
+```python
+df = context['{src_id}:{in_port}']  # training table
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.mine.bayes.naivebayes.learner3.NaiveBayesLearnerNodeFactory4"
+
+Configuration
+----------------------------
+The settings are encapsulated in the `NaiveBayesSettings` dataclass, which includes:
+- target: The target column for classification (default: None).
+- var_smoothing: Smoothing parameter for GaussianNB (default: 1e-9).
+- min_sd_value: Minimum standard deviation value (default: 1e-4).
+- min_sd_threshold: Minimum standard deviation threshold (default: 0.0).
+- max_nominal_vals: Maximum number of unique values for categorical columns (default: 20).
+- skip_missing: Whether to drop rows with missing values (default: False).
+
+The `parse_nb_settings` function extracts these values from the settings.xml file
+using XPath queries, with fallbacks to default values.
+
+Limitations
+----------------------------
+Certain KNIME behaviors may not be fully supported, such as advanced handling
+of class imbalance or specific imputation strategies.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.mine.bayes.naivebayes.learner3.NaiveBayesLearnerNodeFactory4
+"""
 
 from __future__ import annotations
 

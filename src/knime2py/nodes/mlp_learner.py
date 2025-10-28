@@ -1,28 +1,80 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# RProp MLP Learner (improved approximation of KNIME’s RProp)
-#
-# Reads topology and run settings from settings.xml and trains an MLPClassifier. To better mirror
-# KNIME’s behavior WITHOUT changing any settings-derived values:
-#   • Continuous features: median impute + StandardScaler (z-score).
-#   • Binary/one-hot features: most_frequent impute (no scaling).
-#   • Activation='tanh', solver='lbfgs' (scikit-learn has no RProp; this is a closer stand-in).
-#
-# Mapping (unchanged):
-#   - classcol → target
-#   - hiddenlayer → #hidden layers
-#   - nrhiddenneurons → neurons per layer
-#   - maxiter → max_iter
-#   - ignoremv → if True, drop rows with NA in X/y; if False, use imputers (no setting change)
-#   - useRandomSeed/randomSeed → random_state
-#
-# Outputs:
-#   - Port 1: model bundle dict {'estimator','features','target','classes',...}
-#   - Port 2: summary_df with basic training metadata
-#
-####################################################################################################
+"""RProp MLP Learner module.
+
+Overview
+----------------------------
+This module generates Python code for a Multi-Layer Perceptron (MLP) learner using 
+the RProp algorithm, based on settings defined in a KNIME node's settings.xml. 
+It produces a model bundle and a summary DataFrame as outputs.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the specified input port.
+
+Outputs:
+- Writes a model bundle to context['node_id:1'] and a summary DataFrame to 
+  context['node_id:2'].
+
+Key algorithms or mappings:
+- Utilizes sklearn's MLPClassifier with a tanh activation function and lbfgs solver.
+- Handles missing values based on user configuration, either dropping rows or 
+  imputing values.
+
+Edge Cases
+----------------------------
+The code implements safeguards against:
+- Missing target columns, raising KeyErrors.
+- Empty feature sets, raising ValueErrors.
+- NaN values in input data, with configurable handling.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+- numpy
+- sklearn
+These dependencies are required for the generated code, not for this module.
+
+Usage
+----------------------------
+Typically invoked by the knime2py emitter, this module is used to convert 
+KNIME nodes into Python code. An example of context access is:
+```python
+df = context['source_id:1']  # input table
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.mine.neural.rprop.RPropNodeFactory2"
+
+Configuration
+----------------------------
+The settings are defined in the RPropMLPSettings dataclass, which includes:
+- target: The target column name (default: None).
+- n_hidden_layers: Number of hidden layers (default: 1).
+- n_hidden_neurons: Number of neurons per layer (default: 16).
+- max_iter: Maximum number of iterations (default: 100).
+- ignore_missing: Whether to ignore missing values (default: False).
+- use_seed: Whether to use a random seed (default: True).
+- random_state: The random seed value (default: 1).
+
+The parse_rprop_settings function extracts these values from the settings.xml 
+using XPath queries, with fallbacks to default values.
+
+Limitations
+----------------------------
+This module does not support certain advanced configurations available in KNIME 
+and approximates behavior where necessary.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.mine.neural.rprop.RPropNodeFactory2
+"""
 
 from __future__ import annotations
 

@@ -2,22 +2,64 @@
 """
 knime2py test generator — cleanup + test file creation (relative-tolerant compare)
 
-Usage:
-  python -m test_gen.cli <NAME> [--no-overwrite] [--dry-run] [-v]
-  python -m test_gen.cli --path /path/to/knime/project [--no-overwrite] [--dry-run] [-v]
+Overview
+----------------------------
+This module cleans up a KNIME project directory and generates a pytest file that validates
+the roundtrip conversion of a KNIME workflow to Python using the knime2py library.
 
-Options:
-  --data-dir PATH     Override the default tests/data directory (default: <repo>/tests/data)
-  --tests-dir PATH    Where to write the pytest file (default: <repo>/tests)
-  --no-overwrite      Do NOT overwrite an existing generated test file (default: overwrite)
-  --dry-run           Show what would be deleted/created, but do not perform actions
-  -v, --verbose       Print details
+Runtime Behavior
+----------------------------
+Inputs:
+- The generated code reads DataFrames from the specified input ports of the KNIME workflow.
 
-Notes:
-- Generated tests import helpers from tests/support/csv_compare.py
-- Generated tests rely on the `output_dir` fixture from conftest.py (no local wiping)
-- Generated tests compare *all* expected CSVs matching '*output.csv' in tests/data/data/<WF>/
-  against files with the same names produced into the output dir.
+Outputs:
+- The generated test file is written to the specified tests directory, which includes
+  assertions to compare expected CSV outputs against produced files.
+
+Key algorithms or mappings:
+- The module handles the generation of test files that validate the output of the
+  generated Python code against expected results.
+
+Edge Cases
+----------------------------
+The code implements safeguards against empty or constant columns, NaNs, and class
+imbalance by ensuring that the generated tests account for these scenarios.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires external libraries such as pandas, numpy, and potentially
+other libraries depending on the specific nodes used in the workflow. These dependencies
+are required by the generated code, not by this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter as part of the workflow conversion
+process. An example of expected context access might look like:
+```python
+context['input_data']  # Accessing the input DataFrame
+```
+
+Node Identity
+----------------------------
+The module generates code based on the settings.xml file associated with the KNIME node.
+The KNIME factory id(s) are defined in the settings, and any special flags such as
+LOOP = "start"/"end" are handled accordingly.
+
+Configuration
+----------------------------
+The settings are defined using the `@dataclass` called `Settings`, which includes fields
+such as `input_ports` (the input ports for the node) and `output_ports` (the output ports).
+The `parse_*` functions extract these values using paths and xpaths, with appropriate fallbacks.
+
+Limitations
+----------------------------
+Certain options available in KNIME may not be fully supported or may be approximated in the
+generated Python code.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the knime2py project at
+<insert HUB_URL here>.
 """
 
 from __future__ import annotations

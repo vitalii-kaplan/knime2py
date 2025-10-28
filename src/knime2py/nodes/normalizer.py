@@ -1,24 +1,76 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Normalizer
-#
-# Normalizes selected columns using Min–Max or Z-Score according to settings.xml, then writes the
-# result to this node's context.
-#
-# FIXES:
-#   • Disambiguate 'mode' keys: ignore column-filter mode="MANUAL"; use normalization mode
-#     (MINMAX | ZSCORE) from the model root.
-#   • Support both filter blocks: dataColumnFilterConfig (new) and data-column-filter (old).
-#
-# COLUMN POLICY (as requested):
-#   • Ignore "manuallySelected"
-#   • Start from ALL input columns; remove ONLY those in "manuallyDeselected"
-#     (fallback to excluded_names if manuallyDeselected missing)
-#   • Normalize only numeric/boolean columns among the remaining set.
-#
-####################################################################################################
+"""
+Normalizer module for KNIME to Python conversion.
+
+Overview
+----------------------------
+This module generates Python code to normalize selected columns using Min–Max or Z-Score
+normalization methods based on settings defined in `settings.xml`. The generated code fits
+into the knime2py generator pipeline, producing a DataFrame that is written to the node's
+context.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The generated code reads a DataFrame from the context using the key format
+  `context['<source_id>:<in_port>']`.
+
+Outputs:
+- The normalized DataFrame is written back to the context with the key format
+  `context['<node_id>:<out_port>']`, where `<out_port>` defaults to '1'.
+
+Key algorithms or mappings:
+- The module implements Min-Max and Z-Score normalization techniques, handling numeric and
+  boolean columns while excluding specified columns based on the configuration.
+
+Edge Cases
+----------------------------
+The code includes safeguards for empty or constant columns, ensuring that they are handled
+gracefully by mapping them to a default value or returning a zero vector for Z-Score
+normalization. It also manages NaN values appropriately during the normalization process.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas. These dependencies
+are necessary for the execution of the generated code, not for this module itself.
+
+Usage
+----------------------------
+This module is typically invoked by the KNIME emitter for normalization nodes. An example
+of expected context access is:
+```python
+df = context['source_id:1']  # input table
+```
+
+Node Identity
+----------------------------
+KNIME factory id: `FACTORY` is set to
+`"org.knime.base.node.preproc.normalize3.Normalizer3NodeFactory"`.
+
+Configuration
+----------------------------
+The module uses the `NormalizerSettings` dataclass for configuration, which includes the
+following important fields:
+- `mode`: Normalization method, defaults to "MINMAX".
+- `new_min`: Minimum value for Min-Max normalization, defaults to 0.0.
+- `new_max`: Maximum value for Min-Max normalization, defaults to 1.0.
+- `excludes`: List of columns to exclude from normalization, populated from the settings.
+
+The `parse_normalizer_settings` function extracts these values from the `settings.xml` file
+using XPath queries, with fallbacks for missing configurations.
+
+Limitations
+----------------------------
+The module does not support certain advanced normalization options available in KNIME and
+may approximate behavior in some cases.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.preproc.normalize3.Normalizer3NodeFactory
+"""
 
 from __future__ import annotations
 

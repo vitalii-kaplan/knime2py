@@ -1,22 +1,77 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Reference Row Splitter
-#
-# Splits a “data” table into two outputs based on membership of keys in a separate “reference”
-# table. Keys can come from Row ID or from a selected column on each side (parsed from settings.xml).
-# - Inputs:  Port 1 → data table, Port 2 → reference table
-# - Outputs: Port 1 → rows whose key is present in reference (“matching”)
-#            Port 2 → rows whose key is NOT present (“non-matching”)
-# Settings (model):
-#   dataTableColumn:       useRowID (bool), columnName (str)
-#   referenceTableColumn:  useRowID (bool), columnName (str)
-#
-#   • Join keys are coerced to pandas 'string' dtype; NaNs in the reference key set are ignored.
-#   • If a configured column is missing, a clear KeyError is raised.
-#
-####################################################################################################
+"""
+Reference Row Splitter.
+
+Overview
+----------------------------
+This module generates Python code to split a data table into two outputs based on the 
+membership of keys in a separate reference table. It fits into the knime2py generator 
+pipeline by producing code that can be executed in a Python environment.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads two DataFrames from the context: one for the data table and one for the reference 
+  table, identified by their respective keys.
+
+Outputs:
+- Writes two DataFrames to the context:
+  - Port 1 (`context['{node_id}:1']`): rows from the data table whose keys match the 
+    reference table (matching).
+  - Port 2 (`context['{node_id}:2']`): rows from the data table whose keys do not match 
+    the reference table (non-matching).
+
+Key algorithms:
+- The code coerces join keys to pandas 'string' dtype and ignores NaNs in the reference key 
+  set. It raises a KeyError if a configured column is missing.
+
+Edge Cases
+----------------------------
+The code handles cases where columns may be empty or constant, and it safeguards against 
+NaNs in the reference key set. It raises appropriate errors for missing columns.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas. These dependencies 
+are required for the generated code, not for this module.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter when generating code for a 
+reference row splitter node. An example of expected context access is:
+```python
+df_left = context['source_id:1']  # Accessing the data table
+df_right = context['source_id:2']  # Accessing the reference table
+```
+
+Node Identity
+----------------------------
+KNIME factory id: 
+- FACTORY = "org.knime.base.node.preproc.filter.rowref.RowSplitRefNodeFactory"
+
+Configuration
+----------------------------
+The settings are defined in the `RefRowSplitSettings` dataclass, which includes:
+- `data_use_rowid`: Indicates if the data table uses row IDs (default: False).
+- `data_col`: The name of the column in the data table to use as a key (default: None).
+- `ref_use_rowid`: Indicates if the reference table uses row IDs (default: False).
+- `ref_col`: The name of the column in the reference table to use as a key (default: None).
+
+The `parse_refsplit_settings` function extracts these values from the settings.xml file 
+using XPath queries, with fallbacks to defaults if necessary.
+
+Limitations
+----------------------------
+This module does not support certain advanced configurations available in KNIME, and 
+approximations may occur in behavior compared to the original KNIME node.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.preproc.filter.rowref.RowSplitRefNodeFactory
+"""
 
 from __future__ import annotations
 

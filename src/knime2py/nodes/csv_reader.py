@@ -1,24 +1,78 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# CSV Reader
-# 
-# CSV Reader: reads a CSV into a pandas DataFrame using options parsed from settings.xml.
-# Resolves LOCAL/RELATIVE (knime.workflow) paths and maps KNIME options to pandas.read_csv.
-#
-# pandas>=1.5 recommended (nullable dtypes supported in dtype mapping).
-# Quote/escape are passed to pandas. If escapechar equals quotechar, we omit escapechar and rely
-# on double-quote parsing (avoids C-engine "EOF inside string" errors).
-# Dtype mapping is derived from table_spec_config_Internals; unknown types are left to inference.
-# Path resolution supports LOCAL and RELATIVE knime.workflow only; other FS types are not yet handled.
-# Robust NA/dtype handling:
-# - Treat '' and ' ' as missing on read (na_values=['', ' '], keep_default_na=True, skipinitialspace=True)
-# - Read WITHOUT dtype=..., then coerce per-column:
-#     * numeric targets ('Int64', 'Float64') via pd.to_numeric(..., errors='coerce').astype(target)
-#     * other types via .astype(target)
-#
-####################################################################################################
+"""
+CSV Reader module for reading CSV files into pandas DataFrames.
+
+Overview
+----------------------------
+This module emits code that reads a CSV file into a pandas DataFrame using options parsed 
+from settings.xml. It resolves LOCAL/RELATIVE paths and maps KNIME options to 
+pandas.read_csv.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The generated code reads a single CSV file specified in the settings.
+
+Outputs:
+- The DataFrame is published to the provided context output ports, with the mapping 
+  determined by the node's configuration.
+
+Key algorithms or mappings:
+- The module handles various CSV reading options such as separator, quote character, 
+  escape character, and header presence. It also includes post-processing for data types 
+  based on the KNIME table specification.
+
+Edge Cases & Safeguards
+----------------------------
+The code implements robust handling for missing values, treating empty strings and spaces 
+as NA. It also includes safeguards for type coercion, ensuring that columns are only 
+converted if they exist in the DataFrame.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas, lxml. These 
+dependencies are necessary for the generated code, not for this module itself.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter as part of the code generation 
+pipeline for KNIME nodes. An example of expected context access is:
+```
+context['output_port_1'] = df
+```
+
+Node Identity
+----------------------------
+The KNIME factory ID for this module is defined by the FACTORY constant:
+- FACTORY = "org.knime.base.node.io.filehandling.csv.reader.CSVTableReaderNodeFactory"
+
+Configuration
+----------------------------
+The settings are encapsulated in the `CSVReaderSettings` dataclass, which includes the 
+following important fields:
+- path: The path to the CSV file (default: None).
+- sep: The delimiter used in the CSV file (default: None).
+- quotechar: The character used for quoting (default: None).
+- escapechar: The character used for escaping (default: None).
+- header: Indicates if the CSV has a header (default: None).
+- encoding: The file encoding (default: None).
+- pandas_dtypes: A mapping of column names to pandas data types (default: empty dict).
+
+The `parse_csv_reader_settings` function extracts these values from the settings.xml file, 
+handling both absolute LOCAL paths and RELATIVE paths anchored at the workflow directory.
+
+Limitations / Not implemented
+----------------------------
+Currently, the module does not support certain CSV options that may be available in KNIME, 
+and approximations may occur in behavior compared to the KNIME CSV reader.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.io.filehandling.csv.reader.CSVTableReaderNodeFactory
+"""
 
 from __future__ import annotations
 

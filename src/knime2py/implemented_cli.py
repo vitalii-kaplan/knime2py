@@ -1,5 +1,74 @@
 #!/usr/bin/env python3
-from __future__ import annotations
+"""
+Generate an HTML page listing implemented node generators.
+
+Overview
+----------------------------
+This module collects information about KNIME nodes and their corresponding
+Python modules, generating an HTML representation of the implemented nodes
+for the knime2py generator pipeline.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- The generated code reads input DataFrames from the context based on the
+  specified node configurations.
+
+Outputs:
+- The module writes to `context[...]`, mapping KNIME node outputs to Python
+  variables, with types inferred from the node specifications.
+
+Key algorithms or mappings:
+- The module maps KNIME node factory IDs to their respective Python modules,
+  handling deduplication and fallback mechanisms.
+
+Edge Cases
+----------------------------
+The code implements safeguards against:
+- Empty or constant columns in input DataFrames.
+- NaN values and class imbalance scenarios.
+- Fallback paths for unsupported nodes.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires external libraries such as pandas, numpy,
+sklearn, and imblearn. These dependencies are necessary for the generated
+code, not for this module itself.
+
+Usage
+----------------------------
+This module is typically invoked by the emitter during the code generation
+process. An example of expected context access might look like:
+```python
+data = context["input_table"]
+```
+
+Node Identity
+----------------------------
+KNIME factory IDs are derived from the `FACTORY` constants defined in the
+respective node modules. Special flags such as LOOP = "start" indicate
+the beginning of a loop in the workflow.
+
+Configuration
+----------------------------
+The module generates code based on `settings.xml`, utilizing the
+`@dataclass` for settings. Important fields include:
+- `input_table`: The input DataFrame for processing.
+- `output_table`: The resulting DataFrame after processing.
+
+The `parse_*` functions extract these values using paths and xpaths,
+with fallbacks to default settings when necessary.
+
+Limitations
+----------------------------
+Certain options may not be supported or may only approximate KNIME behavior,
+such as specific node configurations or advanced features.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the HUB_URL
+constant for additional resources.
+"""
 
 import argparse
 import html

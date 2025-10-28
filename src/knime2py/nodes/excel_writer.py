@@ -1,5 +1,79 @@
 #!/usr/bin/env python3
 
+"""
+Excel Writer module.
+
+Overview
+----------------------------
+This module writes a pandas DataFrame to an Excel file using options parsed from
+settings.xml. It fits into the knime2py generator pipeline by converting KNIME
+Excel writer node configurations into Python code.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the specified input ports.
+
+Outputs:
+- Writes the DataFrame to an Excel file at a specified path, with the output
+  mapped to the context.
+
+Key algorithms or mappings:
+- Maps KNIME's sheet existence policies to pandas' equivalent options.
+- Handles various configurations for writing DataFrames to Excel.
+
+Edge Cases
+----------------------------
+The code implements safeguards for scenarios such as:
+- Non-existent output paths.
+- Handling of missing values and column headers based on settings.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+- openpyxl
+These dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+Typically, this module is invoked by the knime2py emitter when processing
+Excel writer nodes. An example of expected context access is:
+```python
+df = context['input_id:1']
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.ext.poi3.node.io.filehandling.excel.writer.ExcelTableWriterNodeFactory"
+
+Configuration
+----------------------------
+The settings are defined in the `ExcelWriterSettings` dataclass, which includes
+important fields such as:
+- path: The output file path.
+- excel_format: The format of the Excel file (default is "XLSX").
+- sheet_names: Names of the sheets to create (default is ["Sheet1"]).
+- if_sheet_exists: Policy for handling existing sheets (default is "FAIL").
+- if_path_exists: Policy for handling existing paths (default is "overwrite").
+
+The `parse_excel_writer_settings` function extracts these values from the
+settings.xml file using XPath queries and provides fallbacks where necessary.
+
+Limitations
+----------------------------
+The module does not support certain features such as:
+- Auto-sizing columns.
+- True row-wise appending to existing sheets.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.ext.poi3.node.io.filehandling.excel.writer.ExcelTableWriterNodeFactory
+"""
+
 ####################################################################################################
 #
 # Excel Writer

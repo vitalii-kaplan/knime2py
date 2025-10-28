@@ -1,31 +1,84 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Gradient Boosted Trees (Classification) Learner
-#
-# Trains a scikit-learn GradientBoostingClassifier from KNIME settings.xml, selecting features and
-# target, then publishes three outputs: (1) a model bundle for downstream prediction, (2) a
-# feature-importance table, and (3) a compact training summary. Inputs are read from the first
-# table port; results are written into the node's context ports.
-#
-# - Feature selection: use included_names if present; otherwise all numeric/boolean columns except
-#   the target. Excluded_names are removed afterward. If no target is configured, the node is a
-#   passthrough: bundle=None and empty outputs with an error note in the summary.
-# - Hyperparameters mapped: nrModels→n_estimators, learningRate→learning_rate, maxLevels
-#   (-1/absent → default 3)→max_depth, minNodeSize→min_samples_split (≥2), minChildSize→min_samples_leaf (≥1),
-#   dataFraction (0<≤1)→subsample (stochastic GB), columnSamplingMode→max_features (None/'sqrt'/'log2'/fraction/int),
-#   seed→random_state. Seed defaults to 1 for deterministic output.
-# - Unsupported/orthogonal flags: splitCriterion (trees in sklearn GBT have fixed criterion),
-#   missingValueHandling (impute beforehand), useAverageSplitPoints, useBinaryNominalSplits,
-#   isUseDifferentAttributesAtEachNode (no direct sklearn analog). These are noted and ignored.
-# - Outputs: port 1=model bundle (estimator, metadata), port 2=feature_importances_, port 3=summary.
-# - Dependencies: lxml for XML parsing; pandas/numpy for data handling; scikit-learn for modeling.
-# - KNIME seeds can be > 2**32-1. We now coerce to a valid sklearn seed:
-#       seed32 = None if seed is None else int(abs(int(seed)) % (2**32))
-#
-####################################################################################################
+"""Gradient Boosted Trees (Classification) Learner.
 
+Overview
+----------------------------
+This module generates Python code to train a scikit-learn GradientBoostingClassifier
+based on configurations from KNIME's settings.xml. It produces a model bundle, a
+feature importance table, and a training summary.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the first input port.
+
+Outputs:
+- Writes to context keys:
+  - context['node_id:1']: model bundle (dict)
+  - context['node_id:2']: feature importance DataFrame
+  - context['node_id:3']: summary DataFrame
+
+Key algorithms or mappings include:
+- Maps KNIME hyperparameters to scikit-learn equivalents.
+- Handles feature selection based on included and excluded columns.
+
+Edge Cases
+----------------------------
+The code implements safeguards for:
+- Empty or constant columns.
+- NaN values in the input DataFrame.
+- Class imbalance by ensuring a fallback path when no target is configured.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+- numpy
+- scikit-learn
+These dependencies are required for the generated code, not for this module.
+
+Usage
+----------------------------
+Typically invoked by the knime2py emitter, this module is used in workflows
+that involve training classification models. An example of expected context access:
+```python
+df = context['input_table']
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.mine.treeensemble2.node.gradientboosting.learner.classification.GradientBoostingClassificationLearnerNodeFactory2"
+
+Configuration
+----------------------------
+The settings are encapsulated in the `GradientBoostingSettings` dataclass, which includes:
+- target: The target column for prediction (default: None).
+- n_estimators: Number of boosting stages to be run (default: 100).
+- learning_rate: Step size for each boosting step (default: 0.1).
+- max_depth: Maximum depth of the individual estimators (default: 3).
+- min_samples_split: Minimum number of samples required to split an internal node (default: 2).
+- min_samples_leaf: Minimum number of samples required to be at a leaf node (default: 1).
+- subsample: Fraction of samples used for fitting the individual base learners (default: 1.0).
+- max_features: Number of features to consider when looking for the best split (default: None).
+- random_state: Random seed for reproducibility (default: 1).
+
+The `parse_gbt_settings` function extracts these values from the settings.xml file using
+XPath queries and provides fallbacks for missing values.
+
+Limitations
+----------------------------
+Certain KNIME features are not supported, such as:
+- Custom split criteria.
+- Handling of missing values directly within the model.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.ensembles/latest/
+org.knime.base.node.mine.treeensemble2.node.gradientboosting.learner.classification.GradientBoostingClassificationLearnerNodeFactory2
+"""
 
 from __future__ import annotations
 

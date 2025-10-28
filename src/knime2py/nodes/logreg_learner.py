@@ -1,20 +1,83 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Logistic Regression Learner
-#
-# Trains a scikit-learn LogisticRegression from KNIME settings.xml, selecting X/y and publishing
-# three outputs: (1) a model bundle for downstream prediction, (2) a coefficients table (with
-# odds ratios), and (3) a compact training summary. Reads the first input table from context.
-#
-# - Feature selection: use included_names if set; otherwise all numeric/boolean columns minus the
-#   target; then remove excluded_names.
-# - Hyperparameter mapping: solver(KNIME→sklearn), maxEpoch→max_iter, epsilon→tol, seed→random_state.
-#   Target reference category is recorded as metadata only (no sklearn equivalent).
-#
-####################################################################################################
+"""Logistic Regression Learner.
 
+Overview
+----------------------------
+This module generates Python code for training a Logistic Regression model using 
+scikit-learn based on configurations from KNIME's settings.xml. It produces a 
+model bundle, a coefficients table, and a training summary.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the key format `context['<source_id>:<port>']`.
+
+Outputs:
+- Writes to context with the following mappings:
+  - `context['<node_id>:1']`: model bundle (dict)
+  - `context['<node_id>:2']`: coefficients table (DataFrame)
+  - `context['<node_id>:3']`: training summary (DataFrame)
+
+Key algorithms or mappings:
+- Maps KNIME solver options to scikit-learn equivalents.
+- Handles feature selection based on included and excluded column names.
+
+Edge Cases
+----------------------------
+The code implements safeguards against:
+- Empty or constant columns.
+- NaN values in the input DataFrame.
+- Class imbalance by allowing for flexible feature selection.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+- numpy
+- sklearn
+These dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+Typically invoked by the knime2py emitter, this module is used in workflows 
+that involve logistic regression modeling. An example of expected context access:
+```python
+df = context['source_id:1']  # input table
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.mine.regression.logistic.learner4.LogRegLearnerNodeFactory4"
+
+Configuration
+----------------------------
+The settings are encapsulated in the `LogisticRegressionSettings` dataclass, 
+which includes:
+- `target`: The target column name (default: None).
+- `include_cols`: List of columns to include (default: empty).
+- `exclude_cols`: List of columns to exclude (default: empty).
+- `solver`: The optimization algorithm (default: "lbfgs").
+- `max_iter`: Maximum number of iterations (default: 100).
+- `tol`: Tolerance for stopping criteria (default: 1e-4).
+- `seed`: Random seed for reproducibility (default: None).
+- `ref_category`: Reference category for the target (default: None).
+
+The `parse_logreg_settings` function extracts these values from the settings.xml 
+using XPath queries and provides fallbacks for missing configurations.
+
+Limitations
+----------------------------
+Certain options available in KNIME may not be fully supported or may be approximated 
+in the generated code.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.mine.regression.logistic.learner4.LogRegLearnerNodeFactory4
+"""
 
 from __future__ import annotations
 

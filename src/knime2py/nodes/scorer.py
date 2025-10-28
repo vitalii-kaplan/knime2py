@@ -1,19 +1,76 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Scorer
-#
-# Computes classification metrics from a scored table based on settings.xml: builds a confusion
-# matrix and a summary table with Accuracy, Error, #Correct, #False, and Cohen’s kappa. Reads the
-# truth and prediction columns, optionally drops rows with missing values, and writes two outputs.
-#
-# - Columns: 'first' → truth column, 'second' → prediction column (default "Prediction (<truth>)").
-#   ignore.missing.values=true drops NA before scoring; false keeps NA (sklearn metrics may fail).
-# - Confusion matrix labels: union of values from truth and prediction in order of appearance.
-# 
-####################################################################################################
+"""
+Scorer module for computing classification metrics from a scored table.
 
+Overview
+----------------------------
+This module emits Python code that computes classification metrics such as accuracy,
+error rate, and Cohen's kappa from a scored table. It fits into the knime2py generator
+pipeline by transforming KNIME node configurations into executable Python code.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context containing truth and prediction columns.
+
+Outputs:
+- Writes the confusion matrix and summary metrics to the context with the following
+  port mappings:
+  - Port 1: confusion matrix (DataFrame)
+  - Port 2: summary metrics (DataFrame)
+
+Key algorithms:
+- Utilizes sklearn's accuracy_score, cohen_kappa_score, and confusion_matrix for
+  metric calculations.
+- Handles missing values based on configuration settings.
+
+Edge Cases
+----------------------------
+The code implements safeguards against:
+- Empty or constant columns.
+- NaN values in the input DataFrame, with options to ignore or retain them.
+- Class imbalance by ensuring metrics are computed even with limited data.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+- numpy
+- sklearn
+These dependencies are required for the generated code, not for this module.
+
+Usage
+----------------------------
+Typically invoked by the knime2py emitter, this module is used in workflows where
+classification metrics are needed. An example of expected context access is:
+```python
+df = context['input_id:1']  # Accessing the input DataFrame
+```
+
+Node Identity
+----------------------------
+This module generates code based on the following KNIME factory:
+- FACTORY: "org.knime.base.node.mine.scorer.accuracy.AccuracyScorer2NodeFactory"
+
+Configuration
+----------------------------
+The settings are defined in the `ScorerSettings` dataclass with the following fields:
+- truth_col: The name of the truth column (default "class").
+- pred_col: The name of the prediction column (default "Prediction (class)").
+- ignore_missing: A boolean indicating whether to ignore missing values (default True).
+The `parse_scorer_settings` function extracts these values from the settings.xml file.
+
+Limitations
+----------------------------
+This module does not support all KNIME features and may approximate behavior in some cases.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.mine.scorer.accuracy.AccuracyScorer2NodeFactory
+"""
 
 from __future__ import annotations
 

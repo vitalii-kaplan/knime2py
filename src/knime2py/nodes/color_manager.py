@@ -1,15 +1,63 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Color Manager
-#
-# Passthrough implementation. 
-# 
-# KNIME color annotations are UI metadata and have no native representation in pandas;
-# we therefore forward the input table unchanged to all outputs.
-#
-####################################################################################################
+"""
+Color Manager module for KNIME.
+
+Overview
+----------------------------
+This module generates Python code for a Color Manager node in KNIME, which 
+forwards input tables unchanged to all outputs, as color annotations are 
+UI metadata without a native representation in pandas.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the key format '{src_id}:{in_port}'.
+
+Outputs:
+- Writes the unchanged DataFrame to all specified output ports in the context.
+
+Key algorithms or mappings:
+- The module does not implement any complex algorithms as it simply passes 
+  through the input DataFrame.
+
+Edge Cases
+----------------------------
+- The code does not handle any specific edge cases as it assumes the input 
+  DataFrame is valid and simply forwards it.
+
+Generated Code Dependencies
+----------------------------
+- The generated code does not require any external libraries as it only 
+  passes through the DataFrame.
+
+Usage
+----------------------------
+- This module is typically invoked by the knime2py emitter when generating 
+  code for a Color Manager node.
+- Example context access: `df = context['{src_id}:{in_port}']`.
+
+Node Identity
+----------------------------
+- KNIME factory id: 
+  FACTORY = "org.knime.base.node.viz.property.color.ColorManager2NodeFactory".
+
+Configuration
+----------------------------
+- This module does not generate code based on settings.xml and therefore 
+  does not utilize any dataclass for settings.
+
+Limitations
+----------------------------
+- The module does not support any transformations or modifications to the 
+  input DataFrame.
+
+References
+----------------------------
+- For more information, refer to the KNIME documentation and the hub URL: 
+  https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+  org.knime.base.node.viz.property.color.ColorManager2NodeFactory
+"""
 
 from __future__ import annotations
 

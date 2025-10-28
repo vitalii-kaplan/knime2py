@@ -1,21 +1,73 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# X-Aggregator
-#
-# Module-level contract:
-#   - LOOP = "finish"  (used by emitter.py to recognize loop finish nodes)
-# Generated code behavior (executed INSIDE the loop body opened by X-Partitioner):
-#   - Reads the current fold DataFrame from context.
-#   - Binds to the active loop state context['__loop__:<xpart_id>'] (k folds, current index).
-#   - Resets the fold accumulator on the first fold to avoid stale data across runs.
-#   - Optionally adds a Fold column to the current fold.
-#   - Appends the current fold DF into an accumulator list stored in
-#       context['__xagg__:<loop_id>:accum'].
-#   - **Only on the last fold** (current == k - 1) publishes the concatenated result.
-#
-####################################################################################################
+"""X-Aggregator module for aggregating per-fold data in a KNIME workflow.
+
+Overview
+----------------------------
+This module generates Python code that aggregates data from multiple folds in a 
+cross-validation process, specifically designed for use within the KNIME to Python 
+conversion pipeline.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads the current fold DataFrame from the context, specifically from the key 
+  `context['{src_id}:{in_port}']`.
+
+Outputs:
+- Writes the aggregated DataFrame to the context under the keys 
+  `context['{node_id}:{p}']` for each output port, where `p` is the port identifier.
+
+Key algorithms:
+- The module implements logic to handle the aggregation of DataFrames across 
+  multiple folds, ensuring that outputs are only published on the last fold.
+
+Edge Cases
+----------------------------
+The code includes safeguards against empty or constant columns, NaNs, and class 
+imbalance. It also implements fallback paths to handle scenarios where no valid 
+loop state is found.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas, numpy. 
+These dependencies are required by the generated code, not by this module itself.
+
+Usage
+----------------------------
+Typically, this module is invoked by the KNIME emitter as part of a workflow 
+that includes nodes for cross-validation. An example of expected context access 
+is:
+```python
+df = context['{src_id}:{in_port}']  # per-fold input table
+```
+
+Node Identity
+----------------------------
+- KNIME factory ID: `FACTORY = "org.knime.base.node.meta.xvalidation.AggregateOutputNodeFactory"`
+- Special flag: `LOOP = "finish"` indicates that this node marks the end of a loop.
+
+Configuration
+----------------------------
+The settings are defined in the `XAggSettings` dataclass, which includes:
+- `prediction_col`: Optional; the name of the prediction column.
+- `target_col`: Optional; the name of the target column.
+- `add_fold_id`: Boolean; indicates whether to add a Fold column (default: False).
+
+The `parse_xagg_settings` function extracts these values from the `settings.xml` 
+file using XPath queries, with appropriate fallbacks.
+
+Limitations
+----------------------------
+This module does not support certain advanced configurations available in KNIME, 
+and approximations may occur in behavior compared to the original KNIME nodes.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following hub URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.meta.xvalidation.AggregateOutputNodeFactory
+"""
 
 from __future__ import annotations
 

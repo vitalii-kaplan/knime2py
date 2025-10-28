@@ -4,7 +4,7 @@ set -euo pipefail
 # Usage:
 #   ./rag_query_files.sh [DIRECTORY]
 # If DIRECTORY is not provided, defaults to TARGET_DIR.
-TARGET_DIR="${1:-tests/}"
+TARGET_DIR="${1:-src/}"
 
 # Build the multi-line edit text safely.
 # Note: read -d '' returns non-zero at EOF; temporarily disable -e.

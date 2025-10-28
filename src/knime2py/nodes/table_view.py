@@ -1,19 +1,77 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Table View
-#
-# Reads a single input table and prints it to stdout according to view settings in settings.xml:
-# - Column selection: MANUAL list (selected_Internals + manualFilter/manuallySelected), with
-#   includeUnknownColumns deciding whether to append other columns after the selection.
-# - Banners: title, table size, and (optionally) column dtypes.
-# - Display options: showRowIndices (controls index printing), simple pagination (first page only)
-#   when enablePagination=true, honoring pageSize.
-#
-# This view node intentionally writes NO outputs to the workflow context – it only prints.
-#
-####################################################################################################
+"""
+Table View module for KNIME to Python conversion.
+
+Overview
+----------------------------
+This module generates Python code to read a single input table and print it to stdout
+according to view settings defined in settings.xml. It fits into the knime2py generator
+pipeline by providing a view-only node that does not produce any outputs to the workflow
+context.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the key format 'src_id:in_port'.
+
+Outputs:
+- Writes to stdout, displaying the table based on the specified view settings.
+- No outputs are written to context.
+
+Key algorithms or mappings:
+- Supports manual and automatic column selection, with options for including unknown
+  columns, displaying row indices, and pagination.
+
+Edge Cases
+----------------------------
+The code handles empty or constant columns, NaNs, and ensures that the output is
+formatted correctly even if the DataFrame is empty or has no valid columns to display.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas. These dependencies
+are required by the generated code, not by this module itself.
+
+Usage
+----------------------------
+Typically, this module is invoked by the emitter in a KNIME workflow. An example of
+expected context access is:
+```python
+df = context['source_id:1']  # input table
+```
+
+Node Identity
+----------------------------
+KNIME factory id: org.knime.base.views.node.tableview.TableViewNodeFactory.
+
+Configuration
+----------------------------
+The settings are defined in the `TableViewSettings` dataclass, which includes:
+- mode: str (default "AUTO")
+- selected_cols: List[str] (default empty list)
+- include_unknown: bool (default False)
+- show_row_indices: bool (default False)
+- title: str (default "Table View")
+- show_size: bool (default True)
+- show_dtypes: bool (default True)
+- enable_pagination: bool (default False)
+- page_size: int (default 10)
+
+The `parse_table_view_settings` function extracts these values from the settings.xml file
+using XPath queries, with fallbacks for missing entries.
+
+Limitations
+----------------------------
+This module does not support advanced KNIME features such as dynamic column selection
+or complex data transformations.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following hub URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.views.node.tableview.TableViewNodeFactory
+"""
 
 from __future__ import annotations
 

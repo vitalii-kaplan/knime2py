@@ -1,19 +1,74 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# CSV Writer
-# 
-# Writes a pandas DataFrame to CSV using options parsed from settings.xml.#
-# Resolves LOCAL/RELATIVE (knime.workflow) paths and maps KNIME writer options to pandas.to_csv.
-#
-# pandas>=1.5 recommended for consistent NA/nullable dtype handling.
-# Path resolution supports LOCAL absolute paths and RELATIVE knime.workflow; other FS types are not yet handled.
-# Directory creation is not automatic; ensure out_path.parent exists before writing.
-# Line terminator / quoting mode / doublequote / escapechar are not explicitly mapped unless present; pandas defaults apply.
-# File is overwritten by default; KNIME “append/overwrite” style flags are not implemented here.
-#
-####################################################################################################
+"""
+CSV Writer module.
+
+Overview
+----------------------------
+This module generates Python code to write a pandas DataFrame to a CSV file based on 
+settings parsed from settings.xml. It fits into the knime2py generator pipeline as a 
+node that handles CSV output.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a single DataFrame from the context using the key format 'src_id:in_port'.
+
+Outputs:
+- Writes the DataFrame to a specified CSV file path, which is determined by settings.xml 
+  and mapped to the output context.
+
+Key algorithms or mappings:
+- The module maps KNIME writer options to pandas.to_csv parameters, including handling 
+  of separators, quote characters, and header options.
+
+Edge Cases
+----------------------------
+The code implements safeguards for missing output paths, defaulting to a placeholder if 
+not found. It also handles NaN values based on the na_rep setting.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries: pandas, lxml. These 
+dependencies are required for the generated code, not for this module itself.
+
+Usage
+----------------------------
+This module is typically invoked by the knime2py emitter when processing a CSV Writer 
+node. An example of expected context access is:
+```python
+df = context['source_id:1']
+```
+
+Node Identity
+----------------------------
+KNIME factory id: org.knime.base.node.io.filehandling.csv.writer.CSVWriter2NodeFactory.
+
+Configuration
+----------------------------
+The settings are encapsulated in the `CSVWriterSettings` dataclass, which includes 
+important fields such as:
+- path: The output file path (default: None).
+- sep: The separator used in the CSV file (default: ",").
+- quotechar: The character used for quoting (default: '"').
+- header: Whether to write the header (default: True).
+- encoding: The file encoding (default: "utf-8").
+- na_rep: Representation for NaN values (default: None).
+- include_index: Whether to include the DataFrame index (default: False).
+
+The parse_csv_writer_settings function extracts these values from settings.xml, 
+handling both LOCAL and RELATIVE paths.
+
+Limitations
+----------------------------
+The module does not implement options for appending to existing files or advanced 
+error handling beyond basic path resolution.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the hub at 
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/org.knime.base.node.io.filehandling.csv.writer.CSVWriter2NodeFactory.
+"""
 
 from __future__ import annotations
 

@@ -1,20 +1,73 @@
 #!/usr/bin/env python3
 
-####################################################################################################
-#
-# Equal Size Sampling
-#
-# Downsamples classes to the same size across a chosen class/label column using options parsed
-# from settings.xml. Implements KNIME’s “Exact” method by sampling without replacement down to the
-# minimum observed class count. Uses sklearn.utils.resample for reproducibility.
-#
-# Exact mode only: “Approximate” sampling is not implemented in this generator.
-# Requires pandas; scikit-learn is used only for resample() (no synthetic example generation).
-# Seed is used when provided; default fallback is 1 for deterministic output.
-# Order of rows after concatenation is re-sorted back to the original index.
-#
-####################################################################################################
+"""
+Equal Size Sampling.
 
+Overview
+----------------------------
+This module generates Python code to perform equal size sampling on a DataFrame,
+downsampling classes to the same size across a specified class/label column.
+
+Runtime Behavior
+----------------------------
+Inputs:
+- Reads a DataFrame from the context using the key format `'{src_id}:{in_port}'`.
+
+Outputs:
+- Writes the resulting DataFrame to the context using the key format `'{node_id}:{port}'`,
+  where `port` is determined by the outgoing connections.
+
+Key algorithms:
+- Utilizes sklearn's `resample` function to achieve downsampling without replacement,
+  ensuring reproducibility through a specified random seed.
+
+Edge Cases
+----------------------------
+- Handles empty DataFrames by returning an empty DataFrame.
+- Safeguards against constant columns and NaN values by checking group sizes before sampling.
+- Implements logic to manage class imbalance by downsampling to the minimum class size.
+
+Generated Code Dependencies
+----------------------------
+The generated code requires the following external libraries:
+- pandas
+- sklearn
+
+These dependencies are required by the generated code, not by this module.
+
+Usage
+----------------------------
+Typically invoked by the knime2py emitter for nodes that require equal size sampling.
+Example context access:
+```python
+df = context['input_table:1']
+```
+
+Node Identity
+----------------------------
+KNIME factory id:
+- FACTORY = "org.knime.base.node.preproc.equalsizesampling.EqualSizeSamplingNodeFactory"
+
+Configuration
+----------------------------
+The settings are defined in the `EqualSizeSamplingSettings` dataclass, which includes:
+- `class_col`: The name of the class/label column (default: None).
+- `seed`: The random seed for reproducibility (default: 1).
+- `method`: The sampling method, which is "Exact" (default: "Exact").
+
+The `parse_equal_size_sampling_settings` function extracts these values from `settings.xml`
+using XPath queries, with fallbacks to defaults as necessary.
+
+Limitations
+----------------------------
+Approximate sampling is not implemented; only the "Exact" method is supported.
+
+References
+----------------------------
+For more information, refer to the KNIME documentation and the following URL:
+https://hub.knime.com/knime/extensions/org.knime.features.base/latest/
+org.knime.base.node.preproc.equalsizesampling.EqualSizeSamplingNodeFactory
+"""
 
 from __future__ import annotations
 
