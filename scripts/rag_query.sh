@@ -86,4 +86,7 @@ Acceptance criteria:
 PROMPT
 set -e
 
-python -m rag.query_openai_file "$TARGET" --rewrite --edit "$EDIT_TEXT"
+#python -m rag.query_openai_file "$TARGET" --rewrite --edit "$EDIT_TEXT"
+
+#python -m rag.query_openai "Which .py file generates code for KNIME Random Forest node?" 
+python -m rag.query_openai "Describe me Runtime Behavior of Decision Tree Learner node knime2py implementation." 
