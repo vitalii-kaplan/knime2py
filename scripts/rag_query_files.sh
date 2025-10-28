@@ -2,10 +2,10 @@
 set -euo pipefail
 
 # Usage:
-#   ./bulk_docstrings.sh [DIRECTORY]
-# If DIRECTORY is not provided, defaults to "src/".
+#   ./rag_query_files.sh [DIRECTORY]
+# If DIRECTORY is not provided, defaults to TARGET_DIR.
 
-TARGET_DIR="${1:-src/}"
+TARGET_DIR="${1:-tests/}"
 
 # Recursively find all .py files under TARGET_DIR whose basenames do NOT start with "__"
 # and rewrite each file using the RAG editor.

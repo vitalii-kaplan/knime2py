@@ -15,6 +15,7 @@ from knime2py.nodes import csv_reader, csv_writer
 
 @pytest.fixture(scope="session")
 def node_csv_writer_dir(node_dir):
+    """Fixture that provides the directory for the CSV Writer node."""
     return node_dir("Node_csv_writer")
 
 def test_writer_nodeblock_uses_settings_and_correct_context_key(
@@ -22,9 +23,11 @@ def test_writer_nodeblock_uses_settings_and_correct_context_key(
     node_csv_writer_dir: Path,
 ):
     """
-    Build a minimal graph: Reader(1393) -> Writer(1394),
-    then verify the Writer NodeBlock consumes the right context key
-    and writes to the path parsed from its settings.xml with correct kwargs.
+    Test that the Writer NodeBlock correctly uses settings and the appropriate context key.
+
+    This test builds a minimal graph consisting of a CSV Reader and a CSV Writer,
+    verifies that the Writer NodeBlock consumes the correct context key, and checks
+    that it writes to the path specified in its settings.xml with the correct keyword arguments.
     """
     reader_id = "1393"
     writer_id = "1394"

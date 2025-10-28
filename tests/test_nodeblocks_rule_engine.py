@@ -15,11 +15,18 @@ from knime2py.emitters import build_workbook_blocks
 
 def test_rule_engine_generates_compare_and_default(node_csv_reader_dir: Path):
     """
-    Build a minimal graph: Reader(1393) -> RuleEngine(4001),
-    then verify the Rule Engine NodeBlock uses the simple rule:
+    Test the generation of a NodeBlock for the Rule Engine node.
+
+    This test builds a minimal workflow graph consisting of a CSV Reader node
+    followed by a Rule Engine node. It verifies that the Rule Engine NodeBlock
+    correctly implements the simple rule:
       $in_amount$ > 0 => "yes"
       TRUE => "no"
-    and writes to the 'Dependent' column (append-column = true).
+    and that it writes the results to the 'Dependent' column when append-column
+    is set to true.
+    
+    Args:
+        node_csv_reader_dir (Path): The directory containing the CSV Reader node's test data.
     """
     node_rule_engine_dir = repo_root / "tests" / "data" / "Node_rule_engine"
     assert node_rule_engine_dir.joinpath("settings.xml").exists(), "Missing Rule Engine settings.xml test data"

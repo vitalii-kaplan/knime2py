@@ -12,6 +12,16 @@ from support import csv_compare  # provides compare_csv(...) and RTOL
 RTOL = 0.01
 
 def test_roundtrip_hw_churn_test_preparation(output_dir: Path):
+    """
+    Test the roundtrip generation and execution of the KNIME workflow 
+    "HW_Churn_test_preparation". This function verifies that the workflow 
+    can be successfully converted to a Python workbook, executed, and that 
+    the output matches the expected CSV files.
+
+    Args:
+        output_dir (Path): The directory where the generated Python workbook 
+                           and output CSV files will be stored.
+    """
     repo_root = Path(__file__).resolve().parents[1]
     knime_proj = repo_root / "tests" / "data" / "HW_Churn_test_preparation"
     out_dir = output_dir  # provided by conftest.py fixture

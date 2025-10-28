@@ -41,6 +41,9 @@ def clean_node_dir(node_dir: Path) -> None:
     """
     Delete all contents of `node_dir` except the file 'settings.xml'.
     Any directories within are removed entirely.
+
+    Args:
+        node_dir (Path): The path to the node directory to clean.
     """
     if not node_dir.is_dir():
         return
@@ -64,6 +67,9 @@ def clean_root_files(root: Path) -> None:
     """
     In the root path, delete all files (including hidden) except 'workflow.knime'.
     Do not delete any directories in the root.
+
+    Args:
+        root (Path): The path to the root directory to clean.
     """
     for entry in root.iterdir():
         if entry.is_dir():
@@ -80,6 +86,10 @@ def clean_root_files(root: Path) -> None:
 
 
 def main() -> None:
+    """
+    Main function to parse command line arguments and initiate the cleaning process
+    for the specified KNIME project directory.
+    """
     ap = argparse.ArgumentParser(description="Clean KNIME project: keep settings.xml in node dirs and workflow.knime in root.")
     ap.add_argument("path", help="Path to the KNIME project directory")
     args = ap.parse_args()

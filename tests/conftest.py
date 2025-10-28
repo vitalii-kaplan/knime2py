@@ -25,14 +25,21 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 # Small helpers
 # --------------------------------------------------------------------------------------
 def _require(p: Path, msg: str) -> Path:
-    """Assert a path exists with a concise error."""
+    """Assert a path exists with a concise error message."""
     if not p.exists():
         pytest.fail(f"{msg}: {p}")
     return p
 
 
 def _workflow_path(project_dirname: str) -> Path:
-    """tests/data/<project_dirname>/workflow.knime"""
+    """Construct the path to the workflow file for a given project directory name.
+
+    Args:
+        project_dirname (str): The name of the project directory.
+
+    Returns:
+        Path: The path to the workflow.knime file.
+    """
     return DATA_DIR / project_dirname / "workflow.knime"
 
 
@@ -41,24 +48,44 @@ def _workflow_path(project_dirname: str) -> Path:
 # --------------------------------------------------------------------------------------
 @pytest.fixture(scope="session")
 def repo_root() -> Path:
+    """Provide the root path of the repository.
+
+    Returns:
+        Path: The root path of the repository.
+    """
     return REPO_ROOT
 
 
 @pytest.fixture(scope="session")
 def data_dir() -> Path:
+    """Provide the path to the data directory.
+
+    Returns:
+        Path: The path to the data directory.
+    """
     return DATA_DIR
 
 
 @pytest.fixture(scope="session")
 def python_exe() -> str:
-    """Path to the current Python interpreter."""
+    """Provide the path to the current Python interpreter.
+
+    Returns:
+        str: The path to the current Python executable.
+    """
     return sys.executable
 
 @pytest.fixture()
 def output_dir(data_dir: Path) -> Iterator[Path]:
-    """
-    Provide an empty output directory at tests/data/!output.
-    Directory is cleaned before each test and left on disk after (useful for artifacts).
+    """Provide an empty output directory for test artifacts.
+
+    The directory is cleaned before each test and left on disk after the test.
+
+    Args:
+        data_dir (Path): The path to the data directory.
+
+    Yields:
+        Iterator[Path]: The path to the output directory.
     """
     out_dir = data_dir / "!output"
     if out_dir.exists():
@@ -73,9 +100,13 @@ def output_dir(data_dir: Path) -> Iterator[Path]:
 # --------------------------------------------------------------------------------------
 @pytest.fixture(scope="session")
 def workflow() -> Callable[[str], Path]:
-    """
-    Resolve a workflow by KNIME project directory name.
-    Example: workflow('KNIME_single_csv')
+    """Resolve a workflow by KNIME project directory name.
+
+    Example:
+        workflow('KNIME_single_csv')
+
+    Returns:
+        Callable[[str], Path]: A function that returns the path to the workflow.
     """
     def _wf(name: str) -> Path:
         return _require(_workflow_path(name), "Missing sample workflow")
@@ -84,9 +115,16 @@ def workflow() -> Callable[[str], Path]:
 
 @pytest.fixture(scope="session")
 def node_dir(data_dir: Path) -> Callable[[str], Path]:
-    """
-    Resolve a node directory by short name.
-    Example: node_dir('Node_csv_reader') → tests/data/Node_csv_reader
+    """Resolve a node directory by short name.
+
+    Example:
+        node_dir('Node_csv_reader') → tests/data/Node_csv_reader
+
+    Args:
+        data_dir (Path): The path to the data directory.
+
+    Returns:
+        Callable[[str], Path]: A function that returns the path to the node directory.
     """
     def _nd(name: str) -> Path:
         ndir = data_dir / name
@@ -100,5 +138,12 @@ def node_dir(data_dir: Path) -> Callable[[str], Path]:
 # --------------------------------------------------------------------------------------
 @pytest.fixture(scope="session")
 def node_csv_reader_dir(node_dir: Callable[[str], Path]) -> Path:
-    return node_dir("Node_csv_reader")
+    """Provide the path to the CSV reader node directory.
 
+    Args:
+        node_dir (Callable[[str], Path]): A function to resolve node directories.
+
+    Returns:
+        Path: The path to the CSV reader node directory.
+    """
+    return node_dir("Node_csv_reader")

@@ -14,14 +14,28 @@ from knime2py.emitters import build_workbook_blocks
 
 @pytest.fixture(scope="session")
 def node_missing_value_dir(node_dir):
+    """
+    Fixture that provides the directory for the Missing Value node.
+
+    Args:
+        node_dir (function): A function that returns the directory path for a given node.
+
+    Returns:
+        Path: The path to the Missing Value node directory.
+    """
     return node_dir("Node_missing_value")
 
 def test_missing_value_block_imputes_integers_to_zero(node_csv_reader_dir: Path):
     """
-    Build a minimal graph: Reader(1393) -> MissingValue(3001),
-    then verify the Missing Value NodeBlock reads from the correct context
-    and emits code that imputes integer-typed columns with 0, based on
+    Test that the Missing Value NodeBlock correctly imputes integer-typed columns with 0.
+
+    This test builds a minimal workflow graph consisting of a CSV Reader node and a Missing Value node.
+    It verifies that the Missing Value NodeBlock reads from the correct context and emits code that
+    imputes missing integer values with 0, based on the settings defined in
     tests/data/Node_missing_value/settings.xml.
+
+    Args:
+        node_csv_reader_dir (Path): The directory path for the CSV Reader node.
     """
     # Path to the Missing Value node settings
     node_missing_value_dir = repo_root / "tests" / "data" / "Node_missing_value"

@@ -10,15 +10,22 @@ from knime2py.nodes.node_utils import looks_like_path
 # and provide a back-compat alias `csv_reader_node_dir`.
 @pytest.fixture(scope="session")
 def node_csv_reader_dir(node_dir) -> Path:
+    """Fixture that provides the path to the CSV reader node directory."""
     return node_dir("Node_csv_reader")
 
 @pytest.fixture(scope="session")
 def csv_reader_node_dir(node_csv_reader_dir: Path) -> Path:
+    """Fixture that provides a back-compat alias for the CSV reader node directory."""
     return node_csv_reader_dir
 
 
 def test_parse_csv_reader_settings_fields_valid(csv_reader_node_dir: Path):
-    """Ensure parse_csv_reader_settings fills all fields plausibly and correctly."""
+    """Ensure parse_csv_reader_settings fills all fields plausibly and correctly.
+
+    This test verifies that the settings parsed from the CSV reader node
+    contain valid values for path, delimiter, quote character, escape character,
+    header, and encoding.
+    """
     s = cr.parse_csv_reader_settings(csv_reader_node_dir)
 
     # path

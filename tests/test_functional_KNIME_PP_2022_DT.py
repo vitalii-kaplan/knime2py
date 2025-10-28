@@ -7,6 +7,16 @@ from pathlib import Path
 
 
 def test_end_to_end_dt_scorer():
+    """
+    Test the end-to-end functionality of the DT scorer by generating a Python workbook
+    from a KNIME project, executing it, and validating the output CSV file.
+
+    This function performs the following steps:
+    1. Prepares the output directory by cleaning it if it already exists.
+    2. Generates a Python workbook from the specified KNIME project.
+    3. Executes the generated workbook and checks for successful execution.
+    4. Validates the presence and contents of the output Score.csv file.
+    """
     # Paths
     repo_root = Path(__file__).resolve().parents[1]
     knime_proj = repo_root / "tests" / "data" / "KNIME_PP_2022_DT"

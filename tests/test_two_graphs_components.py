@@ -8,15 +8,18 @@ import knime2py.parse_knime as k2p
 
 @pytest.fixture(scope="session")
 def wf_two_graphs_path(workflow) -> Path:
+    """Fixture that provides the path to the KNIME workflow with two graphs."""
     return workflow("KNIME_two_graphs")
 
 def test_two_graphs_discovery_includes_sample(wf_two_graphs_path: Path):
+    """Test that the sample workflow is discovered in the specified directory."""
     root = wf_two_graphs_path.parent
     found = k2p.discover_workflows(root)
     assert any(p.samefile(wf_two_graphs_path) for p in found), "Sample workflow not discovered"
 
 
 def test_two_graphs_components_structure(wf_two_graphs_path: Path):
+    """Test the structure of components in the two graphs workflow."""
     graphs = k2p.parse_workflow_components(wf_two_graphs_path)
     assert len(graphs) == 2, f"expected 2 components, got {len(graphs)}"
 
@@ -27,6 +30,7 @@ def test_two_graphs_components_structure(wf_two_graphs_path: Path):
 
     # Each component: exactly 2 nodes, 1 edge, and the edge connects those two nodes
     def label(n):
+        """Return a string representation of a node's type and name."""
         return f"{n.type or ''} {n.name or ''}"
 
     for g in graphs:

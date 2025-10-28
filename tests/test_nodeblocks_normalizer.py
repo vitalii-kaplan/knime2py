@@ -15,21 +15,44 @@ from knime2py.emitters import build_workbook_blocks
 # Provide the CSV Reader node dir (used by many tests; override here to avoid conftest edits)
 @pytest.fixture(scope="session")
 def node_csv_reader_dir(node_dir: callable) -> Path:  # node_dir comes from conftest
+    """Fixture that provides the directory for the CSV Reader node.
+
+    Args:
+        node_dir (callable): A callable that returns the directory for a given node.
+
+    Returns:
+        Path: The path to the CSV Reader node directory.
+    """
     return node_dir("Node_csv_reader")
 
 @pytest.fixture(scope="session")
 def node_normalizer_dir(node_dir: callable) -> Path:
+    """Fixture that provides the directory for the Normalizer node.
+
+    Args:
+        node_dir (callable): A callable that returns the directory for a given node.
+
+    Returns:
+        Path: The path to the Normalizer node directory.
+    """
     return node_dir("Node_normalizer")
 
 
 def test_normalizer_block_minmax_defaults(node_csv_reader_dir: Path, node_normalizer_dir: Path):
-    """
-    Build a minimal graph: Reader(1393) -> Normalizer(3101), then verify the Normalizer NodeBlock:
-      1) reads df from context['1393:1']
-      2) selects numeric/boolean columns via select_dtypes(include=['number','bool','boolean','Int64','Float64'])
-      3) emits min-max normalization with 0.0..1.0 and uses _minmax_col via .apply(_minmax_col)
-      4) publishes to context['3101:1']
+    """Test the Normalizer NodeBlock with min-max normalization defaults.
+
+    This test builds a minimal graph consisting of a CSV Reader node and a Normalizer node,
+    then verifies the Normalizer NodeBlock's behavior, including:
+      1) Reading a DataFrame from context['1393:1'].
+      2) Selecting numeric/boolean columns.
+      3) Emitting min-max normalization with specified bounds.
+      4) Publishing the result to context['3101:1'].
+
     Based on tests/data/Node_normalizer/settings.xml (MINMAX, new-min=0.0, new-max=1.0).
+    
+    Args:
+        node_csv_reader_dir (Path): The directory for the CSV Reader node.
+        node_normalizer_dir (Path): The directory for the Normalizer node.
     """
     # Node ids & types
     reader_id = "1393"

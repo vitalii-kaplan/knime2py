@@ -8,17 +8,19 @@ import knime2py.parse_knime as k2p
 
 @pytest.fixture(scope="session")
 def wf_io_csv_path(workflow) -> Path:
-    # Resolve tests/data/KNIME_io_csv/workflow.knime
+    """Fixture to resolve the path to the KNIME workflow for CSV I/O tests."""
     return workflow("KNIME_io_csv")
 
 
 def test_io_csv_discovery_includes_sample(wf_io_csv_path: Path):
+    """Test that the workflow discovery includes the sample CSV workflow."""
     root = wf_io_csv_path.parent
     found = k2p.discover_workflows(root)
     assert any(p.samefile(wf_io_csv_path) for p in found), f"did not find {wf_io_csv_path}"
 
 
 def test_io_csv_has_reader_writer_and_edge(wf_io_csv_path: Path):
+    """Test that the workflow has exactly one CSV Reader and one CSV Writer, and an edge between them."""
     g = k2p.parse_workflow(wf_io_csv_path)
 
     # exactly two nodes
@@ -44,7 +46,7 @@ def test_io_csv_has_reader_writer_and_edge(wf_io_csv_path: Path):
 
 
 def test_io_csv_reader_state_executed(wf_io_csv_path: Path):
-    """CSV Reader node should be in EXECUTED state in this sample."""
+    """Test that the CSV Reader node is in EXECUTED state in this sample."""
     g = k2p.parse_workflow(wf_io_csv_path)
 
     def label(n):
@@ -59,7 +61,7 @@ def test_io_csv_reader_state_executed(wf_io_csv_path: Path):
 
 
 def test_io_csv_writer_state_configured(wf_io_csv_path: Path):
-    """CSV Writer node should be in CONFIGURED state in this sample."""
+    """Test that the CSV Writer node is in CONFIGURED state in this sample."""
     g = k2p.parse_workflow(wf_io_csv_path)
 
     def label(n):

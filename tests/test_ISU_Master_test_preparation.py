@@ -13,6 +13,16 @@ _env_rtol = os.environ.get("K2P_RTOL")
 RTOL = float(_env_rtol) if _env_rtol is not None else csv_compare.RTOL
 
 def test_roundtrip_isu_master_test_preparation(output_dir: Path):
+    """
+    Test the roundtrip generation and execution of the KNIME workflow 
+    "ISU_Master_test_preparation". This function verifies that the workflow 
+    can be successfully converted to a Python workbook and that the output 
+    CSV files match the expected results.
+
+    Args:
+        output_dir (Path): The directory where the generated Python workbook 
+                           and output CSV files will be stored.
+    """
     repo_root = Path(__file__).resolve().parents[1]
     knime_proj = repo_root / "tests" / "data" / "ISU_Master_test_preparation"
     out_dir = output_dir  # provided by conftest.py fixture

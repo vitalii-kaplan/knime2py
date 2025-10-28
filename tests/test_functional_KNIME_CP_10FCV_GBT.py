@@ -38,7 +38,18 @@ else:
 
 
 def _resolve_single_workflow(path: Path) -> Path:
-    """Return a single workflow.knime path or exit with an error message."""
+    """Return a single workflow.knime path or exit with an error message.
+
+    This function checks if the provided path is a valid workflow.knime file or
+    a directory containing exactly one workflow.knime file. If the path is invalid,
+    it prints an error message and exits the program.
+
+    Args:
+        path (Path): The path to check for a workflow.knime file.
+
+    Returns:
+        Path: The resolved path to the workflow.knime file.
+    """
     p = path.expanduser().resolve()
 
     if not p.exists():
@@ -60,6 +71,19 @@ def _resolve_single_workflow(path: Path) -> Path:
 
 
 def run_cli(argv: Optional[list[str]] = None) -> int:
+    """Parse command-line arguments and run the KNIME workflow processing.
+
+    This function sets up the command-line interface for the script, processes
+    the provided workflow.knime file or directory, and generates the corresponding
+    graph and workbook files.
+
+    Args:
+        argv (Optional[list[str]]): The command-line arguments to parse. If None,
+                                     uses sys.argv.
+
+    Returns:
+        int: The exit code of the operation (0 for success, non-zero for errors).
+    """
     p = argparse.ArgumentParser(
         description="Parse a single KNIME workflow and emit graph + workbook per isolated subgraph."
     )
@@ -163,6 +187,13 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
 
 
 def main(argv: Optional[list[str]] = None) -> None:
+    """Main entry point for the script.
+
+    This function runs the command-line interface and handles the exit code.
+
+    Args:
+        argv (Optional[list[str]]): The command-line arguments to pass to run_cli.
+    """
     code = run_cli(argv)
     if code:
         sys.exit(code)

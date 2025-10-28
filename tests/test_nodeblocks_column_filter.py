@@ -14,12 +14,27 @@ from knime2py.emitters import build_workbook_blocks
 
 @pytest.fixture(scope="session")
 def node_column_filter_dir(node_dir):
+    """
+    Fixture that provides the directory path for the Node_column_filter test data.
+
+    Args:
+        node_dir (function): A function that returns the directory path for a given node.
+
+    Returns:
+        Path: The path to the Node_column_filter directory.
+    """
     return node_dir("Node_column_filter")
 
 def test_column_filter_block_emits_expected_excludes_line(node_csv_reader_dir: Path):
     """
-    Build a minimal graph: Reader(1393) -> ColumnFilter(2001),
-    then verify the Column Filter NodeBlock contains the expected exclude_cols list.
+    Test that the Column Filter NodeBlock emits the expected exclude_cols line.
+
+    This test builds a minimal workflow graph consisting of a CSV Reader node and a Column Filter node.
+    It verifies that the generated NodeBlock for the Column Filter contains the expected list of columns
+    to exclude based on the settings defined in the corresponding settings.xml file.
+
+    Args:
+        node_csv_reader_dir (Path): The directory path for the CSV Reader node.
     """
     # Paths
     node_column_filter_dir = repo_root / "tests" / "data" / "Node_column_filter"

@@ -14,7 +14,16 @@ RTOL: float = float(os.environ.get("K2P_RTOL", "1e-3"))  # 0.1%
 ZERO_TOL: float = float(os.environ.get("K2P_ZERO_TOL", "1e-6"))
 
 def read_csv_rows(path: Path) -> List[List[str]]:
-    """Read CSV into rows (lists of trimmed strings). Skip fully-empty rows."""
+    """Read a CSV file and return its rows as a list of lists of trimmed strings.
+    
+    This function skips any fully-empty rows in the CSV.
+    
+    Args:
+        path (Path): The path to the CSV file to read.
+    
+    Returns:
+        List[List[str]]: A list of rows, where each row is a list of trimmed strings.
+    """
     with path.open(newline="") as f:
         reader = csv.reader(f)
         rows: List[List[str]] = []
@@ -27,7 +36,15 @@ def read_csv_rows(path: Path) -> List[List[str]]:
         return rows
 
 def _try_parse_float(s: str) -> Tuple[bool, float | None]:
-    """Return (is_number, value). Accepts inf/-inf/NaN case-insensitively."""
+    """Attempt to parse a string as a float, handling special cases like NaN and infinity.
+    
+    Args:
+        s (str): The string to parse.
+    
+    Returns:
+        Tuple[bool, float | None]: A tuple where the first element indicates if the parsing was successful,
+        and the second element is the parsed float value or None if parsing failed.
+    """
     s2 = (s or "").strip()
     if s2 == "":
         return False, None
@@ -44,16 +61,31 @@ def _try_parse_float(s: str) -> Tuple[bool, float | None]:
         return False, None
 
 def _normalize_zero(v: float) -> float:
-    """Return 0.0 if v is finite and |v| < ZERO_TOL, else v unchanged."""
+    """Normalize a value to zero if it is finite and below the defined zero tolerance.
+    
+    Args:
+        v (float): The value to normalize.
+    
+    Returns:
+        float: The normalized value, which will be 0.0 if |v| < ZERO_TOL, otherwise v unchanged.
+    """
     if math.isfinite(v) and abs(v) < ZERO_TOL:
         return 0.0
     return v
 
 def cells_equal(a: str, b: str, *, rtol: float) -> bool:
-    """
-    Numeric cells equal within RELATIVE tol (abs_tol=0). Before comparison,
-    any finite |value| < ZERO_TOL is treated as 0.0 in both cells.
+    """Check if two cell values are equal within a specified relative tolerance.
+    
+    This function treats any finite value less than ZERO_TOL as 0.0 for comparison.
     Non-numeric cells must match exactly after trimming.
+    
+    Args:
+        a (str): The first cell value.
+        b (str): The second cell value.
+        rtol (float): The relative tolerance for numeric comparison.
+    
+    Returns:
+        bool: True if the cells are considered equal, False otherwise.
     """
     an, av = _try_parse_float(a)
     bn, bv = _try_parse_float(b)
@@ -72,7 +104,19 @@ def cells_equal(a: str, b: str, *, rtol: float) -> bool:
     return (a or "").strip() == (b or "").strip()
 
 def compare_csv(got_path: Path, exp_path: Path, *, rtol: float = RTOL) -> None:
-    """Assert two CSVs are equal using relative tolerance for numeric cells, with ZERO_TOL zeroing."""
+    """Compare two CSV files for equality, allowing for relative tolerance in numeric cells.
+    
+    This function asserts that the two CSVs have the same number of rows and that their headers match.
+    It checks each cell for equality, treating finite values below ZERO_TOL as 0.0.
+    
+    Args:
+        got_path (Path): The path to the actual output CSV file.
+        exp_path (Path): The path to the expected output CSV file.
+        rtol (float, optional): The relative tolerance for numeric comparisons. Defaults to RTOL.
+    
+    Raises:
+        AssertionError: If the CSV files differ in row count, header, or any cell values.
+    """
     got = read_csv_rows(got_path)
     exp = read_csv_rows(exp_path)
 

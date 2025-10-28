@@ -15,10 +15,14 @@ from knime2py.emitters import build_workbook_blocks
 
 def test_partitioning_block_emits_stratified_train_lines(node_csv_reader_dir: Path):
     """
-    Build a minimal graph: Reader(1393) -> Partitioning(4001),
-    then verify the Partitioning NodeBlock contains the expected
-    train_test_split-based stratified code using the settings under
-    tests/data/Node_partitioning/settings.xml.
+    Test that the Partitioning NodeBlock emits the expected stratified train/test split code.
+    
+    This test builds a minimal workflow graph consisting of a CSV Reader node and a Partitioning node.
+    It verifies that the generated code for the Partitioning NodeBlock correctly implements the 
+    stratified train/test split based on the settings defined in the provided settings.xml file.
+    
+    Args:
+        node_csv_reader_dir (Path): The directory containing the CSV reader node.
     """
     node_partitioning_dir = repo_root / "tests" / "data" / "Node_partitioning"
     assert node_partitioning_dir.joinpath("settings.xml").exists(), "Missing Partitioning settings.xml test data"
