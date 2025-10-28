@@ -3,7 +3,7 @@ site_url: https://vitalii-kaplan.github.io/knime2py/
 repo_url: https://github.com/vitalii-kaplan/knime2py
 repo_name: vitalii-kaplan/knime2py
 
-docs_dir: docs        
+docs_dir: docs
 use_directory_urls: true
 
 theme:
@@ -14,13 +14,13 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: [src]            # inspect your package code under src/
+          paths: [src]
           options:
             show_root_heading: true
             show_source: true
             members_order: source
             filters: ["!^_"]
-            docstring_style: google   # or "numpy"
+            docstring_style: google
   - gen-files:
       scripts:
         - docs/_scripts/gen_api.py
@@ -30,4 +30,4 @@ plugins:
 
 nav:
   - Home: index.md
-  - Source: SUMMARY.md        # your auto-generated API/source tree
+  - Source: SUMMARY.md
