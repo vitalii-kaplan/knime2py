@@ -16,7 +16,6 @@ jobs:
         py: ["3.11"]
     runs-on: ${{ matrix.os }}
     env:
-      # Make PEX behavior stable and verbose across runners
       PEX_VERBOSE: "9"
       PEX_PIP_VERSION: "latest"
       PEX_VENV: "1"
@@ -52,8 +51,6 @@ jobs:
             windows-2022) OS_OUT="k2p-windows.pex" ;;
           esac
 
-          # Build from the wheel we just produced; target only CPython 3.11
-          # -c k2p relies on your console_scripts entry point. Validate to fail fast if missing/broken.
           pex dist/*.whl \
             -c k2p \
             -o "dist/${OS_OUT}" \
@@ -65,7 +62,7 @@ jobs:
           echo "Produced dist/${OS_OUT}"
           ls -l dist
 
-      # Non-Windows smoke test (bash)
+      # Unix smoke test: --help + interpreter-mode import for version
       - name: Smoke test PEX (Unix)
         if: matrix.os != 'windows-2022'
         shell: bash
@@ -74,26 +71,27 @@ jobs:
           for f in dist/*.pex; do
             echo "Testing $f"
             python3 "$f" --help >/dev/null
-            ver="$(python3 "$f" --version || true)"
-            echo "VER=[$ver]"
-            [[ -n "$ver" ]] || { echo "empty version output"; exit 1; }
+            ver="$(PEX_INTERPRETER=1 python3 "$f" -c "import knime2py, sys; print(getattr(knime2py, '__version__', 'unknown'))")"
+            echo "knime2py version: $ver"
+            test -n "$ver"
           done
 
-      # Windows smoke test (PowerShell)
+      # Windows smoke test: --help + interpreter-mode import for version
       - name: Smoke test PEX (Windows)
         if: matrix.os == 'windows-2022'
         shell: pwsh
         run: |
           Get-ChildItem dist\*.pex | ForEach-Object {
             Write-Host "Testing $($_.FullName)"
-            # Always execute .pex via 'python' on Windows
             python $_.FullName --help | Out-Null
             if ($LASTEXITCODE -ne 0) { throw "k2p --help failed: $LASTEXITCODE" }
 
-            $ver = python $_.FullName --version
-            Write-Host ("VER=[{0}]" -f $ver)
-            if ($LASTEXITCODE -ne 0) { throw "k2p --version failed: $LASTEXITCODE" }
-            if ([string]::IsNullOrWhiteSpace($ver)) { throw "k2p --version printed nothing" }
+            $env:PEX_INTERPRETER = "1"
+            $ver = python $_.FullName -c "import knime2py, sys; print(getattr(knime2py,'__version__','unknown'))"
+            if ($LASTEXITCODE -ne 0) { throw "interpreter-mode import failed: $LASTEXITCODE" }
+            if ([string]::IsNullOrWhiteSpace($ver)) { throw 'empty version output' }
+            Write-Host ("knime2py version: {0}" -f $ver)
+            Remove-Item Env:\PEX_INTERPRETER -ErrorAction SilentlyContinue
           }
 
       - name: Upload artifact
