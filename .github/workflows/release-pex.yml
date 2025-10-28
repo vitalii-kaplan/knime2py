@@ -6,7 +6,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: write 
+  contents: write
 
 jobs:
   pex:
@@ -16,10 +16,15 @@ jobs:
         py: ["3.11"]
     runs-on: ${{ matrix.os }}
     env:
+      # Make PEX behavior stable and verbose across runners
       PEX_VERBOSE: "9"
-      PEX_PIP_VERSION: "latest"     
+      PEX_PIP_VERSION: "latest"
+      PEX_VENV: "1"
+      PEX_IGNORE_RCFILES: "1"
+      PYTHONIOENCODING: "UTF-8"
       PIP_NO_INPUT: "1"
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
     steps:
       - uses: actions/checkout@v4
 
@@ -48,31 +53,52 @@ jobs:
           esac
 
           # Build from the wheel we just produced; target only CPython 3.11
+          # -c k2p relies on your console_scripts entry point. Validate to fail fast if missing/broken.
           pex dist/*.whl \
             -c k2p \
             -o "dist/${OS_OUT}" \
             --venv prepend \
             --strip-pex-env \
+            --validate-entry-point \
             --interpreter-constraint 'CPython==3.11.*'
 
           echo "Produced dist/${OS_OUT}"
           ls -l dist
 
-      - name: Smoke test PEX
+      # Non-Windows smoke test (bash)
+      - name: Smoke test PEX (Unix)
+        if: matrix.os != 'windows-2022'
         shell: bash
         run: |
-          case "${{ matrix.os }}" in
-            windows-2022) PYEXE="python" ;;
-            *) PYEXE="python3" ;;
-          esac
+          set -euo pipefail
           for f in dist/*.pex; do
-            $PYEXE "$f" --help >/dev/null
+            echo "Testing $f"
+            python3 "$f" --help >/dev/null
+            ver="$(python3 "$f" --version || true)"
+            echo "VER=[$ver]"
+            [[ -n "$ver" ]] || { echo "empty version output"; exit 1; }
           done
+
+      # Windows smoke test (PowerShell)
+      - name: Smoke test PEX (Windows)
+        if: matrix.os == 'windows-2022'
+        shell: pwsh
+        run: |
+          Get-ChildItem dist\*.pex | ForEach-Object {
+            Write-Host "Testing $($_.FullName)"
+            # Always execute .pex via 'python' on Windows
+            python $_.FullName --help | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "k2p --help failed: $LASTEXITCODE" }
+
+            $ver = python $_.FullName --version
+            Write-Host ("VER=[{0}]" -f $ver)
+            if ($LASTEXITCODE -ne 0) { throw "k2p --version failed: $LASTEXITCODE" }
+            if ([string]::IsNullOrWhiteSpace($ver)) { throw "k2p --version printed nothing" }
+          }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          # unique per matrix row (prevents collisions)
           name: pex-${{ matrix.os }}
           path: dist/*.pex
           if-no-files-found: error
@@ -83,9 +109,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          path: artifacts   # downloads all pex-* artifacts
+          path: artifacts
 
-      # Use the pushed tag if present; otherwise create a dated prerelease
       - name: Compute tag
         id: tag
         run: |
@@ -102,4 +127,4 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.TAG }}
           prerelease: ${{ steps.tag.outputs.PRERELEASE }}
-          files: artifacts/**/*  # uploads all three/four PEX files
+          files: artifacts/**/*
