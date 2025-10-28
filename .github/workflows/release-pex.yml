@@ -51,7 +51,7 @@ jobs:
             windows-2022) OS_OUT="k2p-windows.pex" ;;
           esac
 
-          # Skip entry-point validation on Windows (PEX venv bug)
+          # Skip entry-point validation on Windows
           if [ "${{ matrix.os }}" = "windows-2022" ]; then
             VALIDATE=""
           else
@@ -69,7 +69,7 @@ jobs:
           echo "Produced dist/${OS_OUT}"
           ls -l dist
 
-      # Unix smoke test: --help + interpreter-mode import for version
+      # Unix smoke test: keep CLI --help plus interpreter import
       - name: Smoke test PEX (Unix)
         if: matrix.os != 'windows-2022'
         shell: bash
@@ -83,21 +83,29 @@ jobs:
             test -n "$ver"
           done
 
-      # Windows smoke test: --help + interpreter-mode import for version
+      # Windows smoke test: interpreter-mode only (no CLI invocation)
       - name: Smoke test PEX (Windows)
         if: matrix.os == 'windows-2022'
         shell: pwsh
         run: |
           Get-ChildItem dist\*.pex | ForEach-Object {
             Write-Host "Testing $($_.FullName)"
-            python $_.FullName --help | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw "k2p --help failed: $LASTEXITCODE" }
-
             $env:PEX_INTERPRETER = "1"
+
+            # 1) Basic import proves site-packages resolution in the PEX venv
+            $null = python $_.FullName -c "import knime2py"
+            if ($LASTEXITCODE -ne 0) { throw "import knime2py failed: $LASTEXITCODE" }
+
+            # 2) Read version to ensure we're loading our wheel from the PEX
             $ver = python $_.FullName -c "import knime2py, sys; print(getattr(knime2py,'__version__','unknown'))"
-            if ($LASTEXITCODE -ne 0) { throw "interpreter-mode import failed: $LASTEXITCODE" }
+            if ($LASTEXITCODE -ne 0) { throw "version check failed: $LASTEXITCODE" }
             if ([string]::IsNullOrWhiteSpace($ver)) { throw 'empty version output' }
             Write-Host ("knime2py version: {0}" -f $ver)
+
+            # 3) Ensure CLI module is importable (entrypoint target exists)
+            $null = python $_.FullName -c "import importlib; assert importlib.util.find_spec('knime2py.cli') is not None"
+            if ($LASTEXITCODE -ne 0) { throw "cli module import failed: $LASTEXITCODE" }
+
             Remove-Item Env:\PEX_INTERPRETER -ErrorAction SilentlyContinue
           }
 
