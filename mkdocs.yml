@@ -10,7 +10,6 @@ theme:
   name: material
 
 plugins:
-  - search
   - mkdocstrings:
       handlers:
         python:
@@ -19,7 +18,7 @@ plugins:
             show_root_heading: true
             show_source: true
             members_order: source
-            filters: ["!^_"]
+            filters: ['!^_']
             docstring_style: google
   - gen-files:
       scripts:
@@ -29,5 +28,4 @@ plugins:
   - section-index
 
 nav:
-  - Home: index.md
-  - Source: SUMMARY.md
+  - SUMMARY.md

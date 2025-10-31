@@ -12,23 +12,23 @@ TOP_LABEL = "Source"
 nav = mkdocs_gen_files.Nav()
 
 for path in sorted(SRC_ROOT.rglob("*.py")):
-    rel = path.relative_to("src").with_suffix("")      # e.g., knime2py/__main__
+    rel = path.relative_to("src").with_suffix("")
     parts = list(rel.parts)
 
-    # Drop package-level __init__.py (keep subpackages as index pages)
+    # Drop package-level __init__.py page (keep subpackages as index pages)
     if parts[-1] == "__init__":
         parts = parts[:-1]
         if not parts:
             continue
 
-    # Drop __main__.py entirely (we don’t want a docs page for the CLI shim)
-    if parts[-1] == "__main__":
+    # Drop __main__.py (don’t generate docs for the CLI shim)
+    if parts and parts[-1] == "__main__":
         continue
 
     mod = ".".join(parts)
 
-    # For package pages, write .../index.md so the URL is a directory index
-    if (path.name == "__init__.py"):
+    # For package pages, write .../index.md to get nice section URLs
+    if path.name == "__init__.py":
         doc_path = Path(DOC_ROOT, *parts, "index.md")
     else:
         doc_path = Path(DOC_ROOT, *parts).with_suffix(".md")
@@ -45,5 +45,9 @@ for path in sorted(SRC_ROOT.rglob("*.py")):
 
     nav[(TOP_LABEL,) + tuple(parts)] = doc_path.as_posix()
 
+# Build SUMMARY.md with top-level pages first, then the generated Source tree
 with mkdocs_gen_files.open("SUMMARY.md", "w") as f:
+    f.write("* [Home](index.md)\n")
+    f.write("* [Installation](installation.md)\n")
+    f.write("* [Quickstart](quickstart.md)\n")
     f.writelines(nav.build_literate_nav())
