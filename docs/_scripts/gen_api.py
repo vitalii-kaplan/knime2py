@@ -50,4 +50,5 @@ with mkdocs_gen_files.open("SUMMARY.md", "w") as f:
     f.write("* [Home](index.md)\n")
     f.write("* [Installation](installation.md)\n")
     f.write("* [Quickstart](quickstart.md)\n")
+    f.write("* [UI](ui.md)\n")
     f.writelines(nav.build_literate_nav())
