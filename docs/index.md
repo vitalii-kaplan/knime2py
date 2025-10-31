@@ -2,6 +2,8 @@
 
 **knime2py** is a KNIME→Python exporter and code generator. It parses a KNIME workflow, reconstructs its nodes and connections, and emits runnable Python “workbooks” (Jupyter notebook and/or script) by translating supported KNIME nodes into idiomatic **pandas** / **scikit-learn** code via a pluggable node registry. In addition to executable code, it writes a machine-readable graph (**JSON**) and a **Graphviz DOT** file, preserving port wiring and execution order so the generated Python mirrors the original workflow.
 
+GitHub repo: [vitalii-kaplan/knime2py](https://github.com/vitalii-kaplan/knime2py)
+
 ---
 
 ## Features
