@@ -8,6 +8,8 @@ use_directory_urls: true
 
 theme:
   name: material
+  logo: imgs/branding/logo.svg
+  favicon: imgs/branding/favicon.ico
 
 plugins:
   - mkdocstrings:
