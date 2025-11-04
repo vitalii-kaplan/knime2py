@@ -30,7 +30,7 @@ jobs:
             -bc . \
             -pn "${{ github.event.repository.name }}" \
             -pv "${{ github.ref_name || github.sha }}" \
-            -ps "vitaly-chibrikov" \
+            -ps "vitalii-kaplan" \
             -nsb "https://github.com/${{ github.repository }}" \
             -V Verbose
 

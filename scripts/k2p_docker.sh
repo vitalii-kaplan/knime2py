@@ -9,7 +9,7 @@ WORKFLOW_REL="${WORKFLOW_REL:-tests/data/KNIME_CP_10FCV_GBT}"
 OUT_REL="${OUT_REL:-output}"
 # ---------------------------------------------------------------
 
-IMAGE="${IMAGE:-ghcr.io/vitaly-chibrikov/knime2py:latest}"
+IMAGE="${IMAGE:-ghcr.io/vitalii-kaplan/knime2py:latest}"
 
 # Locate repo root (works whether this script is called from anywhere)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
