@@ -30,6 +30,19 @@
         }
       },
       {
+        "name": "pytest: KNIME2PY_UI roundtrip",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "pytest",
+        "args": ["tests/test_KNIME2PY_UI.py::test_roundtrip_knime2py_ui"],
+        "cwd": "${workspaceFolder}",
+        "console": "integratedTerminal",
+        "justMyCode": true,
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}"
+        }
+      },
+      {
         "name": "pytest: debug all (no cov)",
         "type": "debugpy",
         "request": "launch",

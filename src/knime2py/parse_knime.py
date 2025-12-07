@@ -357,8 +357,8 @@ def _compute_exportable_flag(
     """
     Determine whether a subgraph is exportable.
 
-    A graph is marked non-exportable if ANY start node (in-degree == 0 within the
-    subgraph) has name 'KNIME2PY' (case-insensitive).
+    A graph is marked non-exportable if any node name contains one of the configured
+    non-exportable markers (case-insensitive).
     """
     if not node_subset:
         return True
@@ -368,11 +368,10 @@ def _compute_exportable_flag(
         if edge.target in indegree and edge.source in indegree:
             indegree[edge.target] += 1
 
-    start_nodes = [nid for nid, deg in indegree.items() if deg == 0]
     non_exportable = {name.upper() for name in NON_EXPORTABLE_NODE_NAMES}
-    for nid in start_nodes:
+    for nid in node_subset:
         name = (node_subset[nid].name or "").strip().upper()
-        if name in non_exportable:
+        if any(marker in name for marker in non_exportable):
             return False
     return True
 
