@@ -196,9 +196,11 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
                 not_impl_names.add(f"{title} ({factory})")
 
         # Workbooks
-        if args.workbook in (None, "py"):
+        exportable = getattr(g, "exportable", True)
+
+        if exportable and args.workbook in (None, "py"):
             wb_py = write_workbook_py(g, out_dir, blocks, imports)
-        if args.workbook in (None, "ipynb"):
+        if exportable and args.workbook in (None, "ipynb"):
             wb_ipynb = write_workbook_ipynb(g, out_dir, blocks, imports)
 
         components.append(

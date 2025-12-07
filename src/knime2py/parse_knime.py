@@ -1,67 +1,67 @@
-# knime2py/parse_knime.py
 #!/usr/bin/env python3
-"""
-Parse KNIME workflow files and extract their structure.
+"""Parse KNIME workflow files and extract their structure.
 
-Overview
-----------------------------
-This module parses KNIME workflow files to extract nodes and edges, producing a 
-graph representation of the workflow. It fits into the knime2py generator pipeline 
+## Overview
+
+This module parses KNIME workflow files to extract nodes and edges, producing a
+graph representation of the workflow. It fits into the knime2py generator pipeline
 by enabling the conversion of KNIME workflows into Python code.
 
-Runtime Behavior
-----------------------------
-Inputs include DataFrames or context keys that the generated code reads. Outputs 
-are written to `context[...]`, with port mappings and types defined by the 
-workflow structure. The module implements key algorithms for node processing, 
+## Runtime Behavior
+
+Inputs include DataFrames or context keys that the generated code reads. Outputs
+are written to `context[...]`, with port mappings and types defined by the
+workflow structure. The module implements key algorithms for node processing,
 including handling of various KNIME node types.
 
-Edge Cases
-----------------------------
-The code implements safeguards for empty or constant columns, NaNs, and class 
+## Edge Cases
+
+The code implements safeguards for empty or constant columns, NaNs, and class
 imbalances, ensuring robust processing of workflow data.
 
-Generated Code Dependencies
-----------------------------
-This module requires the following external libraries: lxml. These dependencies 
+## Generated Code Dependencies
+
+This module requires the following external libraries: lxml. These dependencies
 are required by the generated code, not by this code.
 
-Usage
-----------------------------
-Typical usage involves invoking this module as part of the workflow parsing 
-process. An example of expected context access might be:
-```python
-data = context['input_table']
-```
+## Usage
 
-Node Identity
-----------------------------
-The module handles various KNIME node types, identified by their unique IDs. 
-Special flags include LOOP, which indicates the start or end of a loop in the 
+Typical usage involves invoking this module as part of the workflow parsing
+process. An example of expected context access might be::
+
+    data = context['input_table']
+
+## Node Identity
+
+The module handles various KNIME node types, identified by their unique IDs.
+Special flags include LOOP, which indicates the start or end of a loop in the
 workflow.
 
-Configuration
-----------------------------
-The `Node` dataclass is used for settings, with important fields including:
-- id: Unique identifier for the node.
-- name: Optional name of the node.
-- type: Optional type of the node.
-- path: Optional path to the node's settings.
-- state: Execution state of the node (EXECUTED, CONFIGURED, IDLE).
-- comments: Optional annotation text for the node.
+## Configuration
 
-The `parse_settings_xml` function extracts these values using XPaths from the 
+The `Node` dataclass is used for settings, with important fields including:
+
+* id: Unique identifier for the node.
+* name: Optional name of the node.
+* type: Optional type of the node.
+* path: Optional path to the node's settings.
+* state: Execution state of the node (EXECUTED, CONFIGURED, IDLE).
+* comments: Optional annotation text for the node.
+
+The `parse_settings_xml` function extracts these values using XPaths from the
 settings.xml file, with fallbacks for missing data.
 
-Limitations
-----------------------------
-Certain KNIME features may not be fully supported or approximated in the 
+## Limitations
+
+Certain KNIME features may not be fully supported or approximated in the
 conversion process.
 
-References
-----------------------------
-For more information, refer to the KNIME documentation and search for relevant 
-terminology related to workflow parsing and node processing.
+## Exportability Heuristic
+
+Each produced graph is marked `exportable: bool`. It is set to **False** if at least
+one start node (node with no incoming edges inside that graph) is named exactly
+`KNIME2PY` (case-insensitive). This lets us ignore the extra UI wrapper component
+when the exporter is launched from a KNIME Component called “KNIME2PY”.
 """
 
 from __future__ import annotations
@@ -69,10 +69,14 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Literal
+from typing import Dict, List, Literal, Optional, Set, Tuple
 
 from lxml import etree as ET
+
 from .xml_utils import XML_PARSER, parse_settings_xml
+
+# Node names that mark a subgraph as non-exportable when encountered as a start node.
+NON_EXPORTABLE_NODE_NAMES = ["KNIME2PY"]
 
 
 @dataclass
@@ -101,56 +105,36 @@ class WorkflowGraph:
     workflow_path: str
     nodes: Dict[str, Node]
     edges: List[Edge]
+    exportable: bool = True
 
 
 def discover_workflows(root: Path) -> List[Path]:
-    """
-    Discover all workflow.knime files in the given root directory and return their paths sorted.
-
-    Args:
-        root (Path): The root directory to search for workflow files.
-
-    Returns:
-        List[Path]: A sorted list of paths to workflow.knime files.
-    """
-    return sorted((p for p in root.rglob("workflow.knime") if p.is_file()), key=lambda p: str(p))
+    """Find all workflow.knime files under `root` (sorted)."""
+    return sorted(
+        (p for p in root.rglob("workflow.knime") if p.is_file()),
+        key=lambda p: str(p),
+    )
 
 
-def _clean_annotation_text(s: str) -> str:
-    """
-    Clean the annotation text by replacing KNIME encoded line breaks and collapsing whitespace.
-
-    Args:
-        s (str): The annotation text to clean.
-
-    Returns:
-        str: The cleaned annotation text.
-    """
-    s = s.replace("%%00010", " ")
-    return " ".join(s.split()).strip()
+def _clean_annotation_text(text: str) -> str:
+    """Replace KNIME-encoded line breaks and collapse whitespace."""
+    text = text.replace("%%00010", " ")
+    return " ".join(text.split()).strip()
 
 
-def _read_state_and_annotation_from_settings(settings_ref: Path) -> tuple[Optional[str], Optional[str]]:
-    """
-    Read the execution state and annotation text from the settings.xml file.
-
-    Args:
-        settings_ref (Path): The path to the settings.xml file or its directory.
-
-    Returns:
-        tuple[Optional[str], Optional[str]]: A tuple containing the state and comments, or (None, None) if not found.
-    """
+def _read_state_and_annotation_from_settings(
+    settings_ref: Path,
+) -> Tuple[Optional[str], Optional[str]]:
+    """Read the execution state and annotation text from the settings.xml file."""
     settings = settings_ref / "settings.xml" if settings_ref.is_dir() else settings_ref
     if not settings.exists():
         return None, None
 
     try:
         root = ET.parse(str(settings), parser=XML_PARSER).getroot()
-        # state
         state_vals = root.xpath(".//*[local-name()='entry' and @key='state']/@value")
-        state = (state_vals[0].strip().upper() if state_vals and state_vals[0] else None)
+        state = state_vals[0].strip().upper() if state_vals and state_vals[0] else None
 
-        # nodeAnnotation/text
         ann_vals = root.xpath(
             ".//*[local-name()='config' and @key='nodeAnnotation']"
             "/*[local-name()='entry' and @key='text']/@value"
@@ -165,17 +149,10 @@ def _read_state_and_annotation_from_settings(settings_ref: Path) -> tuple[Option
         return None, None
 
 
-def _parse_knime5_structure(root, workflow_file: Path) -> Tuple[Dict[str, Node], List[Edge]]:
-    """
-    Parse the structure of a KNIME 5 workflow and extract nodes and edges.
-
-    Args:
-        root: The root element of the parsed XML.
-        workflow_file (Path): The path to the workflow file.
-
-    Returns:
-        Tuple[Dict[str, Node], List[Edge]]: A tuple containing a dictionary of nodes and a list of edges.
-    """
+def _parse_knime5_structure(
+    root: ET._Element, workflow_file: Path
+) -> Tuple[Dict[str, Node], List[Edge]]:
+    """Parse the structure of a KNIME 5 workflow and extract nodes and edges."""
     nodes: Dict[str, Node] = {}
     edges: List[Edge] = []
 
@@ -185,25 +162,43 @@ def _parse_knime5_structure(root, workflow_file: Path) -> Tuple[Dict[str, Node],
     conns_cont = conns_cont[0] if conns_cont else None
 
     if nodes_cont is not None:
-        node_cfgs = nodes_cont.xpath("./*[local-name()='config' and starts-with(@key,'node_')]")
+        node_cfgs = nodes_cont.xpath(
+            "./*[local-name()='config' and starts-with(@key,'node_')]"
+        )
 
-        def node_sort_key(ncfg):
-            raw_id = (ncfg.xpath("string(.//*[local-name()='entry' and @key='id']/@value)") or "").strip()
+        def node_sort_key(ncfg: ET._Element) -> Tuple[float, str]:
+            raw_id = (
+                ncfg.xpath("string(.//*[local-name()='entry' and @key='id']/@value)")
+                or ""
+            ).strip()
             try:
-                n = int(raw_id)
+                parsed_id = float(raw_id)
             except Exception:
-                n = float("inf")
+                parsed_id = float("inf")
             key_attr = (ncfg.get("key") or "")
-            return (n, key_attr)
+            return parsed_id, key_attr
 
         for ncfg in sorted(node_cfgs, key=node_sort_key):
-            raw_id = (ncfg.xpath("string(.//*[local-name()='entry' and @key='id']/@value)") or "").strip()
-            nid_str = raw_id if raw_id else str(uuid.uuid4())
-            if nid_str in nodes:
-                nid_str = f"{nid_str}-{uuid.uuid4()}"
+            raw_id = (
+                ncfg.xpath("string(.//*[local-name()='entry' and @key='id']/@value)")
+                or ""
+            ).strip()
+            node_id = raw_id if raw_id else str(uuid.uuid4())
+            if node_id in nodes:
+                node_id = f"{node_id}-{uuid.uuid4()}"
 
-            settings_file = (ncfg.xpath("string(.//*[local-name()='entry' and @key='node_settings_file']/@value)") or "").strip()
-            node_type = (ncfg.xpath("string(.//*[local-name()='entry' and @key='node_type']/@value)") or "").strip() or None
+            settings_file = (
+                ncfg.xpath(
+                    "string(.//*[local-name()='entry' and @key='node_settings_file']/@value)"
+                )
+                or ""
+            ).strip()
+            node_type = (
+                ncfg.xpath(
+                    "string(.//*[local-name()='entry' and @key='node_type']/@value)"
+                )
+                or ""
+            ).strip() or None
 
             name = None
             node_path = None
@@ -211,18 +206,20 @@ def _parse_knime5_structure(root, workflow_file: Path) -> Tuple[Dict[str, Node],
             comments: Optional[str] = None
 
             if settings_file:
-                rel = Path(settings_file)                      # e.g. "Column Filter (#1350)/settings.xml"
-                name = rel.parent.name or name                 # folder name
-                abs_settings = (workflow_file.parent / rel)    # absolute path to settings.xml
+                rel = Path(settings_file)
+                name = rel.parent.name or name
+                abs_settings = workflow_file.parent / rel
                 if abs_settings.exists():
                     node_path = str(abs_settings.parent)
-                    nm2, fac2 = parse_settings_xml(abs_settings.parent)
-                    name = nm2 or name
-                    node_type = fac2 or node_type
-                    state, comments = _read_state_and_annotation_from_settings(abs_settings)
+                    parsed_name, parsed_type = parse_settings_xml(abs_settings.parent)
+                    name = parsed_name or name
+                    node_type = parsed_type or node_type
+                    state, comments = _read_state_and_annotation_from_settings(
+                        abs_settings
+                    )
 
-            nodes[nid_str] = Node(
-                id=nid_str,
+            nodes[node_id] = Node(
+                id=node_id,
                 name=name,
                 type=node_type,
                 path=node_path,
@@ -231,160 +228,214 @@ def _parse_knime5_structure(root, workflow_file: Path) -> Tuple[Dict[str, Node],
             )
 
     if conns_cont is not None:
-        conn_cfgs = conns_cont.xpath("./*[local-name()='config' and starts-with(@key,'connection_')]")
+        conn_cfgs = conns_cont.xpath(
+            "./*[local-name()='config' and starts-with(@key,'connection_')]"
+        )
 
-        def conn_sort_key(ccfg):
-            def to_int(s):
+        def conn_sort_key(ccfg: ET._Element) -> Tuple[float, float, str, str]:
+            def to_num(value: str) -> float:
                 try:
-                    return int(s)
+                    return float(value)
                 except Exception:
                     return float("inf")
-            src = (ccfg.xpath("string(.//*[local-name()='entry' and @key='sourceID']/@value)") or "").strip()
-            dst = (ccfg.xpath("string(.//*[local-name()='entry' and @key='destID']/@value)") or "").strip()
-            sp = (ccfg.xpath("string(.//*[local-name()='entry' and @key='sourcePort']/@value)") or "").strip()
-            dp = (ccfg.xpath("string(.//*[local-name()='entry' and @key='destPort']/@value)") or "").strip()
-            return (to_int(src), to_int(dst), sp, dp)
+
+            src = (
+                ccfg.xpath(
+                    "string(.//*[local-name()='entry' and @key='sourceID']/@value)"
+                )
+                or ""
+            ).strip()
+            dst = (
+                ccfg.xpath(
+                    "string(.//*[local-name()='entry' and @key='destID']/@value)"
+                )
+                or ""
+            ).strip()
+            src_port = (
+                ccfg.xpath(
+                    "string(.//*[local-name()='entry' and @key='sourcePort']/@value)"
+                )
+                or ""
+            ).strip()
+            dst_port = (
+                ccfg.xpath(
+                    "string(.//*[local-name()='entry' and @key='destPort']/@value)"
+                )
+                or ""
+            ).strip()
+            return to_num(src), to_num(dst), src_port, dst_port
 
         for ccfg in sorted(conn_cfgs, key=conn_sort_key):
-            src = (ccfg.xpath("string(.//*[local-name()='entry' and @key='sourceID']/@value)") or "").strip()
-            dst = (ccfg.xpath("string(.//*[local-name()='entry' and @key='destID']/@value)") or "").strip()
-            s_port = (ccfg.xpath("string(.//*[local-name()='entry' and @key='sourcePort']/@value)") or "").strip() or None
-            d_port = (ccfg.xpath("string(.//*[local-name()='entry' and @key='destPort']/@value)") or "").strip() or None
+            src = (
+                ccfg.xpath(
+                    "string(.//*[local-name()='entry' and @key='sourceID']/@value)"
+                )
+                or ""
+            ).strip()
+            dst = (
+                ccfg.xpath(
+                    "string(.//*[local-name()='entry' and @key='destID']/@value)"
+                )
+                or ""
+            ).strip()
+            src_port = (
+                ccfg.xpath(
+                    "string(.//*[local-name()='entry' and @key='sourcePort']/@value)"
+                )
+                or ""
+            ).strip() or None
+            dst_port = (
+                ccfg.xpath(
+                    "string(.//*[local-name()='entry' and @key='destPort']/@value)"
+                )
+                or ""
+            ).strip() or None
+
             if src and dst:
-                edges.append(Edge(source=str(src), target=str(dst), source_port=s_port, target_port=d_port))
+                edges.append(
+                    Edge(source=str(src), target=str(dst), source_port=src_port, target_port=dst_port)
+                )
 
     return nodes, edges
 
 
-def _parse_legacy_structure(root: ET._Element, workflow_file: Path) -> Tuple[Dict[str, Node], List[Edge]]:
-    """
-    Parse the structure of a legacy KNIME workflow format.
-
-    Args:
-        root (ET._Element): The root element of the parsed XML.
-        workflow_file (Path): The path to the workflow file.
-
-    Raises:
-        ValueError: If the workflow format is unsupported.
-
-    Returns:
-        Tuple[Dict[str, Node], List[Edge]]: This function is not implemented and will raise an error.
-    """
+def _parse_legacy_structure(
+    root: ET._Element, workflow_file: Path
+) -> Tuple[Dict[str, Node], List[Edge]]:
+    """Raise on unsupported/legacy formats (placeholder to extend if needed)."""
     raise ValueError(f"Unsupported/legacy workflow format. File: {workflow_file}")
 
 
-def _weakly_connected_components(nodes: Dict[str, Node], edges: List[Edge]) -> List[List[str]]:
-    """
-    Find weakly connected components in the workflow graph.
-
-    Args:
-        nodes (Dict[str, Node]): A dictionary of nodes in the graph.
-        edges (List[Edge]): A list of edges in the graph.
-
-    Returns:
-        List[List[str]]: A list of weakly connected components, each represented as a list of node IDs.
-    """
+def _weakly_connected_components(
+    nodes: Dict[str, Node], edges: List[Edge]
+) -> List[List[str]]:
+    """Return weakly connected components as lists of node IDs."""
     if not nodes:
         return []
 
-    adj: Dict[str, set] = {nid: set() for nid in nodes}
-    for e in edges:
-        if e.source in nodes and e.target in nodes:
-            adj[e.source].add(e.target)
-            adj[e.target].add(e.source)
+    adjacency: Dict[str, Set[str]] = {nid: set() for nid in nodes}
+    for edge in edges:
+        if edge.source in adjacency and edge.target in adjacency:
+            adjacency[edge.source].add(edge.target)
+            adjacency[edge.target].add(edge.source)
 
-    seen: set = set()
-    comps: List[List[str]] = []
+    seen: Set[str] = set()
+    components: List[List[str]] = []
 
     for nid in nodes:
         if nid in seen:
             continue
         stack = [nid]
-        comp: List[str] = []
+        component: List[str] = []
         seen.add(nid)
         while stack:
-            u = stack.pop()
-            comp.append(u)
-            for v in adj[u]:
-                if v not in seen:
-                    seen.add(v)
-                    stack.append(v)
-        comps.append(sorted(comp, key=lambda x: (int(x) if x.isdigit() else float("inf"), x)))
-    comps.sort(key=lambda comp: (int(comp[0]) if comp and comp[0].isdigit() else float("inf"), comp[0] if comp else ""))
-    return comps
+            current = stack.pop()
+            component.append(current)
+            for neighbor in adjacency[current]:
+                if neighbor not in seen:
+                    seen.add(neighbor)
+                    stack.append(neighbor)
+        components.append(
+            sorted(
+                component,
+                key=lambda node_id: (int(node_id) if node_id.isdigit() else float("inf"), node_id),
+            )
+        )
+
+    components.sort(
+        key=lambda comp: (
+            int(comp[0]) if comp and comp[0].isdigit() else float("inf"),
+            comp[0] if comp else "",
+        )
+    )
+    return components
 
 
-def _split_into_subgraphs(workflow_id: str, workflow_path: str,
-                          nodes: Dict[str, Node], edges: List[Edge]) -> List[WorkflowGraph]:
+def _compute_exportable_flag(
+    node_subset: Dict[str, Node], edge_subset: List[Edge]
+) -> bool:
     """
-    Split the workflow graph into subgraphs based on weakly connected components.
+    Determine whether a subgraph is exportable.
 
-    Args:
-        workflow_id (str): The ID of the workflow.
-        workflow_path (str): The path to the workflow file.
-        nodes (Dict[str, Node]): A dictionary of nodes in the graph.
-        edges (List[Edge]): A list of edges in the graph.
-
-    Returns:
-        List[WorkflowGraph]: A list of WorkflowGraph objects representing the subgraphs.
+    A graph is marked non-exportable if ANY start node (in-degree == 0 within the
+    subgraph) has name 'KNIME2PY' (case-insensitive).
     """
-    comps = _weakly_connected_components(nodes, edges)
-    if not comps:
+    if not node_subset:
+        return True
+
+    indegree = {nid: 0 for nid in node_subset}
+    for edge in edge_subset:
+        if edge.target in indegree and edge.source in indegree:
+            indegree[edge.target] += 1
+
+    start_nodes = [nid for nid, deg in indegree.items() if deg == 0]
+    non_exportable = {name.upper() for name in NON_EXPORTABLE_NODE_NAMES}
+    for nid in start_nodes:
+        name = (node_subset[nid].name or "").strip().upper()
+        if name in non_exportable:
+            return False
+    return True
+
+
+def _split_into_subgraphs(
+    workflow_id: str,
+    workflow_path: str,
+    nodes: Dict[str, Node],
+    edges: List[Edge],
+) -> List[WorkflowGraph]:
+    """Split the workflow graph into subgraphs based on weakly connected components."""
+    components = _weakly_connected_components(nodes, edges)
+    if not components:
         return []
 
     subgraphs: List[WorkflowGraph] = []
-    for idx, comp_nodes in enumerate(comps, start=1):
-        node_subset = {nid: nodes[nid] for nid in comp_nodes}
-        edge_subset = [e for e in edges if e.source in node_subset and e.target in node_subset]
+    for idx, component_nodes in enumerate(components, start=1):
+        node_subset = {nid: nodes[nid] for nid in component_nodes}
+        edge_subset = [
+            edge for edge in edges if edge.source in node_subset and edge.target in node_subset
+        ]
         sub_id = f"{workflow_id}__g{idx:02d}"
-        subgraphs.append(WorkflowGraph(
-            workflow_id=sub_id,
-            workflow_path=workflow_path,
-            nodes=node_subset,
-            edges=edge_subset,
-        ))
+        exportable = _compute_exportable_flag(node_subset, edge_subset)
+        subgraphs.append(
+            WorkflowGraph(
+                workflow_id=sub_id,
+                workflow_path=workflow_path,
+                nodes=node_subset,
+                edges=edge_subset,
+                exportable=exportable,
+            )
+        )
     return subgraphs
 
 
 def parse_workflow_components(workflow_file: Path) -> List[WorkflowGraph]:
-    """
-    Parse a single workflow.knime file and return one WorkflowGraph per weakly connected component.
-
-    Args:
-        workflow_file (Path): The path to the workflow file.
-
-    Returns:
-        List[WorkflowGraph]: A list of WorkflowGraph objects, each representing a weakly connected component.
-    """
+    """Parse a single workflow.knime file and return one graph per weakly connected component."""
     root = ET.parse(str(workflow_file), parser=XML_PARSER).getroot()
     nodes, edges = _parse_knime5_structure(root, workflow_file)
     if not nodes and not edges:
         nodes, edges = _parse_legacy_structure(root, workflow_file)
 
-    base_id = workflow_file.parent.name or workflow_file.parent.as_posix().replace('/', '_')
+    base_id = (
+        workflow_file.parent.name or workflow_file.parent.as_posix().replace("/", "_")
+    )
     return _split_into_subgraphs(base_id, str(workflow_file), nodes, edges)
 
 
 def parse_workflow(workflow_file: Path) -> WorkflowGraph:
-    """
-    Backward-compatible parser that returns the combined graph for the workflow.
-
-    Args:
-        workflow_file (Path): The path to the workflow file.
-
-    Returns:
-        WorkflowGraph: A WorkflowGraph object representing the entire workflow.
-    """
+    """Backward-compatible parser that returns the combined graph for the workflow."""
     root = ET.parse(str(workflow_file), parser=XML_PARSER).getroot()
     nodes, edges = _parse_knime5_structure(root, workflow_file)
     if not nodes and not edges:
         nodes, edges = _parse_legacy_structure(root, workflow_file)
 
-    workflow_id = workflow_file.parent.name or workflow_file.parent.as_posix().replace('/', '_')
+    workflow_id = (
+        workflow_file.parent.name or workflow_file.parent.as_posix().replace("/", "_")
+    )
+    exportable = _compute_exportable_flag(nodes, edges)
     return WorkflowGraph(
         workflow_id=workflow_id,
         workflow_path=str(workflow_file),
         nodes=nodes,
         edges=edges,
+        exportable=exportable,
     )
-
