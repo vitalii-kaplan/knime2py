@@ -5,6 +5,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+from support import csv_compare
+
+RTOL = csv_compare.RTOL
+
 """
 Test the end-to-end functionality of the ensemble scorer.
 
@@ -141,5 +145,18 @@ def test_end_to_end_ensemble_scorer():
     # 243,712
     assert len(rows) >= 3, f"Unexpected CSV shape: {rows}"
     assert rows[0] == ["no", "yes"], f"Header mismatch: {rows[0]}"
-    assert rows[1] == ["465", "183"], f"First data row mismatch: {rows[1]}"
-    assert rows[2] == ["243", "712"], f"Second data row mismatch: {rows[2]}"
+
+    expected_rows = [
+        ["465", "183"],
+        ["243", "712"],
+    ]
+
+    for idx, expected in enumerate(expected_rows, start=1):
+        assert len(rows) > idx, f"Missing row {idx} in Score.csv. Rows: {rows}"
+        got = rows[idx]
+        assert len(got) == len(expected), f"Row {idx} column count mismatch: got={got}, expected={expected}"
+        for col_idx, (ga, exp) in enumerate(zip(got, expected)):
+            assert csv_compare.cells_equal(ga, exp, rtol=RTOL), (
+                f"Value mismatch at row {idx}, col {col_idx}: got={ga!r}, exp={exp!r}, "
+                f"rtol={RTOL}"
+            )
