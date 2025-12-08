@@ -39,6 +39,15 @@ jobs:
           output: 'both'        # writes summary to console and to file
           thresholds: '60 80'   # optional: <warning%> <ok%>
 
+      - name: Show summary file
+        run: cat code-coverage-results.md
+
+      - name: Upload summary as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-md
+          path: code-coverage-results.md
+      
       - name: Add coverage summary as PR comment
         if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@v2
