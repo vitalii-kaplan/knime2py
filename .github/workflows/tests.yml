@@ -15,15 +15,13 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install package and dev dependencies
+      - name: Install package and dev dependencies (editable)
         run: |
-          pip install .
-          pip install ".[dev]"
-          pip install ".[ml-examples]"
+          pip install -e ".[dev,ml-examples]"
 
       - name: Run tests with coverage
         run: |
-          pytest --cov=./knime2py --cov-report=xml:coverage.xml
+          pytest --cov=knime2py --cov-report=xml:coverage.xml
 
       - name: Upload coverage.xml as artifact
         uses: actions/upload-artifact@v4
@@ -36,8 +34,8 @@ jobs:
         with:
           filename: coverage.xml
           format: 'markdown'
-          output: 'both'        # writes summary to console and to file
-          thresholds: '60 80'   # optional: <warning%> <ok%>
+          output: 'both'
+          thresholds: '60 80'
 
       - name: Show summary file
         run: cat code-coverage-results.md
