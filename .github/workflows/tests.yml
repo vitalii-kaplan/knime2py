@@ -19,6 +19,7 @@ jobs:
         run: |
           pip install .
           pip install ".[dev]"
+          pip install ".[ml-examples]"
 
       - name: Run tests with coverage
         run: |
