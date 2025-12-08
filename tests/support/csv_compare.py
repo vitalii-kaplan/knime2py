@@ -70,8 +70,8 @@ import os
 from pathlib import Path
 from typing import List, Tuple
 
-# Default relative tolerance; override at runtime via env var K2P_RTOL
-RTOL: float = float(os.environ.get("K2P_RTOL", "1e-3"))  # 0.1%
+# Default relative tolerance for numeric comparisons.
+RTOL: float = 1e-3  # 0.1%
 
 # Zero tolerance: any finite |value| < ZERO_TOL is treated as 0.0 (in both tables)
 ZERO_TOL: float = float(os.environ.get("K2P_ZERO_TOL", "1e-6"))

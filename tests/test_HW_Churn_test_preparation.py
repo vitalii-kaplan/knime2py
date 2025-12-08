@@ -74,7 +74,7 @@ from pathlib import Path
 
 from support import csv_compare  # provides compare_csv(...) and RTOL
 
-# Resolve RTOL: env K2P_RTOL overrides the library default
+# Tighten tolerance for this workflow (1%)
 RTOL = 0.01
 
 def test_roundtrip_hw_churn_test_preparation(output_dir: Path):

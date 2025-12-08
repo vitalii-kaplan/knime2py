@@ -74,7 +74,7 @@ from pathlib import Path
 from typing import Iterable, Tuple
 
 # ------------------------------------------------------------------------------
-# Defaults (kept for clarity; generated tests use csv_compare.RTOL or env K2P_RTOL)
+# Defaults (kept for clarity; generated tests use csv_compare.RTOL
 # ------------------------------------------------------------------------------
 RTOL = 1e-3  # 0.1% (informational; the generated test will read from csv_compare.RTOL)
 
@@ -220,10 +220,7 @@ import sys
 from pathlib import Path
 
 from support import csv_compare  # provides compare_csv(...) and RTOL
-
-# Resolve RTOL: env K2P_RTOL overrides the library default
-_env_rtol = os.environ.get("K2P_RTOL")
-RTOL = float(_env_rtol) if _env_rtol is not None else csv_compare.RTOL
+RTOL = csv_compare.RTOL
 
 def test_roundtrip_{slug}(output_dir: Path):
     repo_root = Path(__file__).resolve().parents[1]

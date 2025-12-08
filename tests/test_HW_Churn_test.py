@@ -70,9 +70,7 @@ from pathlib import Path
 
 from support import csv_compare  # provides compare_csv(...) and RTOL
 
-# Resolve RTOL: env K2P_RTOL overrides the library default
-_env_rtol = os.environ.get("K2P_RTOL")
-RTOL = float(_env_rtol) if _env_rtol is not None else csv_compare.RTOL
+RTOL = csv_compare.RTOL
 
 def test_roundtrip_hw_churn_test(output_dir: Path):
     """
