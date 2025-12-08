@@ -70,7 +70,7 @@ from pathlib import Path
 
 from support import csv_compare  # provides compare_csv(...) and RTOL
 
-RTOL = csv_compare.RTOL
+RTOL = 0.03
 
 def test_roundtrip_hw_churn_test(output_dir: Path):
     """

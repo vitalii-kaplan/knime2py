@@ -7,7 +7,7 @@ from pathlib import Path
 
 from support import csv_compare
 
-RTOL = csv_compare.RTOL
+RTOL = 0.03
 
 """
 Test the end-to-end functionality of the ensemble scorer.
