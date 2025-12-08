@@ -74,7 +74,7 @@ from typing import List, Tuple
 RTOL: float = 1e-3  # 0.1%
 
 # Zero tolerance: any finite |value| < ZERO_TOL is treated as 0.0 (in both tables)
-ZERO_TOL: float = float(os.environ.get("K2P_ZERO_TOL", "1e-6"))
+ZERO_TOL: float = 1e-6
 
 def read_csv_rows(path: Path) -> List[List[str]]:
     """Read a CSV file and return its rows as a list of lists of trimmed strings.
@@ -218,6 +218,7 @@ def compare_csv(got_path: Path, exp_path: Path, *, rtol: float = RTOL) -> None:
             f"First mismatches (row, col, got, exp, rel_err; math.isclose rel_tol={rtol}, abs_tol=0; ZERO_TOL={ZERO_TOL}):",
             f"Exp table path: {exp_path}",
             f"Got table path: {got_path}",
+            f"Effective RTOL: {rtol}",
         ]
         for i, j, ga, eb, rel in mismatches:
             if rel is None or math.isinf(rel):

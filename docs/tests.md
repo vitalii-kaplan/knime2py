@@ -61,8 +61,8 @@ All generated tests import a single helper module:
 It provides:
 
 * `compare_csv(got_path, exp_path, rtol=RTOL)` — compares two CSVs.
-* `RTOL` — default **relative tolerance** (defaults to `1e-3`, i.e. 0.1%). Can be overridden at runtime via environment variable `K2P_RTOL`.
-* `ZERO_TOL` — small **zero tolerance** (defaults to `1e-6`). Any finite numeric value with absolute magnitude `< ZERO_TOL` is treated as `0.0` before comparison in both tables. Can be overridden via `K2P_ZERO_TOL`.
+* `RTOL` — default **relative tolerance** (defaults to `1e-3`, i.e. 0.1%). Individual tests can still override this constant locally.
+* `ZERO_TOL` — small **zero tolerance** (defaults to `1e-6`). Any finite numeric value with absolute magnitude `< ZERO_TOL` is treated as `0.0` before comparison in both tables.
 
 ### What “equal” means
 
@@ -104,22 +104,12 @@ At a high level, each generated test:
 
 ---
 
-## 6) Tolerances and environment overrides
+## 6) Tolerances
 
-* Default `RTOL = 1e-3` (0.1%). Override for a run:
-
-  ```
-  K2P_RTOL=1e-4 pytest -q
-  ```
-* Default `ZERO_TOL = 1e-6`. Override:
-
-  ```
-  K2P_ZERO_TOL=1e-8 pytest -q
-  ```
+* Default `RTOL = 1e-3` (0.1%). Individual tests can override this constant locally (e.g., `RTOL = 0.1`).
+* Default `ZERO_TOL = 1e-6`. This only affects values that are very close to zero; it avoids meaningless relative errors caused by tiny denormalized numbers.
 
 Use a **larger** `RTOL` when you expect minor, benign numeric drift (e.g., pandas versions, BLAS differences). Use a **smaller** value when you want tighter verification.
-
-`ZERO_TOL` only affects values that are very close to zero; it avoids meaningless relative errors caused by tiny denormalized numbers.
 
 ---
 
@@ -163,14 +153,6 @@ pytest -q
 # Only knime2py roundtrip tests
 pytest -q -k roundtrip
 
-# Tighten numeric tolerance for the run
-K2P_RTOL=1e-4 pytest -q
-
-# Adjust near-zero normalization
-K2P_ZERO_TOL=1e-8 pytest -q
-
 # Show detailed failure output
 pytest -vv
 ```
-
-
