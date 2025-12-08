@@ -30,3 +30,17 @@ jobs:
         with:
           name: coverage-xml
           path: coverage.xml
+
+      - name: Generate coverage summary
+        uses: irongut/CodeCoverageSummary@v1.4.0
+        with:
+          filename: coverage.xml
+          format: 'markdown'
+          output: 'both'        # writes summary to console and to file
+          thresholds: '60 80'   # optional: <warning%> <ok%>
+
+      - name: Add coverage summary as PR comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: coverage.md
