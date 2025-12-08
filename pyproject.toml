@@ -20,6 +20,7 @@ dev = [
   "pytest>=8",
   "pytest-cov>=5",
   "types-lxml>=2024.2.6",
+  "openpyxl>=3.1.0"
 ]
 
 # RAG tooling – keep protobuf + tenacity conservative to avoid clobbering TF/Streamlit envs.
