@@ -295,7 +295,7 @@ def _emit_smote_code(cfg: SmoteSettings) -> List[str]:
 def generate_py_body(
     node_id: str,
     node_dir: Optional[str],
-    in_ports: List[object],
+    in_ports: List[tuple[str, str]],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
     """Generate the Python body for the SMOTE node.
@@ -334,7 +334,7 @@ def generate_py_body(
 def generate_ipynb_code(
     node_id: str,
     node_dir: Optional[str],
-    in_ports: List[object],
+    in_ports: List[tuple[str, str]],
     out_ports: Optional[List[str]] = None,
 ) -> str:
     """Generate the code for a Jupyter notebook cell for the SMOTE node.

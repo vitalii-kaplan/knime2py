@@ -187,7 +187,7 @@ def _fmt_kw(key: str, val) -> Optional[str]:
     return f"{key}={repr(val)}"
 
 
-def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[object]) -> List[str]:
+def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[tuple[str, str]]) -> List[str]:
     """
     Generate the body of the Python function for the CSV Writer node.
 
@@ -232,7 +232,7 @@ def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[objec
     return lines
 
 
-def generate_ipynb_code(node_id: str, node_dir: Optional[str], in_ports: List[object]) -> str:
+def generate_ipynb_code(node_id: str, node_dir: Optional[str], in_ports: List[tuple[str, str]]) -> str:
     """
     Generate the complete code for the CSV Writer node in IPython notebook format.
 

@@ -229,7 +229,7 @@ def _emit_split_code(cfg: RefRowSplitSettings, node_id: str) -> List[str]:
 def generate_py_body(
     node_id: str,
     node_dir: Optional[str],
-    in_ports: List[object],        # two inputs: data, reference
+    in_ports: List[tuple[str, str]],        # two inputs: data, reference
     out_ports: Optional[List[str]] = None,  # ignored; fixed [1,2]
 ) -> List[str]:
     """
@@ -265,7 +265,7 @@ def generate_py_body(
 def generate_ipynb_code(
     node_id: str,
     node_dir: Optional[str],
-    in_ports: List[object],
+    in_ports: List[tuple[str, str]],
     out_ports: Optional[List[str]] = None,
 ) -> str:
     """

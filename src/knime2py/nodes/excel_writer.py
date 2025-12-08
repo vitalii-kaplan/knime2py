@@ -261,7 +261,7 @@ def _map_if_sheet_exists(kn: str) -> str:
     return m.get(kn.upper(), "error")
 
 
-def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[object]) -> List[str]:
+def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[tuple[str, str]]) -> List[str]:
     """
     Generate the Python code body for the Excel writer.
 
@@ -340,7 +340,7 @@ def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[objec
     return lines
 
 
-def generate_ipynb_code(node_id: str, node_dir: Optional[str], in_ports: List[object]) -> str:
+def generate_ipynb_code(node_id: str, node_dir: Optional[str], in_ports: List[tuple[str, str]]) -> str:
     """
     Generate the code for a Jupyter notebook cell.
 

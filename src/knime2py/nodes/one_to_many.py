@@ -252,7 +252,7 @@ def _emit_onehot_code(cfg: OneHotSettings) -> List[str]:
 def generate_py_body(
     node_id: str,
     node_dir: Optional[str],
-    in_ports: List[object],
+    in_ports: List[tuple[str, str]],
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
     """
@@ -287,7 +287,7 @@ def generate_py_body(
 def generate_ipynb_code(
     node_id: str,
     node_dir: Optional[str],
-    in_ports: List[object],
+    in_ports: List[tuple[str, str]],
     out_ports: Optional[List[str]] = None,
 ) -> str:
     """

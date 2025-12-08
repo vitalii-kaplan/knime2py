@@ -313,7 +313,7 @@ def generate_imports():
 def generate_py_body(
     node_id: str,
     node_dir: Optional[str],
-    in_ports: List[object],
+    in_ports: List[tuple[str, str]],
     out_ports: Optional[List[str]] = None,  # ignored
 ) -> List[str]:
     """Generate the Python body for the ROC curve generation based on the node ID and input ports."""
@@ -334,7 +334,7 @@ def generate_py_body(
 def generate_ipynb_code(
     node_id: str,
     node_dir: Optional[str],
-    in_ports: List[object],
+    in_ports: List[tuple[str, str]],
     out_ports: Optional[List[str]] = None,
 ) -> str:
     """Generate the code for a Jupyter notebook cell for the ROC curve generation."""

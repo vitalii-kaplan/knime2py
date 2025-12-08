@@ -240,7 +240,7 @@ def _emit_append_many_code(cfg: ColumnAppenderSettings, right_count: int) -> Lis
 def generate_py_body(
     node_id: str,
     node_dir: Optional[str],
-    in_ports: List[object],        # Port 1 = left, Ports 2..N = rights
+    in_ports: List[tuple[str, str]],        # Port 1 = left, Ports 2..N = rights
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
     """
@@ -306,7 +306,7 @@ def generate_py_body(
 def generate_ipynb_code(
     node_id: str,
     node_dir: Optional[str],
-    in_ports: List[object],
+    in_ports: List[tuple[str, str]],
     out_ports: Optional[List[str]] = None,
 ) -> str:
     """

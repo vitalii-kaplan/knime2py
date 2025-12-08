@@ -318,7 +318,7 @@ def _order_incoming_by_target_port(in_ports) -> List[Tuple[int, str, str]]:
 def generate_py_body(
     node_id: str,
     node_dir: Optional[str],
-    in_ports: List[object],        # may have 1 or 2 table inputs
+    in_ports: List[tuple[str, str]],        # may have 1 or 2 table inputs
     out_ports: Optional[List[str]] = None,
 ) -> List[str]:
     """
@@ -369,7 +369,7 @@ def generate_py_body(
 def generate_ipynb_code(
     node_id: str,
     node_dir: Optional[str],
-    in_ports: List[object],
+    in_ports: List[tuple[str, str]],
     out_ports: Optional[List[str]] = None,
 ) -> str:
     """

@@ -215,7 +215,7 @@ def bool_from_value(v: Optional[str]) -> Optional[bool]:
 # Port helpers / context helpers
 # ----------------------------
 
-def normalize_in_ports(in_ports: List[object]) -> List[Tuple[str, str]]:
+def normalize_in_ports(in_ports: List[tuple[str, str]]) -> List[Tuple[str, str]]:
     """
     Accepts items like ('1393','1') or '1393:1' (or just '1393') and
     returns a normalized list of (src_id, port) as strings.

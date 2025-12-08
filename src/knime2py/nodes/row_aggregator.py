@@ -295,7 +295,7 @@ def _emit_row_agg_code(cfg: RowAggregatorSettings, node_id: str) -> List[str]:
 def generate_py_body(
     node_id: str,
     node_dir: Optional[str],
-    in_ports: List[object],
+    in_ports: List[tuple[str, str]],
     out_ports: Optional[List[str]] = None,  # ignored (fixed ports: 1 + optional 2)
 ) -> List[str]:
     """Generate the Python body for the row aggregator node."""
@@ -318,7 +318,7 @@ def generate_py_body(
 def generate_ipynb_code(
     node_id: str,
     node_dir: Optional[str],
-    in_ports: List[object],
+    in_ports: List[tuple[str, str]],
     out_ports: Optional[List[str]] = None,
 ) -> str:
     """Generate the code for the Jupyter notebook cell."""
