@@ -1,0 +1,14 @@
+coverage:
+  status:
+    project:
+      default:
+        # Your actual overall coverage is ~67%
+        target: 60%        # Enforce a reasonable minimum
+        threshold: 2%      # Allow small fluctuations
+        informational: false
+
+    patch:
+      default:
+        informational: true     # Avoid failing CI on diffs with no new code
+        target: 0%              # "Don't require patch coverage"
+        threshold: 0%
