@@ -121,6 +121,12 @@ Some KNIME nodes involve randomness (e.g., **Partitioning**, **Equal Size Sampli
 
 ---
 
+## Tests ccode coverage
+
+[![codecov](https://codecov.io/github/vitalii-kaplan/knime2py/branch/main/graph/badge.svg?token=HQW74JG43A)](https://codecov.io/github/vitalii-kaplan/knime2py)
+
+---
+
 ## License
 
 MIT
