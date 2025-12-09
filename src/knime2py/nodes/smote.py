@@ -100,7 +100,7 @@ def can_handle(node_type: Optional[str]) -> bool:
     Returns:
         bool: True if the node type can be handled, False otherwise.
     """
-    return bool(node_type and node_type.endswith(SMOTE_FACTORY))
+    return bool(node_type and node_type.endswith(FACTORY))
 
 
 # ---------------------------------------------------------------------

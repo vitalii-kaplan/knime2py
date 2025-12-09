@@ -298,18 +298,6 @@ def _emit_roc_code(cfg: ROCCurveSettings, node_id: str) -> List[str]:
     return lines
 
 
-def generate_imports():
-    """Generate a list of import statements required for the ROC curve generation."""
-    return [
-        "import tempfile",
-        "from pathlib import Path",
-        "import pandas as pd",
-        "import numpy as np",
-        "import matplotlib.pyplot as plt",
-        "from sklearn.metrics import roc_curve, auc",
-    ]
-
-
 def generate_py_body(
     node_id: str,
     node_dir: Optional[str],
