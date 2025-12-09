@@ -411,25 +411,6 @@ def generate_py_body(
 
     return lines
 
-def generate_ipynb_code(
-    node_id: str,
-    node_dir: Optional[str],
-    in_ports: List[tuple[str, str]],
-    out_ports: Optional[List[str]] = None,
-) -> str:
-    """
-    Generate the code for a Jupyter notebook cell for the KNIME node.
-
-    Args:
-        node_id (str): The ID of the node.
-        node_dir (Optional[str]): The directory of the node.
-        in_ports (List[object]): The list of incoming ports.
-        out_ports (Optional[List[str]]): The list of outgoing ports.
-
-    Returns:
-        str: The generated code as a string.
-    """
-    return "\n".join(generate_py_body(node_id, node_dir, in_ports, out_ports)) + "\n"
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """

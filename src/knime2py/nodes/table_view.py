@@ -312,26 +312,6 @@ def generate_py_body(
     # No context outputs
     return lines
 
-def generate_ipynb_code(
-    node_id: str,
-    node_dir: Optional[str],
-    in_ports: List[tuple[str, str]],
-    out_ports: Optional[List[str]] = None,
-) -> str:
-    """
-    Generate the code for the Jupyter notebook representation of the table view node.
-
-    Args:
-        node_id (str): The ID of the node.
-        node_dir (Optional[str]): The directory of the node.
-        in_ports (List[object]): The incoming ports.
-        out_ports (Optional[List[str]]): The outgoing ports (ignored).
-
-    Returns:
-        str: The generated code for the Jupyter notebook.
-    """
-    body = generate_py_body(node_id, node_dir, in_ports, out_ports)
-    return "\n".join(body) + "\n"
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """

@@ -326,15 +326,6 @@ def generate_py_body(
         lines.append(f"context['{node_id}:{p}'] = out_df")
     return lines
 
-def generate_ipynb_code(
-    node_id: str,
-    node_dir: Optional[str],
-    in_ports: List[tuple[str, str]],
-    out_ports: Optional[List[str]] = None,
-) -> str:
-    """Generate the code for a Jupyter notebook cell based on the node's configuration."""
-    body = generate_py_body(node_id, node_dir, in_ports, out_ports)
-    return "\n".join(body) + "\n"
 
 def handle(ntype, nid, npath, incoming, outgoing):
     """Handle the node processing, generating imports and body code."""

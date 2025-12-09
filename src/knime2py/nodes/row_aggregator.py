@@ -315,17 +315,6 @@ def generate_py_body(
     return lines
 
 
-def generate_ipynb_code(
-    node_id: str,
-    node_dir: Optional[str],
-    in_ports: List[tuple[str, str]],
-    out_ports: Optional[List[str]] = None,
-) -> str:
-    """Generate the code for the Jupyter notebook cell."""
-    body = generate_py_body(node_id, node_dir, in_ports, out_ports)
-    return "\n".join(body) + "\n"
-
-
 def handle(ntype, nid, npath, incoming, outgoing):
     """
     Entry for emitters:

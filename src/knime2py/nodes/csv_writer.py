@@ -232,22 +232,6 @@ def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[tuple
     return lines
 
 
-def generate_ipynb_code(node_id: str, node_dir: Optional[str], in_ports: List[tuple[str, str]]) -> str:
-    """
-    Generate the complete code for the CSV Writer node in IPython notebook format.
-
-    Args:
-        node_id (str): The ID of the node.
-        node_dir (Optional[str]): The directory of the node.
-        in_ports (List[object]): The input ports for the node.
-
-    Returns:
-        str: The generated code as a string.
-    """
-    body = generate_py_body(node_id, node_dir, in_ports)
-    return "\n".join(body) + "\n"
-
-
 def handle(ntype, nid, npath, incoming, outgoing):
     """
     Handle the processing of the CSV Writer node, generating the necessary imports and body code.

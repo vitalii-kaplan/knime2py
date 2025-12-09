@@ -340,22 +340,6 @@ def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[tuple
     return lines
 
 
-def generate_ipynb_code(node_id: str, node_dir: Optional[str], in_ports: List[tuple[str, str]]) -> str:
-    """
-    Generate the code for a Jupyter notebook cell.
-
-    Args:
-        node_id (str): The ID of the node.
-        node_dir (Optional[str]): The directory of the node.
-        in_ports (List[object]): The list of incoming ports.
-
-    Returns:
-        str: The generated code for the notebook cell.
-    """
-    body = generate_py_body(node_id, node_dir, in_ports)
-    return "\n".join(body) + "\n"
-
-
 def handle(ntype, nid, npath, incoming, outgoing):
     """
     Handle the Excel Writer node processing.

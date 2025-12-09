@@ -252,22 +252,6 @@ def generate_py_body(node_id: str, node_dir: Optional[str], out_ports: List[str]
     return lines
 
 
-def generate_ipynb_code(node_id: str, node_dir: Optional[str], out_ports: List[str]) -> str:
-    """
-    Return the code cell text for the notebook workbook (single string).
-
-    Args:
-        node_id (str): The ID of the node.
-        node_dir (Optional[str]): The directory of the node.
-        out_ports (List[str]): The output ports to publish the DataFrame to.
-
-    Returns:
-        str: The code cell text for the notebook.
-    """
-    body = generate_py_body(node_id, node_dir, out_ports)
-    return "\n".join(body) + "\n"
-
-
 def handle(ntype, nid, npath, incoming, outgoing):
     """
     Handle the processing of a node, generating the necessary imports and body lines.

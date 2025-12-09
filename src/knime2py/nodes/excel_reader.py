@@ -268,12 +268,6 @@ def generate_py_body(node_id: str, node_dir: Optional[str], out_ports: List[str]
     return lines
 
 
-def generate_ipynb_code(node_id: str, node_dir: Optional[str], out_ports: List[str]) -> str:
-    """Generate the complete IPython notebook code for the Excel reader node."""
-    body = generate_py_body(node_id, node_dir, out_ports)
-    return "\n".join(body) + "\n"
-
-
 def handle(ntype, nid, npath, incoming, outgoing):
     """
     Returns (imports, body_lines) for Excel Reader.
