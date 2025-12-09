@@ -60,12 +60,17 @@ build-backend = "hatchling.build"
 packages = ["src/knime2py"]
 
 [tool.pytest.ini_options]
-addopts = "--cov=src/knime2py --cov-branch --cov-report=term-missing --cov-report=xml:coverage.xml"
+addopts = "--cov=knime2py --cov-branch --cov-report=term-missing --cov-report=xml:coverage.xml"
 testpaths = ["tests"]
 
 [tool.coverage.run]
 branch = true
-source = ["src/knime2py"]
+source = ["knime2py"]
+omit = [
+    "*/knime2py/__init__.py",
+    "*/knime2py/__main__.py",
+    "*/knime2py/**/__init__.py"
+]
 
 [tool.coverage.report]
 show_missing = true
