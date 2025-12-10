@@ -16,9 +16,8 @@ Inputs:
   specifies the desired output formats (e.g., .py, .ipynb, .dot, .json).
 
 Outputs:
-- Writes the standard output and error messages to the context output tables.
-  - Output Table 0: stdout (string)
-  - Output Table 1: stderr (string)
+- Writes a single output table containing the standard output and error text
+  from the execution (columns: `stdout`, `stderr`).
 
 Key algorithms:
 - Determines the output format based on user selection and constructs the
@@ -63,6 +62,8 @@ References
 - For more information, refer to the KNIME documentation and the knime2py
   project repository.
 """
+
+from __future__ import annotations
 
 import knime.scripting.io as knio
 
@@ -133,8 +134,7 @@ else:
     stdout_str = proc.stdout or ""
     stderr_str = proc.stderr or ""
 
-# ---- Output tables ----
-# 0: stdout only 
-knio.output_tables[0] = knio.Table.from_pandas(pd.DataFrame({"stdout": [stdout_str]}))
-# 1: stderr only
-knio.output_tables[1] = knio.Table.from_pandas(pd.DataFrame({"stderr": [stderr_str]}))
+# ---- Single output table: columns stdout, stderr ----
+knio.output_tables[0] = knio.Table.from_pandas(
+    pd.DataFrame({"stdout": [stdout_str], "stderr": [stderr_str]})
+)
