@@ -89,9 +89,8 @@ def _advise(stderr: str, ctx: dict[str, str]) -> str:
         adv += [
             "Windows blocked creation of links in the PEX cache.",
             "Fixes:",
-            "  • Use the updated PEX built with --link-mode=copy (recommended).",
+            "  • Run KNIME with elevated privileges (in admin mode). Only for the first KNIME2PY component run.",
             "  • Or enable Windows Developer Mode for your user and retry.",
-            "  • Or run KNIME with elevated privileges as a last resort.",
         ]
 
     if "No interpreter compatible with the requested constraints" in stderr or "Version matches CPython" in stderr:
