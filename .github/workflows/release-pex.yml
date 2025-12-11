@@ -42,34 +42,50 @@ jobs:
           python -m build --wheel
           ls -l dist
 
-      - name: Build PEX
+      - name: Build PEX (link-mode=copy, venv, seed)
         shell: bash
         run: |
           set -euo pipefail
           case "${{ matrix.os }}" in
-            macos-13)     OS_OUT="k2p-macos-x86_64.pex"; VENV_OPTS="--venv prepend --strip-pex-env"; VALIDATE="--validate-entry-point" ;;
-            macos-14)     OS_OUT="k2p-macos-arm64.pex";  VENV_OPTS="--venv prepend --strip-pex-env"; VALIDATE="--validate-entry-point" ;;
-            ubuntu-22.04) OS_OUT="k2p-linux.pex";        VENV_OPTS="--venv prepend --strip-pex-env"; VALIDATE="--validate-entry-point" ;;
-            windows-2022) OS_OUT="k2p-windows.pex";      VENV_OPTS="";                                 VALIDATE="" ;;
-            *) echo "Unknown runner: ${{ matrix.os }}"; exit 2 ;;
+            macos-13)     OS_OUT="k2p-macos-x86_64.pex";;
+            macos-14)     OS_OUT="k2p-macos-arm64.pex";;
+            ubuntu-22.04) OS_OUT="k2p-linux.pex";;
+            windows-2022) OS_OUT="k2p-windows.pex";;
+            *) echo "Unknown runner: ${{ matrix.os }}"; exit 2;;
           esac
+
+          # Common venv options across all OSes; seed to stabilize first-run
+          VENV_OPTS="--venv prepend --strip-pex-env --seed"
+          # Validate entrypoint where supported (skip on Windows to reduce noise)
+          VALIDATE=""
+          if [ "${{ matrix.os }}" != "windows-2022" ]; then
+            VALIDATE="--validate-entry-point"
+          fi
+
+          # If your pyproject sets requires-python >=3.10, prefer this:
+          IC="CPython>=3.10,<3.13"
+          # If you truly only support 3.11, set:  IC="CPython==3.11.*"
 
           pex dist/*.whl \
             -c k2p \
             -o "dist/${OS_OUT}" \
             ${VENV_OPTS} \
             ${VALIDATE} \
-            --interpreter-constraint 'CPython==3.11.*'
+            --link-mode=copy \
+            --interpreter-constraint "${IC}"
 
           echo "Produced dist/${OS_OUT}"
           ls -l dist
 
-      # Unix smoke test: --help + interpreter-mode import for version
+      # Unix smoke test: run with safe PEX_ROOT to avoid permission issues on the runner
       - name: Smoke test PEX (Unix)
         if: matrix.os != 'windows-2022'
         shell: bash
+        env:
+          PEX_ROOT: ${{ github.workspace }}/.pex_root
         run: |
           set -euo pipefail
+          mkdir -p "$PEX_ROOT"
           for f in dist/*.pex; do
             echo "Testing $f"
             python3 "$f" --help >/dev/null
@@ -78,11 +94,14 @@ jobs:
             test -n "$ver"
           done
 
-      # Windows smoke test: zipapp mode (no venv), import via interpreter mode
+      # Windows smoke test: also use a safe PEX_ROOT; explicit python invocation
       - name: Smoke test PEX (Windows)
         if: matrix.os == 'windows-2022'
         shell: pwsh
+        env:
+          PEX_ROOT: ${{ github.workspace }}\.pex_root
         run: |
+          New-Item -ItemType Directory -Force -Path $env:PEX_ROOT | Out-Null
           Get-ChildItem dist\*.pex | ForEach-Object {
             Write-Host "Testing $($_.FullName)"
             python $_.FullName --help | Out-Null
