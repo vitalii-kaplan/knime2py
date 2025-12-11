@@ -61,11 +61,15 @@ jobs:
             VALIDATE="--validate-entry-point"
           fi
 
+          # Explicitly disable cache seeding (prevents the RECORD parsing path).
+          SEED="--seed=none"
+
           pex dist/*.whl \
             -c k2p \
             -o "dist/${OS_OUT}" \
             ${VENV_FLAGS} \
             ${VALIDATE} \
+            ${SEED} \
             --interpreter-constraint 'CPython==3.11.*'
 
           echo "Produced dist/${OS_OUT}"
