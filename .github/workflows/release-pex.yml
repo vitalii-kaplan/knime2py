@@ -50,9 +50,9 @@ jobs:
           esac
 
           # Windows: zipapp only (no venv) to avoid junction/symlink issues.
-          VENV_FLAGS="--venv prepend --strip-pex-env"
-          if [ "${{ matrix.os }}" = "windows-2022" ]; then
-            VENV_FLAGS=""
+          VENV_FLAGS=""
+          if [ "${{ matrix.os }}" != "windows-2022" ]; then
+            VENV_FLAGS="--venv prepend --strip-pex-env"
           fi
 
           # Disable entry-point validation only on Windows.
