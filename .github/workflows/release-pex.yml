@@ -12,11 +12,10 @@ jobs:
   pex:
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-latest, macos-15-intel, windows-2022]  # macOS runners updated
+        os: [ubuntu-22.04, macos-latest, macos-15-intel, windows-2022]
         py: ["3.11"]
     runs-on: ${{ matrix.os }}
     env:
-      # keep PEX chatty for easier debugging
       PEX_VERBOSE: "9"
       PEX_IGNORE_RCFILES: "1"
       PIP_NO_INPUT: "1"
@@ -48,26 +47,29 @@ jobs:
             macos-latest)   OS_OUT="k2p-macos-arm64.pex" ;;
             ubuntu-22.04)   OS_OUT="k2p-linux.pex" ;;
             windows-2022)   OS_OUT="k2p-windows.pex" ;;
-            *) echo "Unknown runner: ${{ matrix.os }}"; exit 2 ;;
           esac
 
-          # Use venv mode on all OSes; on Windows force copies to avoid symlinks/junctions and seed to stabilize first run.
-          VENV_FLAGS="--venv prepend --strip-pex-env --seed"
-          if [ "${{ matrix.os }}" = "windows-2022" ]; then
-            VENV_FLAGS="$VENV_FLAGS --venv-copies --venv-site-packages-copies"
+          # Windows: zipapp only (no venv) to avoid junction/symlink issues.
+          VENV_FLAGS=""
+          if [ "${{ matrix.os }}" != "windows-2022" ]; then
+            VENV_FLAGS="--venv prepend --strip-pex-env"
           fi
 
-          # Validation has been flaky on Windows; keep it enabled elsewhere.
+          # Disable entry-point validation only on Windows.
           VALIDATE=""
           if [ "${{ matrix.os }}" != "windows-2022" ]; then
             VALIDATE="--validate-entry-point"
           fi
+
+          # Explicitly disable cache seeding (prevents the RECORD parsing path).
+          SEED="--seed=none"
 
           pex dist/*.whl \
             -c k2p \
             -o "dist/${OS_OUT}" \
             ${VENV_FLAGS} \
             ${VALIDATE} \
+            ${SEED} \
             --interpreter-constraint 'CPython==3.11.*'
 
           echo "Produced dist/${OS_OUT}"
@@ -92,7 +94,7 @@ jobs:
         shell: pwsh
         env:
           PEX_ROOT: ${{ github.workspace }}\.pex_root
-          PEX_VERBOSE: "0"           # quiet PEX so help output isn't polluted
+          PEX_VERBOSE: "0"
           PEX_IGNORE_RCFILES: "1"
         run: |
           New-Item -ItemType Directory -Force -Path $env:PEX_ROOT | Out-Null
@@ -102,7 +104,6 @@ jobs:
             if ($LASTEXITCODE -ne 0) {
               throw "k2p --help failed: $LASTEXITCODE`n$out"
             }
-            # Try to see a usage banner; accept either 'k2p' or 'knime2py'
             if ($out -notmatch '(?im)^\s*usage:\s+(k2p|knime2py)\b') {
               Write-Warning "Usage banner not detected; continuing. Full help output follows:"
               Write-Host $out
