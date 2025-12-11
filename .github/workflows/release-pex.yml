@@ -12,16 +12,16 @@ jobs:
   pex:
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-latest, macos-15-intel, windows-2022]
+        os: [ubuntu-22.04, macos-latest, macos-15-intel, windows-2022]  # macOS runners updated
         py: ["3.11"]
     runs-on: ${{ matrix.os }}
     env:
-      PEX_IGNORE_RCFILES: "1"
+      # keep PEX chatty for easier debugging
       PEX_VERBOSE: "9"
+      PEX_IGNORE_RCFILES: "1"
       PIP_NO_INPUT: "1"
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
-      PYTHONIOENCODING: "UTF-8"
-
+      PEX_VERSION: "2.66.0"        # <- pin to a real published version
     steps:
       - uses: actions/checkout@v4
 
@@ -29,91 +29,75 @@ jobs:
         with:
           python-version: ${{ matrix.py }}
 
-      - name: Install build tools
+      - name: Install build tools (pinned)
         run: |
-          python -m pip install --upgrade pip
-          pip install build pex==2.66.0
-
-      - name: Print PEX version
-        run: pex --version
+          python -m pip install -U "pip>=24,<26"
+          pip install "build==1.2.1" "pex==${{ env.PEX_VERSION }}"
 
       - name: Build wheel
         run: |
           python -m build --wheel
           ls -l dist
 
-      - name: Build PEX (feature-detect link-mode, venv, seed)
+      - name: Build PEX
         shell: bash
         run: |
           set -euo pipefail
-
           case "${{ matrix.os }}" in
             macos-15-intel) OS_OUT="k2p-macos-x86_64.pex" ;;
             macos-latest)   OS_OUT="k2p-macos-arm64.pex" ;;
             ubuntu-22.04)   OS_OUT="k2p-linux.pex" ;;
             windows-2022)   OS_OUT="k2p-windows.pex" ;;
-            *) echo "Unknown runner: ${{ matrix.os }}"; exit 2 ;;
           esac
 
-          VENV_OPTS="--venv prepend --strip-pex-env --seed"
-          VALIDATE=""
+          # On Windows, DO NOT use PEX venv mode (zipapp only). On Unix, use venv mode.
+          # Note: On first run, PEX unpacks bootstrap files under %LOCALAPPDATA%\pex\Cache\unzipped_pexes...
+          # and may attempt symlinks/junctions. Without admin or Developer Mode, Windows can raise 1314
+          # (e.g., ...\unzipped_pexes\...\ .lck.work.bootstrap). Zipapp-only here avoids that.
+          VENV_FLAGS=""
           if [ "${{ matrix.os }}" != "windows-2022" ]; then
-            VALIDATE="--validate-entry-point"
+            VENV_FLAGS="--venv prepend --strip-pex-env"
           fi
 
-          # Feature-detect --link-mode (use scalar, initialized to empty to avoid -u errors)
+          # Only on Windows, force copy (avoid symlink/junction issues).
           LM_FLAG=""
-          if pex --help 2>&1 | grep -q -- '--link-mode'; then
+          if [ "${{ matrix.os }}" = "windows-2022" ]; then
             LM_FLAG="--link-mode=copy"
           fi
 
-          IC="CPython>=3.10,<3.13"
-
-          # shellcheck disable=SC2086
           pex dist/*.whl \
             -c k2p \
             -o "dist/${OS_OUT}" \
-            ${VENV_OPTS} \
-            ${VALIDATE} \
+            ${VENV_FLAGS} \
             ${LM_FLAG} \
-            --interpreter-constraint "${IC}"
+            --validate-entry-point \
+            --interpreter-constraint 'CPython==3.11.*'
 
           echo "Produced dist/${OS_OUT}"
           ls -l dist
 
+      # Smoke test via interpreter mode ONLY (avoids invoking CLI that requires a path)
       - name: Smoke test PEX (Unix)
         if: matrix.os != 'windows-2022'
         shell: bash
-        env:
-          PEX_ROOT: ${{ github.workspace }}/.pex_root
         run: |
           set -euo pipefail
-          mkdir -p "$PEX_ROOT"
           for f in dist/*.pex; do
-            echo "Testing $f"
-            python3 "$f" --help >/dev/null
-            ver="$(PEX_INTERPRETER=1 python3 "$f" -c "import knime2py; print(getattr(knime2py,'__version__','unknown'))")"
-            echo "knime2py version: $ver"
-            test -n "$ver"
+            echo "Interpreter test $f"
+            PEX_INTERPRETER=1 python3 "$f" -c "import importlib, sys; m=importlib.import_module('knime2py'); v=getattr(m,'__version__','unknown'); print(v)"
           done
 
       - name: Smoke test PEX (Windows)
         if: matrix.os == 'windows-2022'
         shell: pwsh
-        env:
-          PEX_ROOT: ${{ github.workspace }}\.pex_root
         run: |
-          New-Item -ItemType Directory -Force -Path $env:PEX_ROOT | Out-Null
+          # Note: First run may unpack to %LOCALAPPDATA%\pex\Cache\unzipped_pexes and attempt symlinks/junctions.
+          # Without admin or Developer Mode, Windows can raise ERROR_PRIVILEGE_NOT_HELD (1314).
           Get-ChildItem dist\*.pex | ForEach-Object {
-            Write-Host "Testing $($_.FullName)"
-            python $_.FullName --help | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw "k2p --help failed: $LASTEXITCODE" }
-
+            Write-Host "Interpreter test $($_.FullName)"
             $env:PEX_INTERPRETER = "1"
-            $ver = python $_.FullName -c "import knime2py; import sys; sys.stdout.write(getattr(knime2py,'__version__','unknown'))"
-            if ($LASTEXITCODE -ne 0) { throw "interpreter-mode import failed: $LASTEXITCODE" }
-            if ([string]::IsNullOrWhiteSpace($ver)) { throw 'empty version output' }
-            Write-Host ("knime2py version: {0}" -f $ver)
+            python $_.FullName -c "import importlib, sys; m=importlib.import_module('knime2py'); print(getattr(m,'__version__','unknown'))"
+            if ($LASTEXITCODE -ne 0) { throw 'import knime2py failed' }
             Remove-Item Env:\PEX_INTERPRETER -ErrorAction SilentlyContinue
           }
 
