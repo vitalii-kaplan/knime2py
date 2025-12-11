@@ -50,9 +50,9 @@ jobs:
           esac
 
           # Windows: zipapp only (no venv) to avoid junction/symlink issues.
-          VENV_FLAGS=""
-          if [ "${{ matrix.os }}" != "windows-2022" ]; then
-            VENV_FLAGS="--venv prepend --strip-pex-env"
+          VENV_FLAGS="--venv prepend --strip-pex-env"
+          if [ "${{ matrix.os }}" = "windows-2022" ]; then
+            VENV_FLAGS="--venv prepend --strip-pex-env --venv-copies --venv-site-packages-copies"
           fi
 
           # Disable entry-point validation only on Windows.
@@ -61,15 +61,11 @@ jobs:
             VALIDATE="--validate-entry-point"
           fi
 
-          # Explicitly disable cache seeding (prevents the RECORD parsing path).
-          SEED="--seed=none"
-
           pex dist/*.whl \
             -c k2p \
             -o "dist/${OS_OUT}" \
             ${VENV_FLAGS} \
             ${VALIDATE} \
-            ${SEED} \
             --interpreter-constraint 'CPython==3.11.*'
 
           echo "Produced dist/${OS_OUT}"
