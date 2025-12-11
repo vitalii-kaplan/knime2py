@@ -55,27 +55,27 @@ jobs:
             *) echo "Unknown runner: ${{ matrix.os }}"; exit 2 ;;
           esac
 
-          # Build-time options as arrays (safe quoting)
-          VENV_OPTS=(--venv prepend --strip-pex-env --seed)
-          VALIDATE=()
+          VENV_OPTS="--venv prepend --strip-pex-env --seed"
+          VALIDATE=""
           if [ "${{ matrix.os }}" != "windows-2022" ]; then
-            VALIDATE+=(--validate-entry-point)
+            VALIDATE="--validate-entry-point"
           fi
 
-          # Some PEX versions don't have --link-mode; feature-detect it.
-          LM=()
+          # Feature-detect --link-mode (use scalar, initialized to empty to avoid -u errors)
+          LM_FLAG=""
           if pex --help 2>&1 | grep -q -- '--link-mode'; then
-            LM+=(--link-mode=copy)
+            LM_FLAG="--link-mode=copy"
           fi
 
           IC="CPython>=3.10,<3.13"
 
+          # shellcheck disable=SC2086
           pex dist/*.whl \
             -c k2p \
             -o "dist/${OS_OUT}" \
-            "${VENV_OPTS[@]}" \
-            "${VALIDATE[@]}" \
-            "${LM[@]}" \
+            ${VENV_OPTS} \
+            ${VALIDATE} \
+            ${LM_FLAG} \
             --interpreter-constraint "${IC}"
 
           echo "Produced dist/${OS_OUT}"
