@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 KNIME Component runner for the knime2py PEX.
 
@@ -56,14 +54,10 @@ Limitations
 
 from __future__ import annotations
 """
-Robust KNIME component runner for knime2py PEX:
-- Reads user format selections from input table.
-- Validates flow variables and paths.
-- Executes the PEX and returns a single table with `stdout` and `stderr`.
-- Converts common failures into actionable guidance for end users.
-- If a user-side fix is unlikely, asks the user to report to:
-  - https://github.com/users/vitalii-kaplan/projects/1
-  - https://forum.knime.com/
+Resilient KNIME component runner for knime2py PEX.
+- Validates inputs, builds args from the selection table, executes PEX.
+- Always returns a single-row table with columns: stdout, stderr.
+- No SystemExit; no Path.resolve(); subprocess has a timeout.
 """
 
 import knime.scripting.io as knio
@@ -76,102 +70,82 @@ import subprocess
 from pathlib import Path
 import pandas as pd
 
+# ---- Tunables ----
+PEX_TIMEOUT_SEC = 600  # prevent indefinite hangs if the child process stalls
 
 def _as_str(s: object) -> str:
     return "" if s is None else str(s)
 
+def _advise(stderr: str, ctx: dict[str, str]) -> str:
+    adv: list[str] = []
 
-def _advise_for_error(stderr: str, context: dict[str, str]) -> str:
-    """Append tailored guidance for frequent failure modes."""
-    advice: list[str] = []
-
-    # Missing PEX file
     if "PEX not found:" in stderr:
-        advice += [
-            "Check the 'knime2py PEX' path. It must point to an existing .pex file on the local filesystem.",
-            "If you selected a KNIME mountpoint (URI like knime://…), switch the File Chooser to 'Local' and select a real file path.",
+        adv += [
+            "Verify the 'knime2py PEX' path points to an existing .pex on the local filesystem.",
+            "If you selected a KNIME URI (knime://...), switch the File Chooser to 'Local' and pick a real OS path.",
         ]
 
-    # Windows privilege / symlink issues
     if "WinError 1314" in stderr or "A required privilege is not held by the client" in stderr:
-        advice += [
-            "Windows blocked creation of links inside the PEX cache.",
+        adv += [
+            "Windows blocked creation of links in the PEX cache.",
             "Fixes:",
             "  • Use the updated PEX built with --link-mode=copy (recommended).",
             "  • Or enable Windows Developer Mode for your user and retry.",
-            "  • As a last resort, run KNIME with elevated privileges.",
+            "  • Or run KNIME with elevated privileges as a last resort.",
         ]
 
-    # Interpreter constraint mismatch
     if "No interpreter compatible with the requested constraints" in stderr or "Version matches CPython" in stderr:
-        advice += [
+        adv += [
             "Your Python installation does not satisfy the PEX interpreter constraints.",
             "Fixes:",
-            "  • Install the required Python version (e.g., Python 3.11) and ensure it is on PATH.",
-            "  • Or set the environment variable PEX_PYTHON to the full path of a compatible interpreter.",
-            "  • Or ask the developer for a PEX built for your Python version range.",
+            "  • Install a compatible Python (e.g. 3.11) and ensure it is on PATH.",
+            "  • Or set PEX_PYTHON to a compatible interpreter path.",
+            "  • Or request a PEX built for your Python version range.",
         ]
 
-    # Permission errors
     if ("Permission denied" in stderr) or ("Access is denied" in stderr):
-        advice += [
-            "The selected output directory is not writable in your environment.",
-            "Choose a different local directory with write permissions.",
+        adv += [
+            "The output directory is not writable. Choose a different local directory with write permission.",
         ]
 
-    # KNIME URI misuse
-    if "knime://" in context.get("k2p_bin", "") or "knime://" in context.get("input_knime", ""):
-        advice += [
-            "One or more paths use a KNIME URI (knime://…).",
-            "Use 'Local' file system selectors and pick real OS paths for the PEX and workflow directory.",
+    if "knime://" in ctx.get("k2p_bin", "") or "knime://" in ctx.get("input_knime", ""):
+        adv += [
+            "One or more inputs use a KNIME URI (knime://...). Use 'Local' file selectors and real OS paths.",
         ]
 
-    # Workflow structure hint
-    if "workflow.knime" not in stderr and context.get("input_knime", ""):
-        # If user pointed to a file instead of a workflow folder, hint politely.
-        in_path = context["input_knime"]
+    # Workflow folder hint
+    in_path = ctx.get("input_knime") or ""
+    if in_path:
         try:
             p = Path(in_path)
-            if p.exists() and p.is_file() and p.name != "workflow.knime":
-                advice += [
-                    "The input should be a KNIME workflow directory (containing 'workflow.knime'),",
-                    f"but a file was provided: {in_path}",
-                    "Select the workflow folder instead.",
-                ]
-            elif p.exists() and p.is_dir():
-                if not (p / "workflow.knime").exists():
-                    advice += [
-                        f"No 'workflow.knime' found under: {in_path}",
+            if p.exists():
+                if p.is_file() and p.name != "workflow.knime":
+                    adv += [
+                        f"The input should be a KNIME workflow directory (containing 'workflow.knime'), but a file was provided: {in_path}",
+                        "Select the workflow folder instead.",
+                    ]
+                elif p.is_dir() and not (p / "workflow.knime").exists():
+                    adv += [
+                        f"No 'workflow.knime' found in: {in_path}",
                         "Select a valid KNIME workflow directory.",
                     ]
         except Exception:
             pass
 
-    # Fallback: if nothing matched but we still failed, include generic guidance.
-    if advice and "Please report" not in stderr:
-        advice += [
+    if adv:
+        adv += [
             "If the issue persists after trying the steps above, please report it:",
             "  • Project board: https://github.com/users/vitalii-kaplan/projects/1",
             "  • KNIME Forum:  https://forum.knime.com/",
         ]
-
-    if advice:
-        return stderr.rstrip() + "\n\n" + "Advice:\n" + "\n".join(advice)
+        return stderr.rstrip() + "\n\nAdvice:\n" + "\n".join(adv)
     return stderr
 
-
-def _safe_fail(message: str, context: dict[str, str]) -> None:
-    """Emit a single-row table with empty stdout and informative stderr."""
-    err = _advise_for_error(message, context)
-    knio.output_tables[0] = knio.Table.from_pandas(pd.DataFrame({"stdout": [""], "stderr": [err]}))
-
-
-def _normalize_selection_table() -> set[str]:
+def _read_selection() -> set[str]:
     df = knio.input_tables[0].to_pandas()
     if df.shape[1] != 1:
         raise ValueError(f"Expected exactly 1 column in the selection table; found {df.shape[1]}.")
     col = df.columns[0]
-    # Normalize, drop NaNs/empties, keep only known tokens
     allowed = {".py", ".ipynb", ".dot", ".json"}
     vals = []
     for v in df[col].tolist():
@@ -182,18 +156,14 @@ def _normalize_selection_table() -> set[str]:
             vals.append(s)
     selected = set(v for v in vals if v in allowed)
     if not selected:
-        raise ValueError(
-            "No valid output formats selected. Choose at least one of: .py, .ipynb, .dot, .json."
-        )
+        raise ValueError("No valid formats selected. Choose at least one of: .py, .ipynb, .dot, .json.")
     return selected
 
+# ---------- main ----------
+stdout_str = ""
+stderr_str = ""
 
-# -------------------- Main guarded execution --------------------
-stdout_str: str = ""
-stderr_str: str = ""
-
-# Capture minimal context for better error messages
-_ctx = {
+ctx = {
     "os": platform.platform(),
     "python": sys.version.replace("\n", " "),
     "k2p_bin": _as_str(knio.flow_variables.get("k2p_bin")),
@@ -202,111 +172,100 @@ _ctx = {
 }
 
 try:
-    # ---- Inputs ----
-    if not _ctx["k2p_bin"]:
+    # Flow vars presence
+    if not ctx["k2p_bin"]:
         raise ValueError("Flow variable 'k2p_bin' is missing.")
-    if not _ctx["input_knime"]:
+    if not ctx["input_knime"]:
         raise ValueError("Flow variable 'k2p_workflow' is missing.")
-    if not _ctx["output_dir"]:
+    if not ctx["output_dir"]:
         raise ValueError("Flow variable 'output_dir' is missing.")
 
-    k2p_bin = _ctx["k2p_bin"]
-    input_knime = Path(_ctx["input_knime"]).expanduser()
-    output_py = Path(_ctx["output_dir"]).expanduser()
+    # Paths (no resolve())
+    pex_path = Path(ctx["k2p_bin"])
+    input_knime = Path(ctx["input_knime"]).expanduser()
+    output_dir = Path(ctx["output_dir"]).expanduser()
 
-    # Path validations without creating or wiping anything
-    pex_path = Path(k2p_bin)
     if not pex_path.is_file():
-        _safe_fail(f"PEX not found: {pex_path.resolve()}", _ctx)
-        raise SystemExit(0)
-
-    if not input_knime.exists():
-        _safe_fail(f"Input path not found: {input_knime}", _ctx)
-        raise SystemExit(0)
-    if input_knime.is_dir() and not (input_knime / "workflow.knime").exists():
-        # Not fatal, but warn in stderr if execution later fails.
-        pass
-
-    if not output_py.exists():
-        _safe_fail(
-            f"Output directory does not exist: {output_py}\n"
-            "Create the directory or choose an existing writable location.",
-            _ctx,
+        stderr_str = _advise(f"PEX not found: {ctx['k2p_bin']}", ctx)
+    elif not input_knime.exists():
+        stderr_str = _advise(f"Input path not found: {ctx['input_knime']}", ctx)
+    elif not output_dir.exists():
+        stderr_str = _advise(
+            f"Output directory does not exist: {ctx['output_dir']}\nCreate the directory or choose an existing writable location.",
+            ctx,
         )
-        raise SystemExit(0)
-    if not output_py.is_dir():
-        _safe_fail(f"Output path is not a directory: {output_py}", _ctx)
-        raise SystemExit(0)
-
-    # ---- Selection table -> args ----
-    selected = _normalize_selection_table()
-    want_py = ".py" in selected
-    want_ipynb = ".ipynb" in selected
-    want_dot = ".dot" in selected
-    want_json = ".json" in selected
-
-    # Workbooks: both selected => omit flag to generate both
-    if want_py and want_ipynb:
-        workbook_args: list[str] = []
-    elif want_py:
-        workbook_args = ["--workbook", "py"]
-    elif want_ipynb:
-        workbook_args = ["--workbook", "ipynb"]
+    elif not output_dir.is_dir():
+        stderr_str = _advise(f"Output path is not a directory: {ctx['output_dir']}", ctx)
     else:
-        _safe_fail("One of '.py' or '.ipynb' must be selected.", _ctx)
-        raise SystemExit(0)
+        # Selection -> args
+        selected = _read_selection()
+        want_py = ".py" in selected
+        want_ipynb = ".ipynb" in selected
+        want_dot = ".dot" in selected
+        want_json = ".json" in selected
 
-    # Graphs: both selected => omit flag (tool default should produce both)
-    if want_dot and want_json:
-        graph_args: list[str] = []
-    elif want_dot:
-        graph_args = ["--graph", "dot"]
-    elif want_json:
-        graph_args = ["--graph", "json"]
-    else:
-        graph_args = ["--graph", "off"]
+        if want_py and want_ipynb:
+            workbook_args: list[str] = []           # omit to get both
+        elif want_py:
+            workbook_args = ["--workbook", "py"]
+        elif want_ipynb:
+            workbook_args = ["--workbook", "ipynb"]
+        else:
+            raise ValueError("One of '.py' or '.ipynb' must be selected.")
 
-    # ---- Execute PEX ----
-    cmd = [
-        sys.executable,           # run the PEX via the current interpreter
-        str(pex_path),
-        str(input_knime),
-        "--out",
-        str(output_py),
-        *workbook_args,
-        *graph_args,
-    ]
-    # Capture output; do not raise on non-zero to allow rich messaging
-    proc = subprocess.run(cmd, text=True, capture_output=True)
-    stdout_str = proc.stdout or ""
-    stderr_str = proc.stderr or ""
+        if want_dot and want_json:
+            graph_args: list[str] = []              # omit to get both
+        elif want_dot:
+            graph_args = ["--graph", "dot"]
+        elif want_json:
+            graph_args = ["--graph", "json"]
+        else:
+            graph_args = ["--graph", "off"]
 
-    # Enrich stderr with actionable guidance for common issues
-    if proc.returncode != 0 or stderr_str:
-        stderr_str = _advise_for_error(
-            (stderr_str or f"Process returned non-zero exit code: {proc.returncode}").rstrip(),
-            _ctx,
-        )
+        cmd = [
+            sys.executable,
+            str(pex_path),
+            str(input_knime),
+            "--out", str(output_dir),
+            *workbook_args,
+            *graph_args,
+        ]
+
+        # Run with timeout to prevent hangs
+        try:
+            proc = subprocess.run(
+                cmd, text=True, capture_output=True, timeout=PEX_TIMEOUT_SEC
+            )
+            stdout_str = proc.stdout or ""
+            stderr_raw = proc.stderr or ""
+            if proc.returncode != 0 or stderr_raw:
+                stderr_str = _advise(
+                    (stderr_raw or f"Process returned non-zero exit code: {proc.returncode}").rstrip(),
+                    ctx,
+                )
+        except subprocess.TimeoutExpired:
+            stderr_str = _advise(
+                f"PEX execution exceeded {PEX_TIMEOUT_SEC} seconds and was aborted.",
+                ctx,
+            )
 
 except Exception as e:
-    # Convert unexpected exceptions into a structured, reportable error
     tb = traceback.format_exc()
-    msg = (
+    stderr_str = (
         f"Unhandled error in KNIME Python Script: {e}\n"
-        f"OS: {_ctx['os']}\n"
-        f"Python: {_ctx['python']}\n"
-        f"k2p_bin: {_ctx['k2p_bin']}\n"
-        f"input_knime: {_ctx['input_knime']}\n"
-        f"output_dir: {_ctx['output_dir']}\n"
+        f"OS: {ctx['os']}\n"
+        f"Python: {ctx['python']}\n"
+        f"k2p_bin: {ctx['k2p_bin']}\n"
+        f"input_knime: {ctx['input_knime']}\n"
+        f"output_dir: {ctx['output_dir']}\n"
         f"Traceback:\n{tb}\n"
         "If this looks like a defect, please report it:\n"
         "  • Project board: https://github.com/users/vitalii-kaplan/projects/1\n"
         "  • KNIME Forum:  https://forum.knime.com/\n"
     )
-    stderr_str = msg
     stdout_str = ""
 
-# ---- Single output table: columns stdout, stderr ----
+# Always emit exactly one table
 knio.output_tables[0] = knio.Table.from_pandas(
     pd.DataFrame({"stdout": [stdout_str], "stderr": [stderr_str]})
 )
