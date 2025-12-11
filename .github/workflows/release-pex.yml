@@ -12,16 +12,24 @@ jobs:
   pex:
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-latest, macos-15-intel, windows-2022]  # macOS runners updated
+        os: [ubuntu-22.04, macos-latest, macos-15-intel, windows-2022]
         py: ["3.11"]
+        include:
+          - os: windows-2022
+            pex_ver: "2.58.1"   # stable on Windows; avoids SysPlatform bootstrap issue
+          - os: ubuntu-22.04
+            pex_ver: "2.66.0"
+          - os: macos-latest
+            pex_ver: "2.66.0"
+          - os: macos-15-intel
+            pex_ver: "2.66.0"
     runs-on: ${{ matrix.os }}
     env:
-      # keep PEX chatty for easier debugging
       PEX_VERBOSE: "9"
       PEX_IGNORE_RCFILES: "1"
       PIP_NO_INPUT: "1"
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
-      PEX_VERSION: "2.66.0"
+
     steps:
       - uses: actions/checkout@v4
 
@@ -29,10 +37,10 @@ jobs:
         with:
           python-version: ${{ matrix.py }}
 
-      - name: Install build tools (pinned)
+      - name: Install build tools (pinned per-OS)
         run: |
           python -m pip install -U "pip>=24,<26"
-          pip install "build==1.2.1" "pex==${{ env.PEX_VERSION }}"
+          pip install "build==1.2.1" "pex==${{ matrix.pex_ver }}"
 
       - name: Build wheel
         run: |
@@ -50,13 +58,13 @@ jobs:
             windows-2022)   OS_OUT="k2p-windows.pex" ;;
           esac
 
-          # Windows: zipapp only (no venv) to avoid junction/symlink issues.
+          # Windows: zipapp only to avoid junction/symlink policies.
           VENV_FLAGS=""
           if [ "${{ matrix.os }}" != "windows-2022" ]; then
             VENV_FLAGS="--venv prepend --strip-pex-env"
           fi
 
-          # Validation triggers a PEX bootstrap bug on Windows -> disable there.
+          # No explicit validation on Windows (triggers bootstrap path); keep on Unix by omission.
           VALIDATE=""
           if [ "${{ matrix.os }}" != "windows-2022" ]; then
             VALIDATE="--validate-entry-point"
@@ -72,7 +80,6 @@ jobs:
           echo "Produced dist/${OS_OUT}"
           ls -l dist
 
-      # Smoke test via interpreter mode ONLY (avoids CLI path requirement)
       - name: Smoke test PEX (Unix)
         if: matrix.os != 'windows-2022'
         shell: bash
