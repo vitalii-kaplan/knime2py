@@ -42,10 +42,11 @@ jobs:
           python -m build --wheel
           ls -l dist
 
-      - name: Build PEX (link-mode=copy, venv, seed)
+      - name: Build PEX (feature-detect link-mode, venv, seed)
         shell: bash
         run: |
           set -euo pipefail
+
           case "${{ matrix.os }}" in
             macos-15-intel) OS_OUT="k2p-macos-x86_64.pex" ;;
             macos-latest)   OS_OUT="k2p-macos-arm64.pex" ;;
@@ -54,10 +55,17 @@ jobs:
             *) echo "Unknown runner: ${{ matrix.os }}"; exit 2 ;;
           esac
 
-          VENV_OPTS="--venv prepend --strip-pex-env --seed"
-          VALIDATE=""
+          # Build-time options as arrays (safe quoting)
+          VENV_OPTS=(--venv prepend --strip-pex-env --seed)
+          VALIDATE=()
           if [ "${{ matrix.os }}" != "windows-2022" ]; then
-            VALIDATE="--validate-entry-point"
+            VALIDATE+=(--validate-entry-point)
+          fi
+
+          # Some PEX versions don't have --link-mode; feature-detect it.
+          LM=()
+          if pex --help 2>&1 | grep -q -- '--link-mode'; then
+            LM+=(--link-mode=copy)
           fi
 
           IC="CPython>=3.10,<3.13"
@@ -65,9 +73,9 @@ jobs:
           pex dist/*.whl \
             -c k2p \
             -o "dist/${OS_OUT}" \
-            ${VENV_OPTS} \
-            ${VALIDATE} \
-            --link-mode=copy \
+            "${VENV_OPTS[@]}" \
+            "${VALIDATE[@]}" \
+            "${LM[@]}" \
             --interpreter-constraint "${IC}"
 
           echo "Produced dist/${OS_OUT}"
