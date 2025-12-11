@@ -56,10 +56,16 @@ jobs:
             VENV_FLAGS="--venv prepend --strip-pex-env"
           fi
 
-          # Validation triggers a PEX bootstrap bug on Windows -> disable there.
+          # Validation triggers a PEX bootstrap issue on Windows -> disable there.
           VALIDATE=""
           if [ "${{ matrix.os }}" != "windows-2022" ]; then
             VALIDATE="--validate-entry-point"
+          fi
+
+          # Use copy mode on Windows (PEX 2.69+); no-ops elsewhere.
+          LM_FLAG=""
+          if [ "${{ matrix.os }}" = "windows-2022" ]; then
+            LM_FLAG="--link-mode=copy"
           fi
 
           pex dist/*.whl \
@@ -67,6 +73,7 @@ jobs:
             -o "dist/${OS_OUT}" \
             ${VENV_FLAGS} \
             ${VALIDATE} \
+            ${LM_FLAG} \
             --interpreter-constraint 'CPython==3.11.*'
 
           echo "Produced dist/${OS_OUT}"
@@ -91,7 +98,7 @@ jobs:
         shell: pwsh
         env:
           PEX_ROOT: ${{ github.workspace }}\.pex_root
-          PEX_VERBOSE: "0"           # quiet PEX so help output isn't polluted
+          PEX_VERBOSE: "0"
           PEX_IGNORE_RCFILES: "1"
         run: |
           New-Item -ItemType Directory -Force -Path $env:PEX_ROOT | Out-Null
@@ -101,8 +108,6 @@ jobs:
             if ($LASTEXITCODE -ne 0) {
               throw "k2p --help failed: $LASTEXITCODE`n$out"
             }
-
-            # Try to see a usage banner; accept either 'k2p' or 'knime2py'
             if ($out -notmatch '(?im)^\s*usage:\s+(k2p|knime2py)\b') {
               Write-Warning "Usage banner not detected; continuing. Full help output follows:"
               Write-Host $out
