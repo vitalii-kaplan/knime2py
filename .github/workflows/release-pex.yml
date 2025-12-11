@@ -21,7 +21,7 @@ jobs:
       PEX_IGNORE_RCFILES: "1"
       PIP_NO_INPUT: "1"
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
-      PEX_VERSION: "2.69.0"
+      PEX_VERSION: "2.74.1"
     steps:
       - uses: actions/checkout@v4
 
@@ -62,7 +62,7 @@ jobs:
             VALIDATE="--validate-entry-point"
           fi
 
-          # Use copy mode on Windows (PEX 2.69+); no-ops elsewhere.
+          # Use copy mode on Windows to avoid symlink issues.
           LM_FLAG=""
           if [ "${{ matrix.os }}" = "windows-2022" ]; then
             LM_FLAG="--link-mode=copy"
