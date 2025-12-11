@@ -52,7 +52,7 @@ jobs:
           # Windows: zipapp only (no venv) to avoid junction/symlink issues.
           VENV_FLAGS="--venv prepend --strip-pex-env"
           if [ "${{ matrix.os }}" = "windows-2022" ]; then
-            VENV_FLAGS="--venv prepend --strip-pex-env --venv-copies --venv-site-packages-copies"
+            VENV_FLAGS=""
           fi
 
           # Disable entry-point validation only on Windows.
