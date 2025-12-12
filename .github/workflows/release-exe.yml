@@ -1,0 +1,112 @@
+name: release-exe
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-2022
+    strategy:
+      matrix:
+        py: ["3.11"]
+    env:
+      PIP_NO_INPUT: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.py }}
+
+      - name: Install build tools and packagers
+        shell: pwsh
+        run: |
+          python -m pip install -U "pip>=24,<26" wheel setuptools
+          pip install -U "pyinstaller>=6,<7" "nuitka>=2,<3"
+
+      - name: Install project (and deps)
+        shell: pwsh
+        run: |
+          pip install -U .
+          python -c "import knime2py,sys; print('knime2py version:', getattr(knime2py,'__version__','unknown'))"
+
+      - name: Create runner script for bundlers
+        shell: pwsh
+        run: |
+          @'
+          from knime2py.cli import main
+          if __name__ == "__main__":
+              main()
+          '@ | Out-File -Encoding UTF8 runner_k2p.py
+          Get-Content runner_k2p.py
+
+      - name: Build EXE (PyInstaller)
+        shell: pwsh
+        run: |
+          pyinstaller --clean -F -n k2p-pyinstaller `
+            --collect-all jinja2 `
+            --collect-all lxml `
+            runner_k2p.py
+          if (-not (Test-Path dist\k2p-pyinstaller.exe)) { throw "PyInstaller output not found" }
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          Compress-Archive -Path dist\k2p-pyinstaller.exe -DestinationPath artifacts\k2p-pyinstaller.zip -Force
+
+      - name: Smoke test (PyInstaller)
+        shell: pwsh
+        run: |
+          .\dist\k2p-pyinstaller.exe --help | Select-Object -First 20
+
+      - name: Build EXE (Nuitka)
+        shell: pwsh
+        run: |
+          python -m nuitka runner_k2p.py `
+            --onefile `
+            --output-filename=k2p-nuitka.exe `
+            --assume-yes-for-downloads `
+            --disable-dll-dependency-cache
+          if (-not (Test-Path .\k2p-nuitka.exe)) { throw "Nuitka output not found" }
+          Compress-Archive -Path .\k2p-nuitka.exe -DestinationPath artifacts\k2p-nuitka.zip -Force
+
+      - name: Smoke test (Nuitka)
+        shell: pwsh
+        run: |
+          .\k2p-nuitka.exe --help | Select-Object -First 20
+
+      - name: Upload EXE artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: artifacts/*.zip
+          if-no-files-found: error
+
+  release:
+    needs: build-windows-exe
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Compute tag
+        id: tag
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            echo "TAG=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "PRERELEASE=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "TAG=nightly-$(date +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+            echo "PRERELEASE=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Attach EXEs to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.TAG }}
+          prerelease: ${{ steps.tag.outputs.PRERELEASE }}
+          files: artifacts/**/*

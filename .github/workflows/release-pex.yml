@@ -12,7 +12,7 @@ jobs:
   pex:
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-latest, macos-15-intel, windows-2022]
+        os: [ubuntu-22.04, macos-latest, macos-15-intel]
         py: ["3.11"]
     runs-on: ${{ matrix.os }}
     env:
@@ -46,38 +46,22 @@ jobs:
             macos-15-intel) OS_OUT="k2p-macos-x86_64.pex" ;;
             macos-latest)   OS_OUT="k2p-macos-arm64.pex" ;;
             ubuntu-22.04)   OS_OUT="k2p-linux.pex" ;;
-            windows-2022)   OS_OUT="k2p-windows.pex" ;;
           esac
 
-          # Windows: zipapp only (no venv) to avoid junction/symlink issues.
-          VENV_FLAGS=""
-          if [ "${{ matrix.os }}" != "windows-2022" ]; then
-            VENV_FLAGS="--venv prepend --strip-pex-env"
-          fi
-
-          # Disable entry-point validation only on Windows.
-          VALIDATE=""
-          if [ "${{ matrix.os }}" != "windows-2022" ]; then
-            VALIDATE="--validate-entry-point"
-          fi
-
-          # Explicitly disable cache seeding (prevents the RECORD parsing path).
-          SEED="--seed=none"
+          VENV_FLAGS="--venv prepend --strip-pex-env"
+          VALIDATE="--validate-entry-point"
 
           pex dist/*.whl \
             -c k2p \
             -o "dist/${OS_OUT}" \
             ${VENV_FLAGS} \
             ${VALIDATE} \
-            ${SEED} \
             --interpreter-constraint 'CPython==3.11.*'
 
           echo "Produced dist/${OS_OUT}"
           ls -l dist
 
-      # Smoke test via interpreter mode ONLY (avoids CLI path requirement)
       - name: Smoke test PEX (Unix)
-        if: matrix.os != 'windows-2022'
         shell: bash
         env:
           PEX_ROOT: ${{ github.workspace }}/.pex_root
@@ -88,27 +72,6 @@ jobs:
             echo "Interpreter test $f"
             PEX_INTERPRETER=1 python3 "$f" -c "import importlib; m=importlib.import_module('knime2py'); print(getattr(m,'__version__','unknown'))"
           done
-
-      - name: Smoke test PEX (Windows)
-        if: matrix.os == 'windows-2022'
-        shell: pwsh
-        env:
-          PEX_ROOT: ${{ github.workspace }}\.pex_root
-          PEX_VERBOSE: "0"
-          PEX_IGNORE_RCFILES: "1"
-        run: |
-          New-Item -ItemType Directory -Force -Path $env:PEX_ROOT | Out-Null
-          Get-ChildItem dist\*.pex | ForEach-Object {
-            Write-Host "CLI --help test $($_.FullName)"
-            $out = python $_.FullName --help 2>&1
-            if ($LASTEXITCODE -ne 0) {
-              throw "k2p --help failed: $LASTEXITCODE`n$out"
-            }
-            if ($out -notmatch '(?im)^\s*usage:\s+(k2p|knime2py)\b') {
-              Write-Warning "Usage banner not detected; continuing. Full help output follows:"
-              Write-Host $out
-            }
-          }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
