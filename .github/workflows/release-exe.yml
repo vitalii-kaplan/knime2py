@@ -41,8 +41,8 @@ jobs:
           from knime2py.cli import main
           if __name__ == "__main__":
               main()
-          '@ | Out-File -Encoding UTF8 runner_k2p.py
-          Get-Content runner_k2p.py
+          '@ | Out-File -Encoding UTF8 k2p_entry.py
+          Get-Content k2p_entry.py
 
       - name: Build with PyInstaller
         shell: pwsh
