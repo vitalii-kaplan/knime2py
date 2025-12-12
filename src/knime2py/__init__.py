@@ -32,3 +32,4 @@ the generator itself depends on lxml for parsing. See the README for details.
 """
 
 __all__ = ["parse_knime"]
+__version__ = "0.1.13"

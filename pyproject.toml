@@ -1,6 +1,6 @@
 [project]
 name = "knime2py"
-version = "0.1.13"
+dynamic = ["version"]
 description = "KNIME → Python workbook converter (graphs, DOT, and ipynb/py emitters)"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -22,22 +22,15 @@ dev = [
   "types-lxml>=2024.2.6",
   "openpyxl>=3.1.0"
 ]
-
-# RAG tooling – keep protobuf + tenacity conservative to avoid clobbering TF/Streamlit envs.
 rag = [
   "sentence-transformers>=2.6,<3",
   "chromadb>=0.5",
   "python-dotenv>=1.0",
   "requests>=2.32",
-  "protobuf<5",     # <- prevents upgrade to v6 that breaks TF/Streamlit stacks
-  "tenacity<9",     # <- streamlit<1.33 expects <9; avoids pulling 9.x
+  "protobuf<5",
+  "tenacity<9",
 ]
-
-# Graph rendering only:
 viz = ["graphviz>=0.20"]
-
-# Heavy scientific stack used by examples/notebooks, not the CLI.
-# Add protobuf<5 for coexistence with TF/Streamlit; it won’t be used directly here.
 ml-examples = [
   "pandas>=1.5,<3.0",
   "numpy>=1.23,<2.0",
@@ -56,6 +49,11 @@ knime2py = "knime2py.cli:main"
 requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
+# Tell Hatch where to read the version from
+[tool.hatch.version]
+path = "src/knime2py/__init__.py"
+
+# Proper Hatch package include (from src layout)
 [tool.hatch.build.targets.wheel]
 packages = ["src/knime2py"]
 
@@ -67,9 +65,9 @@ testpaths = ["tests"]
 branch = true
 source = ["knime2py"]
 omit = [
-    "*/knime2py/__init__.py",
-    "*/knime2py/__main__.py",
-    "*/knime2py/**/__init__.py"
+  "*/knime2py/__init__.py",
+  "*/knime2py/__main__.py",
+  "*/knime2py/**/__init__.py",
 ]
 
 [tool.coverage.report]

@@ -8,55 +8,55 @@ KNIME workflow CLI parser and exporter.
 
 Overview
 ----------------------------
-This module parses a KNIME workflow and emits graph representations and 
+This module parses a KNIME workflow and emits graph representations and
 workbooks for isolated subgraphs in Python or Jupyter Notebook formats.
 
 Runtime Behavior
 ----------------------------
-Inputs: The generated code reads a single KNIME workflow file or a directory 
-containing it, specifically looking for 'workflow.knime'.
+Inputs: A single KNIME workflow file (named 'workflow.knime') or a directory
+that directly contains 'workflow.knime'.
 
-Outputs: The module writes output to specified directories, generating JSON 
-and DOT graph files, as well as Python and Jupyter Notebook workbooks. The 
-output includes mappings of nodes and edges.
+Outputs: The tool writes output to a target directory, generating JSON and DOT
+graph files, as well as Python and Jupyter Notebook workbooks for each isolated
+component. It also prints a machine-readable JSON summary to stdout and can
+optionally persist that summary to a file.
 
-Key algorithms or mappings: The code handles the parsing of workflow components 
+Key algorithms or mappings: The code handles the parsing of workflow components
 and generates corresponding graph representations.
 
 Edge Cases
 ----------------------------
-The code handles cases where no nodes or edges are found in the workflow, 
+The code handles cases where no nodes or edges are found in the workflow,
 and it raises appropriate errors for invalid paths.
 
 Generated Code Dependencies
 ----------------------------
-This module requires the following external libraries: pandas, numpy, 
-sklearn, imblearn, matplotlib, and lxml. These dependencies are required 
-by the generated code, not by this code.
+The generated notebooks/scripts may require: pandas, numpy, scikit-learn,
+imblearn, matplotlib, and lxml. These are dependencies of the emitted code,
+not of this CLI itself.
 
 Usage
 ----------------------------
-This module is typically invoked from the command line, allowing users to 
-specify the path to a KNIME workflow. For example, the context can be accessed 
-as follows: `args.path`.
-
-Node Identity
-----------------------------
-This module does not define specific KNIME factory IDs or special flags.
+Typical invocations:
+  k2p /path/to/workflow_dir --out out_graphs [--workbook py|ipynb] [--graph dot|json|off]
+  k2p --version
+  k2p /path/to/workflow_dir --summary-file out_graphs/summary.json
+  k2p /path/to/workflow_dir --debug
 
 Configuration
 ----------------------------
-This module does not parse a settings.xml file.
+This CLI does not take a direct path to a 'settings.xml'. Per-node settings are
+handled within the library layer during parsing.
 
 Limitations
 ----------------------------
-This module does not support recursive searches for workflow files in 
-directories and assumes a specific file structure.
+No recursive search for 'workflow.knime' is performed. The input must be a file
+named exactly 'workflow.knime' or a directory that directly contains it.
 
 References
 ----------------------------
-Refer to the KNIME documentation for more details on workflow structures 
-and node configurations.
+Refer to the KNIME documentation for details on workflow structures and node
+configurations.
 """
 
 from __future__ import annotations
@@ -78,6 +78,31 @@ from .emitters import (
 )
 
 
+def _infer_version() -> str:
+    """Return package version robustly across wheel/PEX/source layouts."""
+    # Resolve the installed distribution name from the package path
+    dist_name = (__package__ or "knime2py").split(".")[0]
+    try:
+        try:
+            from importlib.metadata import PackageNotFoundError, version  # py3.8+
+        except Exception:  # pragma: no cover
+            from importlib_metadata import PackageNotFoundError, version  # type: ignore
+        v = version(dist_name)
+        if v:
+            return v
+    except Exception:
+        pass
+    # Fallback to in-package __version__ if present (source checkout)
+    try:
+        from . import __version__  # type: ignore
+        if __version__:
+            return str(__version__)
+    except Exception:
+        pass
+    # Last resort
+    return "0+unknown"
+
+
 def _resolve_single_workflow(path: Path) -> Path:
     """
     Return the path to a single workflow.knime based on the given path.
@@ -86,15 +111,6 @@ def _resolve_single_workflow(path: Path) -> Path:
       - If 'path' is a file, it must be named 'workflow.knime'.
       - If 'path' is a directory, it must contain a file named 'workflow.knime' directly
         (no recursive search).
-
-    Args:
-        path (Path): The path to the workflow file or directory.
-
-    Returns:
-        Path: The resolved path to the workflow.knime file.
-
-    Raises:
-        SystemExit: If the path does not exist or is not a valid workflow file.
     """
     p = path.expanduser().resolve()
 
@@ -120,35 +136,53 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
     """
     Parse command-line arguments and execute the KNIME workflow parsing and exporting.
 
-    Args:
-        argv (Optional[list[str]]): The command-line arguments. If None, uses sys.argv.
-
-    Returns:
-        int: Exit code indicating success (0) or failure (non-zero).
+    Returns an exit code: 0 on success; non-zero on failure.
     """
-    p = argparse.ArgumentParser(
-        description="Parse a single KNIME workflow and emit graph + workbook per isolated subgraph."
+    parser = argparse.ArgumentParser(
+        prog="k2p",
+        description="Parse a single KNIME workflow and emit graph + workbook per isolated subgraph.",
     )
-    p.add_argument(
+
+    # --version / -V (prints and exits)
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=f"%(prog)s { _infer_version() }",
+        help="Show program version and exit.",
+    )
+
+    parser.add_argument(
         "path",
         type=Path,
         help="Path to a workflow.knime file OR a directory that directly contains workflow.knime",
     )
-    p.add_argument("--out", type=Path, default=Path("out_graphs"), help="Output directory")
-    p.add_argument(
+    parser.add_argument("--out", type=Path, default=Path("out_graphs"), help="Output directory")
+    parser.add_argument(
         "--workbook",
         choices=["py", "ipynb"],          # None => generate both
         default=None,
         help="Workbook format to generate. Omit to generate both.",
     )
-    p.add_argument(
+    parser.add_argument(
         "--graph",
         choices=["dot", "json", "off"],
         default=None,                     # None => generate both
         help="Which graph file(s) to emit: dot, json, or off. Omit to generate both.",
     )
+    parser.add_argument(
+        "--summary-file",
+        type=Path,
+        default=None,
+        help="Write the JSON summary to this path as well as stdout.",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Show full traceback on errors.",
+    )
 
-    args = p.parse_args(argv)
+    args = parser.parse_args(argv)
 
     wf = _resolve_single_workflow(args.path)
     out_dir = args.out.expanduser().resolve()
@@ -157,7 +191,11 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
     try:
         graphs = parse_workflow_components(wf)  # one WorkflowGraph per isolated component
     except Exception as e:
-        print(f"ERROR parsing {wf}: {e}", file=sys.stderr)
+        if args.debug:
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+        else:
+            print(f"ERROR parsing {wf}: {e}", file=sys.stderr)
         return 3
 
     if not graphs:
@@ -223,17 +261,20 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
         "total_components": len(components),
         "components": components,
     }
+
+    # Always print to stdout
     print(json.dumps(summary, indent=2))
+
+    # Optionally persist to a file
+    if args.summary_file:
+        args.summary_file.parent.mkdir(parents=True, exist_ok=True)
+        args.summary_file.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+
     return 0
 
 
 def main(argv: Optional[list[str]] = None) -> None:
-    """
-    Console entrypoint used by `pyproject.toml`.
-
-    Args:
-        argv (Optional[list[str]]): The command-line arguments. If None, uses sys.argv.
-    """
+    """Console entrypoint used by `pyproject.toml`."""
     code = run_cli(argv)
     if code:
         sys.exit(code)
