@@ -1,0 +1,62 @@
+name: release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build-pex:
+    uses: ./.github/workflows/build-pex.yml
+    with:
+      tag_name: ${{ github.ref_name }}
+
+  build-exe:
+    needs: build-pex
+    uses: ./.github/workflows/build-exe.yml
+    with:
+      tag_name: ${{ github.ref_name }}
+
+  publish:
+    needs: [build-pex, build-exe]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download PEX artifacts (all OSes)
+        uses: actions/download-artifact@v4
+        with:
+          pattern: pex-*
+          path: artifacts/pex
+          merge-multiple: true
+
+      - name: Download Windows EXE artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-exe
+          path: artifacts/windows-exe
+
+      - name: Compute tag
+        id: tag
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            echo "TAG=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "PRERELEASE=false"       >> "$GITHUB_OUTPUT"
+          else
+            echo "TAG=nightly-$(date +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+            echo "PRERELEASE=true"                  >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish assets to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.TAG }}
+          prerelease: ${{ steps.tag.outputs.PRERELEASE }}
+          files: |
+            artifacts/pex/**
+            artifacts/windows-exe/**
