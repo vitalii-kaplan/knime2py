@@ -16,7 +16,7 @@ jobs:
   pex:
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-latest, macos-15-intel] 
+        os: [ubuntu-22.04, macos-latest, macos-15-intel]
         py: ["3.11"]
     runs-on: ${{ matrix.os }}
     env:
@@ -65,7 +65,7 @@ jobs:
           echo "Produced dist/${OS_OUT}"
           ls -l dist
 
-      - name: Smoke test PEX (Unix)
+      - name: Smoke test PEX (Unix, --version)
         shell: bash
         env:
           PEX_ROOT: ${{ github.workspace }}/.pex_root
@@ -73,8 +73,18 @@ jobs:
           set -euo pipefail
           mkdir -p "$PEX_ROOT"
           for f in dist/*.pex; do
-            echo "Interpreter test $f"
-            PEX_INTERPRETER=1 python3 "$f" -c "import importlib; m=importlib.import_module('knime2py'); print(getattr(m,'__version__','unknown'))"
+            echo "CLI version test $f"
+            # Try executing the PEX directly; fall back to python launcher if needed
+            if out=$("$f" --version 2>&1); then
+              :
+            else
+              out=$(python3 "$f" --version 2>&1)
+            fi
+            echo "$out"
+            case "$out" in
+              k2p\ *) ;;  # expected: "k2p X.Y.Z"
+              *) echo "Unexpected --version output: '$out'" >&2; exit 1 ;;
+            esac
           done
 
       - name: Upload PEX artifacts

@@ -27,7 +27,7 @@ jobs:
       - name: Install build toolchain
         shell: pwsh
         run: |
-          python -m pip install --upgrade pip wheel setuptools
+          python -m pip install --upgrade "pip>=24,<26" wheel setuptools
           pip install -e .
           pip install pyinstaller==6.* nuitka==2.* ordered-set zstandard
 
@@ -58,6 +58,22 @@ jobs:
           Move-Item .\dist\k2p-pyinstaller.exe .\dist-exe\k2p-pyinstaller.exe
           Move-Item .\k2p-nuitka.exe           .\dist-exe\k2p-nuitka.exe
           Get-ChildItem .\dist-exe
+
+      - name: Smoke test executables (--version)
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          $exes = Get-ChildItem -Path .\dist-exe\*.exe
+          if (-not $exes) { Write-Error "No executables found in dist-exe" }
+          foreach ($e in $exes) {
+            Write-Host "Testing $($e.FullName) --version"
+            $out = & $e.FullName --version 2>&1
+            Write-Host $out
+            if ($out -notmatch '^k2p\s+\d+\.\d+\.\d+') {
+              Write-Error "Unexpected --version output from $($e.Name): '$out'"
+            }
+          }
 
       - name: Upload exe artifacts
         uses: actions/upload-artifact@v4
