@@ -34,16 +34,15 @@ jobs:
           # Builders
           pip install pyinstaller==6.* nuitka==2.* ordered-set zstandard
 
-      - name: Create entry script
+      - name: Create runner script for bundlers
         shell: pwsh
         run: |
-          Set-Content -Path k2p_entry.py -Encoding UTF8 -NoNewline -Value @(
-          'from knime2py.cli import main'
-          ''
-          'if __name__ == "__main__":'
-          '    raise SystemExit(main())'
-          )
-
+          @'
+          from knime2py.cli import main
+          if __name__ == "__main__":
+              main()
+          '@ | Out-File -Encoding UTF8 runner_k2p.py
+          Get-Content runner_k2p.py
 
       - name: Build with PyInstaller
         shell: pwsh
