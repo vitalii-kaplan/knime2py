@@ -37,11 +37,13 @@ jobs:
       - name: Create entry script
         shell: pwsh
         run: |
-          @'
-            from knime2py.cli import main
-            if __name__ == "__main__":
-                main()
-          '@ | Out-File -Encoding ASCII k2p_entry.py
+          Set-Content -Path k2p_entry.py -Encoding UTF8 -NoNewline -Value @(
+          'from knime2py.cli import main'
+          ''
+          'if __name__ == "__main__":'
+          '    raise SystemExit(main())'
+          )
+
 
       - name: Build with PyInstaller
         shell: pwsh
