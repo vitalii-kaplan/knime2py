@@ -54,13 +54,6 @@ jobs:
             --collect-all lxml `
             runner_k2p.py
           if (-not (Test-Path dist\k2p-pyinstaller.exe)) { throw "PyInstaller output not found" }
-          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
-          Compress-Archive -Path dist\k2p-pyinstaller.exe -DestinationPath artifacts\k2p-pyinstaller.zip -Force
-
-      - name: Smoke test (PyInstaller)
-        shell: pwsh
-        run: |
-          .\dist\k2p-pyinstaller.exe --help | Select-Object -First 20
 
       - name: Build EXE (Nuitka)
         shell: pwsh
@@ -71,19 +64,38 @@ jobs:
             --assume-yes-for-downloads `
             --disable-dll-dependency-cache
           if (-not (Test-Path .\k2p-nuitka.exe)) { throw "Nuitka output not found" }
-          Compress-Archive -Path .\k2p-nuitka.exe -DestinationPath artifacts\k2p-nuitka.zip -Force
+
+      - name: Package artifacts (exe + zip)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          Copy-Item dist\k2p-pyinstaller.exe artifacts\k2p-pyinstaller.exe
+          Copy-Item .\k2p-nuitka.exe artifacts\k2p-nuitka.exe
+          Compress-Archive -Path artifacts\k2p-pyinstaller.exe -DestinationPath artifacts\k2p-pyinstaller.zip -Force
+          Compress-Archive -Path artifacts\k2p-nuitka.exe -DestinationPath artifacts\k2p-nuitka.zip -Force
+          Get-ChildItem artifacts
+
+      - name: Smoke test (PyInstaller)
+        shell: pwsh
+        run: |
+          .\artifacts\k2p-pyinstaller.exe --help | Select-Object -First 20
 
       - name: Smoke test (Nuitka)
         shell: pwsh
         run: |
-          .\k2p-nuitka.exe --help | Select-Object -First 20
+          .\artifacts\k2p-nuitka.exe --help | Select-Object -First 20
 
       - name: Upload EXE artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-exe
-          path: artifacts/*.zip
+          path: |
+            artifacts/k2p-pyinstaller.exe
+            artifacts/k2p-nuitka.exe
+            artifacts/k2p-pyinstaller.zip
+            artifacts/k2p-nuitka.zip
           if-no-files-found: error
+          compression-level: 0
 
   release:
     needs: build-windows-exe
@@ -91,7 +103,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
+          name: windows-exe
           path: artifacts
+          merge-multiple: true
 
       - name: Compute tag
         id: tag
@@ -109,4 +123,8 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.TAG }}
           prerelease: ${{ steps.tag.outputs.PRERELEASE }}
-          files: artifacts/**/*
+          files: |
+            artifacts/k2p-pyinstaller.exe
+            artifacts/k2p-nuitka.exe
+            artifacts/k2p-pyinstaller.zip
+            artifacts/k2p-nuitka.zip
