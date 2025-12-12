@@ -1,62 +1,10 @@
-"""
-KNIME Component runner for the knime2py PEX.
-
-Overview
-----------------------------
-This script backs the “knime2py launcher” Component. It reads the user’s format
-choices from the input table, validates the configured knime2py PEX path and
-workflow directory (stored in flow variables), and executes the PEX with the
-appropriate `--workbook`/`--graph` settings. The captured stdout/stderr are
-returned to KNIME in a single two-column table so the UX node can surface
-diagnostics.
-
-Runtime Behavior
-----------------------------
-Inputs:
-- A single-column selection table (first input) listing desired output formats
-  such as `.py`, `.ipynb`, `.dot`, `.json`.
-- Flow variables: `k2p_bin`, `k2p_workflow`, and `output_dir`.
-
-Outputs:
-- A single output table with columns `stdout` and `stderr`, representing the
-  PEX process output.
-
-Key logic:
-- Validates the selection table and ensures at least one workbook format is
-  chosen.
-- Builds the knime2py command-line based on the requested formats.
-- Executes the PEX and augments known failure messages with actionable
-  guidance (e.g., missing interpreter, Windows privilege issues).
-
-Edge Cases
-----------------------------
-- Raises early errors when the selection table is malformed or lacks `.py` /
-  `.ipynb`.
-- Adds human-friendly guidance when the PEX binary is missing or execution
-  fails due to interpreter/permission problems.
-
-Dependencies
-----------------------------
-- Relies on KNIME’s scripting bridge (`knime.scripting.io`) and pandas for
-  table conversion.
-
-Usage
-----------------------------
-Configured as part of the KNIME Component: the user supplies the PEX path and
-workflow directory via flow variables, and selects output formats inside the
-node dialog.
-
-Limitations
-----------------------------
-- Only exposes the `--workbook` and `--graph` toggles; advanced CLI flags are
-  not surfaced.
-"""
-
 from __future__ import annotations
 """
-Resilient KNIME component runner for knime2py PEX.
-- Validates inputs, builds args from the selection table, executes PEX.
-- Always returns a single-row table with columns: stdout, stderr.
+Resilient KNIME component runner for knime2py (.pex or .exe).
+- Validates inputs, builds args from the selection table.
+- If k2p_bin ends with .pex -> run via current Python.
+- If k2p_bin ends with .exe -> run the exe directly (Windows only).
+- Always returns a single-row table with: stdout, stderr.
 - No SystemExit; no Path.resolve(); subprocess has a timeout.
 """
 
@@ -71,7 +19,7 @@ from pathlib import Path
 import pandas as pd
 
 # ---- Tunables ----
-PEX_TIMEOUT_SEC = 600  # prevent indefinite hangs if the child process stalls
+SUBPROCESS_TIMEOUT_SEC = 600  # prevent indefinite hangs
 
 def _as_str(s: object) -> str:
     return "" if s is None else str(s)
@@ -79,20 +27,30 @@ def _as_str(s: object) -> str:
 def _advise(stderr: str, ctx: dict[str, str]) -> str:
     adv: list[str] = []
 
-    if "PEX not found:" in stderr:
-        adv += [
-            "Verify the 'knime2py PEX' path points to an existing .pex on the local filesystem.",
-            "If you selected a KNIME URI (knime://...), switch the File Chooser to 'Local' and pick a real OS path.",
-        ]
+    # Binary missing
+    if "PEX not found:" in stderr or "Binary not found:" in stderr:
+        if ctx.get("mode") == "pex":
+            adv += [
+                "Verify the 'knime2py PEX' path points to an existing .pex on the local filesystem.",
+                "If you selected a KNIME URI (knime://...), switch the File Chooser to 'Local' and pick a real OS path.",
+            ]
+        elif ctx.get("mode") == "exe":
+            adv += [
+                "Verify the 'knime2py EXE' path points to an existing .exe on the local filesystem (Windows only).",
+                "If you selected a KNIME URI (knime://...), switch the File Chooser to 'Local' and pick a real OS path.",
+            ]
 
+    # Windows privilege / symlink issues (PEX cache)
     if "WinError 1314" in stderr or "A required privilege is not held by the client" in stderr:
         adv += [
             "Windows blocked creation of links in the PEX cache.",
             "Fixes:",
-            "  • Run KNIME with elevated privileges (in admin mode). Only for the first KNIME2PY component run.",
+            "  • Use the updated PEX built with --link-mode=copy (recommended).",
             "  • Or enable Windows Developer Mode for your user and retry.",
+            "  • Or run KNIME with elevated privileges as a last resort.",
         ]
 
+    # Interpreter constraint mismatch (PEX)
     if "No interpreter compatible with the requested constraints" in stderr or "Version matches CPython" in stderr:
         adv += [
             "Your Python installation does not satisfy the PEX interpreter constraints.",
@@ -102,11 +60,13 @@ def _advise(stderr: str, ctx: dict[str, str]) -> str:
             "  • Or request a PEX built for your Python version range.",
         ]
 
+    # Permission errors (outputs)
     if ("Permission denied" in stderr) or ("Access is denied" in stderr):
         adv += [
             "The output directory is not writable. Choose a different local directory with write permission.",
         ]
 
+    # KNIME URI misuse
     if "knime://" in ctx.get("k2p_bin", "") or "knime://" in ctx.get("input_knime", ""):
         adv += [
             "One or more inputs use a KNIME URI (knime://...). Use 'Local' file selectors and real OS paths.",
@@ -168,6 +128,7 @@ ctx = {
     "k2p_bin": _as_str(knio.flow_variables.get("k2p_bin")),
     "input_knime": _as_str(knio.flow_variables.get("k2p_workflow")),
     "output_dir": _as_str(knio.flow_variables.get("output_dir")),
+    "mode": "",  # 'pex' or 'exe'
 }
 
 try:
@@ -180,12 +141,19 @@ try:
         raise ValueError("Flow variable 'output_dir' is missing.")
 
     # Paths (no resolve())
-    pex_path = Path(ctx["k2p_bin"])
+    bin_path = Path(ctx["k2p_bin"])
     input_knime = Path(ctx["input_knime"]).expanduser()
     output_dir = Path(ctx["output_dir"]).expanduser()
 
-    if not pex_path.is_file():
-        stderr_str = _advise(f"PEX not found: {ctx['k2p_bin']}", ctx)
+    if not bin_path.is_file():
+        # Tailor message by extension
+        if bin_path.suffix.lower() == ".pex":
+            ctx["mode"] = "pex"
+            stderr_str = _advise(f"PEX not found: {ctx['k2p_bin']}", ctx)
+        else:
+            # Treat everything else as a generic binary (incl. .exe)
+            ctx["mode"] = "exe" if bin_path.suffix.lower() == ".exe" else "bin"
+            stderr_str = _advise(f"Binary not found: {ctx['k2p_bin']}", ctx)
     elif not input_knime.exists():
         stderr_str = _advise(f"Input path not found: {ctx['input_knime']}", ctx)
     elif not output_dir.exists():
@@ -221,32 +189,68 @@ try:
         else:
             graph_args = ["--graph", "off"]
 
-        cmd = [
-            sys.executable,
-            str(pex_path),
-            str(input_knime),
-            "--out", str(output_dir),
-            *workbook_args,
-            *graph_args,
-        ]
-
-        # Run with timeout to prevent hangs
-        try:
-            proc = subprocess.run(
-                cmd, text=True, capture_output=True, timeout=PEX_TIMEOUT_SEC
-            )
-            stdout_str = proc.stdout or ""
-            stderr_raw = proc.stderr or ""
-            if proc.returncode != 0 or stderr_raw:
+        # Decide how to invoke
+        suffix = bin_path.suffix.lower()
+        if suffix == ".pex":
+            ctx["mode"] = "pex"
+            cmd = [
+                sys.executable,          # run PEX via current interpreter
+                str(bin_path),
+                str(input_knime),
+                "--out", str(output_dir),
+                *workbook_args,
+                *graph_args,
+            ]
+            env = os.environ.copy()
+        elif suffix == ".exe":
+            ctx["mode"] = "exe"
+            if os.name != "nt":
                 stderr_str = _advise(
-                    (stderr_raw or f"Process returned non-zero exit code: {proc.returncode}").rstrip(),
+                    "Windows .exe selected on a non-Windows OS. Download a .pex or the appropriate artifact for your platform.",
                     ctx,
                 )
-        except subprocess.TimeoutExpired:
-            stderr_str = _advise(
-                f"PEX execution exceeded {PEX_TIMEOUT_SEC} seconds and was aborted.",
-                ctx,
-            )
+                cmd = None
+                env = None
+            else:
+                cmd = [
+                    str(bin_path),       # call the exe directly
+                    str(input_knime),
+                    "--out", str(output_dir),
+                    *workbook_args,
+                    *graph_args,
+                ]
+                env = os.environ.copy()
+        else:
+            # Fallback: try PEX-style invocation first
+            ctx["mode"] = "bin"
+            cmd = [
+                sys.executable,
+                str(bin_path),
+                str(input_knime),
+                "--out", str(output_dir),
+                *workbook_args,
+                *graph_args,
+            ]
+            env = os.environ.copy()
+
+        # Execute if we have a command
+        if cmd is not None:
+            try:
+                proc = subprocess.run(
+                    cmd, text=True, capture_output=True, timeout=SUBPROCESS_TIMEOUT_SEC, env=env
+                )
+                stdout_str = proc.stdout or ""
+                stderr_raw = proc.stderr or ""
+                if proc.returncode != 0 or stderr_raw:
+                    stderr_str = _advise(
+                        (stderr_raw or f"Process returned non-zero exit code: {proc.returncode}").rstrip(),
+                        ctx,
+                    )
+            except subprocess.TimeoutExpired:
+                stderr_str = _advise(
+                    f"Execution exceeded {SUBPROCESS_TIMEOUT_SEC} seconds and was aborted.",
+                    ctx,
+                )
 
 except Exception as e:
     tb = traceback.format_exc()
