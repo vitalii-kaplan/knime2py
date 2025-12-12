@@ -52,8 +52,7 @@ jobs:
       - name: Build with Nuitka
         shell: pwsh
         run: |
-          python -m nuitka --onefile --assume-yes-for-downloads ^
-            --output-filename=k2p-nuitka.exe k2p_entry.py
+          python -m nuitka --onefile --assume-yes-for-downloads --output-filename=k2p-nuitka.exe k2p_entry.py
 
       - name: Collect outputs
         shell: pwsh
