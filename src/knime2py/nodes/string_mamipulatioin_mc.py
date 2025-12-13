@@ -168,16 +168,24 @@ def parse_settings(node_dir: Optional[Path]) -> MCStringSettings:
 
     cols = _collect_included_names(root)
 
-    expr = first(model, ".//*[local-name()='entry' and @key='EXPRESSION']/@value") if model is not None else ""
-    expr = html.unescape(expr or "").strip()
+    expr = ""
+    mode = "REPLACE_COLUMNS"
+    suffix = "_transformed"
+    abort_on_error = True
+    insert_missing = True
 
-    mode = first(model, ".//*[local-name()='entry' and @key='APPEND_OR_REPLACE']/@value") or "REPLACE_COLUMNS"
-    mode = mode.strip().upper()
+    if model is not None:
+        expr_raw = first(model, ".//*[local-name()='entry' and @key='EXPRESSION']/@value")
+        expr = html.unescape(expr_raw or "").strip()
 
-    suffix = first(model, ".//*[local-name()='entry' and @key='APPEND_COLUMN_SUFFIX']/@value") or "_transformed"
+        mode_raw = first(model, ".//*[local-name()='entry' and @key='APPEND_OR_REPLACE']/@value")
+        if mode_raw:
+            mode = mode_raw.strip().upper() or mode
 
-    abort_on_error = _bool(first(model, ".//*[local-name()='entry' and @key='Abort execution on evaluation errors']/@value"), True)
-    insert_missing = _bool(first(model, ".//*[local-name()='entry' and @key='Insert missing values as null']/@value"), True)
+        suffix = first(model, ".//*[local-name()='entry' and @key='APPEND_COLUMN_SUFFIX']/@value") or suffix
+
+        abort_on_error = _bool(first(model, ".//*[local-name()='entry' and @key='Abort execution on evaluation errors']/@value"), True)
+        insert_missing = _bool(first(model, ".//*[local-name()='entry' and @key='Insert missing values as null']/@value"), True)
 
     return MCStringSettings(
         columns=cols,

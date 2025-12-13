@@ -82,7 +82,7 @@ org.knime.base.node.mine.treeensemble2.node.gradientboosting.learner.classificat
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
@@ -115,8 +115,8 @@ class GradientBoostingSettings:
     use_binary_nominal_splits: bool = False
     use_diff_attrs_each_node: bool = False
 
-    include_cols: List[str] = None
-    exclude_cols: List[str] = None
+    include_cols: List[str] = field(default_factory=list)
+    exclude_cols: List[str] = field(default_factory=list)
 
 
 def _to_int(s: Optional[str], default: Optional[int]) -> Optional[int]:
@@ -202,8 +202,8 @@ def parse_gbt_settings(node_dir: Optional[Path]) -> GradientBoostingSettings:
 
     min_node_size = _to_int(first(model_el, ".//*[local-name()='entry' and @key='minNodeSize']/@value"), -1)
     min_child_size = _to_int(first(model_el, ".//*[local-name()='entry' and @key='minChildSize']/@value"), -1)
-    min_samples_split = max(2, min_node_size) if (min_node_size or 0) > 0 else 2
-    min_samples_leaf = max(1, min_child_size) if (min_child_size or 0) > 0 else 1
+    min_samples_split = max(2, min_node_size) if min_node_size and min_node_size > 0 else 2
+    min_samples_leaf = max(1, min_child_size) if min_child_size and min_child_size > 0 else 1
 
     data_fraction = _to_float(first(model_el, ".//*[local-name()='entry' and @key='dataFraction']/@value"), 1.0) or 1.0
     subsample = data_fraction if 0.0 < data_fraction <= 1.0 else 1.0

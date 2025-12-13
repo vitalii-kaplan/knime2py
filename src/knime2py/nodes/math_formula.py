@@ -144,7 +144,9 @@ def parse_math_settings(node_dir: Optional[Path]) -> MathFormulaSettings:
     convert_to_int = _bool(first(model, ".//*[local-name()='entry' and @key='convert_to_int']/@value"), False) if model is not None else False
 
     # Some KNIME variants let you name the appended column; if not present, keep our default
-    new_col_name = first(model, ".//*[local-name()='entry' and @key='new_column_name']/@value") or "Math Formula"
+    new_col_name = "Math Formula"
+    if model is not None:
+        new_col_name = first(model, ".//*[local-name()='entry' and @key='new_column_name']/@value") or new_col_name
 
     return MathFormulaSettings(
         append=append,

@@ -243,7 +243,10 @@ def _emit_train_code(cfg: DecisionTreeSettings) -> List[str]:
     lines.append(f"_criterion = {repr(cfg.criterion)}  # mapped from KNIME splitQualityMeasure")
     lines.append(f"_min_samples_split = int({int(cfg.min_samples_split)})")
     lines.append("# KNIME Decision Tree Learner does not expose a random seed; k2p defaults to 1 for reproducibility.")
-    lines.append(f"_seed = int({int(cfg.random_state)})  # default from k2p (1 unless overridden)")
+    if cfg.random_state is not None:
+        lines.append(f"_seed = int({int(cfg.random_state)})  # default from k2p (1 unless overridden)")
+    else:
+        lines.append("_seed = 1  # default seed when not provided")
 
     # Informational notes for unsupported knobs
     if cfg.pruning_method:

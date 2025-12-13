@@ -236,7 +236,7 @@ def _emit_predict_code(cfg: PredictorSettings) -> List[str]:
         lines.append("    proba = est.predict_proba(X)")
         lines.append("    if not classes and getattr(proba, 'shape', (0, 0))[1] == 2:")
         lines.append("        classes = ['class0', 'class1']")
-        lines.append(f"    _suf = {repr(cfg.pro_suffix if hasattr(cfg, 'pro_suffix') else cfg.pro_suffix if hasattr(cfg, 'pro_suffix') else cfg.prob_suffix)}")
+        lines.append(f"    _suf = {repr(cfg.prob_suffix)}")
         lines.append("    for j, cls in enumerate(classes):")
         lines.append("        cname = f\"P ({tgt}={cls}){_suf}\"")
         lines.append("        out_df[cname] = proba[:, j]")

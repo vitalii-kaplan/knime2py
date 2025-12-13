@@ -139,9 +139,14 @@ def parse_roc_settings(node_dir: Optional[Path]) -> ROCCurveSettings:
     img_fmt   = (first(model_el, ".//*[local-name()='entry' and @key='imageFormat']/@value") or "PNG").strip().upper() if model_el is not None else "PNG"
 
     # Titles / labels
-    title     = first(view_el, ".//*[local-name()='entry' and @key='title']/@value") or "ROC Curve"
-    x_lab     = first(view_el, ".//*[local-name()='entry' and @key='xAxisLabel']/@value") or "False positive rate (1 - specificity)"
-    y_lab     = first(view_el, ".//*[local-name()='entry' and @key='yAxisLabel']/@value") or "True positive rate (sensitivity)"
+    if view_el is not None:
+        title = first(view_el, ".//*[local-name()='entry' and @key='title']/@value") or "ROC Curve"
+        x_lab = first(view_el, ".//*[local-name()='entry' and @key='xAxisLabel']/@value") or "False positive rate (1 - specificity)"
+        y_lab = first(view_el, ".//*[local-name()='entry' and @key='yAxisLabel']/@value") or "True positive rate (sensitivity)"
+    else:
+        title = "ROC Curve"
+        x_lab = "False positive rate (1 - specificity)"
+        y_lab = "True positive rate (sensitivity)"
     line_size = int(first(view_el, ".//*[local-name()='entry' and @key='lineSize']/@value") or 2) if view_el is not None else 2
 
     # Truth column — support both variants

@@ -147,6 +147,8 @@ def parse_col_renamer_settings(node_dir: Optional[Path]) -> ColumnRenamerSetting
         return ColumnRenamerSettings()
 
     ren_cfg = first_el(model, ".//*[local-name()='config' and @key='renamings']")
+    if ren_cfg is None:
+        return ColumnRenamerSettings()
     pairs = _collect_renamings(ren_cfg)
     return ColumnRenamerSettings(renamings=pairs)
 

@@ -72,7 +72,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Iterable, List, Optional, Union, Callable, Tuple
+from typing import Iterable, List, Optional, Union, Callable, Tuple, cast
 from lxml import etree as ET
 
 # ----------------------------
@@ -382,6 +382,17 @@ def java_to_pandas_dtype(java_class: str) -> Optional[str]:
 # Import utils
 # ----------------------------
 
+def _coerce_iterable(obj: object | None) -> List[str]:
+    """Best-effort conversion to a list of strings."""
+    if obj is None:
+        return []
+    if isinstance(obj, str):
+        return [obj]
+    if isinstance(obj, Iterable):
+        return [str(item) for item in obj]
+    return []
+
+
 def collect_module_imports(mod_or_func: Optional[Union[object, Callable[[], Iterable[str]]]]) -> List[str]:
     """
     Return a sorted list of unique import lines from either:
@@ -394,10 +405,15 @@ def collect_module_imports(mod_or_func: Optional[Union[object, Callable[[], Iter
             return []
         # If they passed the function directly
         if callable(mod_or_func):
-            items = mod_or_func() or []
+            result = mod_or_func()
+            items = _coerce_iterable(result)
         else:
             gi = getattr(mod_or_func, "generate_imports", None)
-            items = gi() if callable(gi) else []
+            if callable(gi):
+                result = gi()
+                items = _coerce_iterable(result)
+            else:
+                items = []
         for line in items:
             s = (line or "").strip()
             if s:

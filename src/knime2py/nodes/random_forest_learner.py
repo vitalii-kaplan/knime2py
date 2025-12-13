@@ -223,7 +223,7 @@ def parse_rf_settings(node_dir: Optional[Path]) -> RandomForestSettings:
 
     col_mode = first(model_el, ".//*[local-name()='entry' and @key='columnSamplingMode']/@value") or "SquareRoot"
     col_frac = _to_float(first(model_el, ".//*[local-name()='entry' and @key='columnFractionPerTree']/@value"), None)
-    col_abs  = _to_int(first(model_el, ".//*[local-name()='entry' and @key='columnAbsolutePerTree']/@value"), None)
+    col_abs  = _to_int(first(model_el, ".//*[local-name()='entry' and @key='columnAbsolutePerTree']/@value"), 0)
     use_diff_attrs = _to_bool(first(model_el, ".//*[local-name()='entry' and @key='isUseDifferentAttributesAtEachNode']/@value"), True)
 
     split_criterion_raw = first(model_el, ".//*[local-name()='entry' and @key='splitCriterion']/@value")
