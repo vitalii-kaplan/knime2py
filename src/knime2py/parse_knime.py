@@ -69,7 +69,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Set, Tuple
+from typing import Dict, List, Literal, Optional, Set, Tuple, cast
 
 from lxml import etree as ET
 
@@ -77,6 +77,7 @@ from .xml_utils import XML_PARSER, parse_settings_xml
 
 # Node names that mark a subgraph as non-exportable when encountered as a start node.
 NON_EXPORTABLE_NODE_NAMES = ["KNIME2PY"]
+STATE_VALUES: Set[str] = {"EXECUTED", "CONFIGURED", "IDLE"}
 
 
 @dataclass
@@ -223,7 +224,7 @@ def _parse_knime5_structure(
                 name=name,
                 type=node_type,
                 path=node_path,
-                state=state,
+                state=_normalize_state(state),
                 comments=comments,
             )
 
@@ -297,6 +298,14 @@ def _parse_knime5_structure(
                 )
 
     return nodes, edges
+
+
+def _normalize_state(value: Optional[str]) -> Optional[Literal["EXECUTED", "CONFIGURED", "IDLE"]]:
+    """Convert arbitrary text to a valid state literal or None."""
+    if not value:
+        return None
+    upper = value.strip().upper()
+    return cast(Optional[Literal["EXECUTED", "CONFIGURED", "IDLE"]], upper if upper in STATE_VALUES else None)
 
 
 def _parse_legacy_structure(
