@@ -65,27 +65,48 @@ jobs:
           echo "Produced dist/${OS_OUT}"
           ls -l dist
 
-      - name: Smoke test PEX (Unix, --version)
+      - name: Smoke test PEX (Unix, --version; quiet, robust)
         shell: bash
         env:
           PEX_ROOT: ${{ github.workspace }}/.pex_root
         run: |
           set -euo pipefail
+          shopt -s nullglob
           mkdir -p "$PEX_ROOT"
+
           for f in dist/*.pex; do
             echo "CLI version test $f"
-            # Try executing the PEX directly; fall back to python launcher if needed
-            if out=$("$f" --version 2>&1); then
-              :
-            else
-              out=$(python3 "$f" --version 2>&1)
+
+            # Run quietly: no verbose diagnostics, and keep stderr separate.
+            # Also ignore PEX_VERSION to avoid the “Ignoring …” warning.
+            if out=$(env -u PEX_VERSION PEX_VERBOSE=0 "$f" --version 1>stdout.txt 2>stderr.txt; echo $?); then :; fi
+            status=$(tail -n1 <<<"$out")
+
+            # Fallback to python launcher if direct exec failed
+            if [ "$status" -ne 0 ]; then
+              if out=$(env -u PEX_VERSION PEX_VERBOSE=0 python3 "$f" --version 1>stdout.txt 2>stderr.txt; echo $?); then :; fi
+              status=$(tail -n1 <<<"$out")
             fi
-            echo "$out"
-            case "$out" in
-              k2p\ *) ;;  # expected: "k2p X.Y.Z"
-              *) echo "Unexpected --version output: '$out'" >&2; exit 1 ;;
-            esac
+
+            echo "--- stdout ---"
+            sed -e 's/^/  /' stdout.txt || true
+            echo "--- stderr ---"
+            sed -e 's/^/  /' stderr.txt || true
+
+            # Validate last stdout line only
+            last=$(tail -n1 stdout.txt | tr -d '\r')
+            if [[ "$status" -ne 0 ]]; then
+              echo "PEX exited non-zero ($status) running $f" >&2
+              exit "$status"
+            fi
+            if [[ "$last" =~ ^k2p[[:space:]][0-9]+(\.[0-9]+)*([A-Za-z0-9._-]+)?\'?$ ]]; then
+              echo "OK: $last"
+            else
+              echo "Unexpected --version stdout (last line): >>>$last<<<" >&2
+              exit 1
+            fi
           done
+
 
       - name: Upload PEX artifacts
         uses: actions/upload-artifact@v4
