@@ -8,7 +8,7 @@ Resilient KNIME component runner for knime2py (.pex or .exe).
 - No SystemExit; no Path.resolve(); subprocess has a timeout.
 """
 
-import knime.scripting.io as knio
+import knime.scripting.io as knio # pyright: ignore[reportMissingImports]
 
 import os
 import sys
