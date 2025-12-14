@@ -58,21 +58,31 @@ path = "src/knime2py/__init__.py"
 packages = ["src/knime2py"]
 
 [tool.pytest.ini_options]
-addopts = "--cov=knime2py --cov-branch --cov-report=term-missing --cov-report=xml:coverage.xml"
+addopts = "--cov-config=pyproject.toml --cov=knime2py --cov-branch --cov-report=term-missing --cov-report=xml:coverage.xml"
 testpaths = ["tests"]
 
 [tool.coverage.run]
 branch = true
-source = ["knime2py"]
-omit = [
-  "*/knime2py/__init__.py",
-  "*/knime2py/__main__.py",
-  "*/knime2py/**/__init__.py",
+parallel = true
+# Point directly at the src path so Coverage doesn't have to import the package to locate it.
+source = ["src/knime2py"]
+
+[tool.coverage.paths]
+# Tell Coverage that these refer to the same code, so subprocesses importing an installed package
+# still merge into the same filename keys.
+knime2py = [
+  "src/knime2py",
+  "*/site-packages/knime2py"
 ]
 
 [tool.coverage.report]
 show_missing = true
 skip_empty = true
+omit = [
+  "*/knime2py/__init__.py",
+  "*/knime2py/__main__.py",
+  "*/knime2py/**/__init__.py",
+]
 
 [tool.coverage.xml]
 output = "coverage.xml"
