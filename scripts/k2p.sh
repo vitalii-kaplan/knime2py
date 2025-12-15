@@ -4,6 +4,9 @@ set -euo pipefail
 # scripts/k2p.sh — run knime2py from a local install (console script or module)
 # Usage: ./scripts/k2p.sh
 
+# Update knime2py from local source install (editable mode).
+pip install -e .
+
 # ----- Locate repo root (works from anywhere) -----
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if git -C "$SCRIPT_DIR" rev-parse --show-toplevel >/dev/null 2>&1; then
@@ -31,8 +34,10 @@ fi
 # "${RUNNER[@]}" tests/data/KNIME_CP_10FCV_GBT --out "$OUT" --graph off
 # "${RUNNER[@]}" ../../harbour/KNIME/Payment_prediction_2022 --out "$OUT" --graph off
 # "${RUNNER[@]}" ../../harbour/KNIME/HW-Churn --out "$OUT" --workbook py --graph off
-# "${RUNNER[@]}" ../../harbour/KNIME/ISU_Master_test --out "$OUT"
-"${RUNNER[@]}" tests/data/HW_Churn_test --out "$OUT" --graph off --workbook ipynb
+# "${RUNNER[@]}" ../../harbour/KNIME/Kaggle_SS_Titanic_test --out "$OUT" --graph off --workbook ipynb
+# "${RUNNER[@]}" tests/data/Kaggle_SS_Titanic_test --out "$OUT" --graph off --workbook ipynb
+"${RUNNER[@]}" tests/data/ISU_Master_test_preparation --out "$OUT" --graph off --workbook ipynb
+# "${RUNNER[@]}" tests/data/HW_Churn_test --out "$OUT" --graph off --workbook ipynb
 # "${RUNNER[@]}" tests/data/KNIME_traverse_order --out "$OUT"
 # "${RUNNER[@]}" tests/data/KNIME_PP_2022_LR --out "tests/data/!output" --graph off
 # "${RUNNER[@]}" ../../harbour/KNIME/Churn_prediction_GBT --out "$OUT" --graph off

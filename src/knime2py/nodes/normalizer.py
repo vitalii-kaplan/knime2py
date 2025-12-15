@@ -220,6 +220,14 @@ def _emit_normalize_code(cfg: NormalizerSettings) -> List[str]:
     """
     lines: List[str] = []
     lines.append("out_df = df.copy()")
+    lines.append("bundle = {")
+    lines.append(f"    'mode': {repr((cfg.mode or 'MINMAX').upper())},")
+    lines.append(f"    'new_min': {cfg.new_min},")
+    lines.append(f"    'new_max': {cfg.new_max},")
+    lines.append(f"    'excludes': {repr(cfg.excludes)},")
+    lines.append("    'columns': [],")
+    lines.append("    'stats': {},")
+    lines.append("}")
     lines.append("all_cols = out_df.columns.tolist()")
     if cfg.excludes:
         exc_list = ", ".join(repr(c) for c in cfg.excludes)
@@ -230,9 +238,11 @@ def _emit_normalize_code(cfg: NormalizerSettings) -> List[str]:
 
     # Numeric/boolean subset to normalize
     lines.append(f"norm_cols = out_df[cand_cols].select_dtypes(include={_NUMERIC_DTYPES}).columns.tolist()")
+    lines.append("bundle['columns'] = list(norm_cols)")
 
     lines.append("if not norm_cols:")
     lines.append("    # No numeric columns to normalize; passthrough")
+    lines.append("    bundle['stats'] = {}")
     lines.append("    pass")
     lines.append("else:")
     lines.append("    # Coerce selected columns to numeric before normalization")
@@ -245,6 +255,15 @@ def _emit_normalize_code(cfg: NormalizerSettings) -> List[str]:
         lines.append("    _span = (_new_max - _new_min)")
         lines.append("    _col_min = out_df[norm_cols].min(axis=0, skipna=True)")
         lines.append("    _col_max = out_df[norm_cols].max(axis=0, skipna=True)")
+        lines.append("    stats = {}")
+        lines.append("    for col in norm_cols:")
+        lines.append("        mn = _col_min.get(col)")
+        lines.append("        mx = _col_max.get(col)")
+        lines.append("        stats[col] = {")
+        lines.append("            'min': None if pd.isna(mn) else float(mn),")
+        lines.append("            'max': None if pd.isna(mx) else float(mx),")
+        lines.append("        }")
+        lines.append("    bundle['stats'] = stats")
         lines.append("    def _minmax_col(s):")
         lines.append("        mn = _col_min.get(s.name)")
         lines.append("        mx = _col_max.get(s.name)")
@@ -257,6 +276,15 @@ def _emit_normalize_code(cfg: NormalizerSettings) -> List[str]:
     elif mode == "ZSCORE":
         lines.append("    _col_mean = out_df[norm_cols].mean(axis=0, skipna=True)")
         lines.append("    _col_std  = out_df[norm_cols].std(axis=0, ddof=0, skipna=True)")
+        lines.append("    stats = {}")
+        lines.append("    for col in norm_cols:")
+        lines.append("        mu = _col_mean.get(col)")
+        lines.append("        sd = _col_std.get(col)")
+        lines.append("        stats[col] = {")
+        lines.append("            'mean': None if pd.isna(mu) else float(mu),")
+        lines.append("            'std': None if pd.isna(sd) else float(sd),")
+        lines.append("        }")
+        lines.append("    bundle['stats'] = stats")
         lines.append("    def _zscore_col(s):")
         lines.append("        mu = _col_mean.get(s.name)")
         lines.append("        sd = _col_std.get(s.name)")
@@ -302,8 +330,10 @@ def generate_py_body(
 
     # Publish (default port '1')
     ports = out_ports or ["1"]
+    port_map = {"1": "out_df", "2": "bundle"}
     for p in sorted({(p or '1') for p in ports}):
-        lines.append(f"context['{node_id}:{p}'] = out_df")
+        target = port_map.get(p, "out_df")
+        lines.append(f"context['{node_id}:{p}'] = {target}")
 
     return lines
 

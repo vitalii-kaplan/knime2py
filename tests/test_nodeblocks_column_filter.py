@@ -73,6 +73,7 @@ if str(repo_root) not in sys.path:
 import pytest
 from knime2py.parse_knime import WorkflowGraph, Node, Edge
 from knime2py.emitters import build_workbook_blocks
+from knime2py.nodes import column_filter as column_filter_module
 
 @pytest.fixture(scope="session")
 def node_column_filter_dir(node_dir):
@@ -128,9 +129,44 @@ def test_column_filter_block_emits_expected_excludes_line(node_csv_reader_dir: P
 
     code = "\n".join(cf_block.code_lines)
 
-    # Exact line expected from tests/data/Node_column_filter/settings.xml
     expected_line = (
         "exclude_cols = ['uc_user', 'uc_course', 'uc_created', 'as_time', "
         "'ol_first_time', 'in_time_pay', 'ir_time']"
     )
     assert expected_line in code, f"Missing expected exclude list line.\nCode was:\n{code}"
+    assert "out_df = out_df.drop" in code
+
+
+@pytest.mark.parametrize(
+    ("enforce", "expected_mode", "expected_attr", "expected_names"),
+    [
+        ("EnforceInclusion", "include", "includes", ["keep_col"]),
+        ("EnforceExclusion", "exclude", "excludes", ["drop_col"]),
+        ("", "include", "includes", ["keep_col"]),
+    ],
+)
+def test_column_filter_parser_respects_enforce_option(tmp_path: Path, enforce: str, expected_mode: str, expected_attr: str, expected_names: list[str]):
+    enforce_entry = f'<entry key="enforce_option" type="xstring" value="{enforce}"/>' if enforce else ""
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<config key="settings.xml" xmlns="http://www.knime.org/2008/09/XMLConfig">
+  <config key="model">
+    <config key="column-filter">
+      {enforce_entry}
+      <config key="included_names">
+        <entry key="0" type="xstring" value="keep_col"/>
+      </config>
+      <config key="excluded_names">
+        <entry key="0" type="xstring" value="drop_col"/>
+      </config>
+    </config>
+  </config>
+</config>
+"""
+    node_dir = tmp_path / "col_filter"
+    node_dir.mkdir()
+    node_dir.joinpath("settings.xml").write_text(xml, encoding="utf-8")
+
+    settings = column_filter_module.parse_column_filter_settings(node_dir)
+
+    assert settings.mode == expected_mode
+    assert getattr(settings, expected_attr) == expected_names

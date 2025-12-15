@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model">
+        <config key="decimal_separator_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_string"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="decimal_separator" type="xstring" value="."/>
+        <config key="thousands_separator_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_string"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="thousands_separator" type="xstring" value=""/>
+        <config key="parse_type">
+            <entry key="cell_class" type="xstring" value="org.knime.core.data.def.DoubleCell"/>
+            <entry key="is_null" type="xboolean" value="false"/>
+        </config>
+        <config key="generic_parse_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_boolean"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="generic_parse" type="xboolean" value="false"/>
+        <config key="fail_on_error_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_boolean"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="fail_on_error" type="xboolean" value="false"/>
+        <config key="include">
+            <entry key="filter-type" type="xstring" value="STANDARD"/>
+            <config key="included_names">
+                <entry key="array-size" type="xint" value="1"/>
+                <entry key="0" type="xstring" value="Cabin_2"/>
+            </config>
+            <config key="excluded_names">
+                <entry key="array-size" type="xint" value="10"/>
+                <entry key="0" type="xstring" value="PassengerId"/>
+                <entry key="1" type="xstring" value="HomePlanet"/>
+                <entry key="2" type="xstring" value="CryoSleep"/>
+                <entry key="3" type="xstring" value="Cabin"/>
+                <entry key="4" type="xstring" value="Destination"/>
+                <entry key="5" type="xstring" value="VIP"/>
+                <entry key="6" type="xstring" value="Name"/>
+                <entry key="7" type="xstring" value="Transported"/>
+                <entry key="8" type="xstring" value="Cabin_1"/>
+                <entry key="9" type="xstring" value="Cabin_3"/>
+            </config>
+            <entry key="enforce_option" type="xstring" value="EnforceInclusion"/>
+            <config key="name_pattern">
+                <entry key="pattern" type="xstring" value=""/>
+                <entry key="type" type="xstring" value="Wildcard"/>
+                <entry key="caseSensitive" type="xboolean" value="true"/>
+                <entry key="excludeMatching" type="xboolean" value="false"/>
+            </config>
+            <config key="datatype">
+                <config key="typelist"/>
+            </config>
+        </config>
+    </config>
+    <config key="variables"/>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="EXECUTED"/>
+    <entry key="factory" type="xstring" value="org.knime.base.node.preproc.colconvert.stringtonumber2.StringToNumber2NodeFactory"/>
+    <entry key="node-name" type="xstring" value="String to Number"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME Base Nodes"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.base"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.8.1.v202511051439"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Base nodes"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.base.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.8.1.v202511051439"/>
+    <config key="factory_settings"/>
+    <entry key="name" type="xstring" value="String to Number"/>
+    <entry key="hasContent" type="xboolean" value="true"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports">
+        <config key="port_1">
+            <entry key="index" type="xint" value="1"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 4277, Cols: 16"/>
+            <entry key="port_dir_location" type="xstring" value="port_1"/>
+        </config>
+    </config>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" value="a77c3bda-0ab2-4685-bb8b-e51e175282d9"/>
+    </config>
+</config>

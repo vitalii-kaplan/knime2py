@@ -321,9 +321,31 @@ def generate_py_body(
 
     lines.extend(_emit_fill_code(settings))
 
+    bundle_lines = [
+        "bundle = {",
+        "    'strategies': [",
+    ]
+    for pol in settings.by_dtype:
+        bundle_lines.append(
+            "        {"
+            f"'dtype': {repr(pol.dtype)}, "
+            f"'strategy': {repr(pol.strategy)}, "
+            f"'value': {repr(pol.value)}"
+            "},"
+        )
+    bundle_lines += [
+        "    ]",
+        "}",
+    ]
+    if not settings.by_dtype:
+        bundle_lines = ["bundle = {'strategies': []}"]
+    lines.extend(bundle_lines)
+
     ports = out_ports or ["1"]
+    port_map = {"1": "out_df", "2": "bundle"}
     for p in sorted({(p or '1') for p in ports}):
-        lines.append(f"context['{node_id}:{p}'] = out_df")
+        target = port_map.get(p, "out_df")
+        lines.append(f"context['{node_id}:{p}'] = {target}")
     return lines
 
 

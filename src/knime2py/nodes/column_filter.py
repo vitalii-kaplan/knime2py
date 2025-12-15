@@ -88,7 +88,9 @@ FACTORY = "org.knime.base.node.preproc.filter.column.DataColumnSpecFilterNodeFac
 
 @dataclass
 class ColumnFilterSettings:
-    excludes: List[str] = field(default_factory=list)  # includes intentionally ignored
+    includes: List[str] = field(default_factory=list)
+    excludes: List[str] = field(default_factory=list)
+    mode: str = "include"  # "include" or "exclude"
 
 
 def _uniq_preserve(seq: List[str]) -> List[str]:
@@ -105,18 +107,6 @@ def _uniq_preserve(seq: List[str]) -> List[str]:
 
 
 def parse_column_filter_settings(node_dir: Optional[Path]) -> ColumnFilterSettings:
-    """
-    Heuristic parser that extracts only the EXCLUDE column names from settings.xml.
-    We look for <config> blocks whose @key contains 'exclude' and collect entries:
-      - <entry key='0' value='Col'/> style lists
-      - <entry key='name' value='Col'/> style lists
-
-    Args:
-        node_dir (Optional[Path]): The directory containing the settings.xml file.
-
-    Returns:
-        ColumnFilterSettings: An instance of ColumnFilterSettings containing the excluded column names.
-    """
     if not node_dir:
         return ColumnFilterSettings()
     sp = node_dir / "settings.xml"
@@ -136,13 +126,33 @@ def parse_column_filter_settings(node_dir: Optional[Path]) -> ColumnFilterSettin
                     out.append(v)
         return out
 
-    exclude_cfgs = root.xpath(
-        ".//*[local-name()='config' and contains(translate(@key,"
-        " 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'exclude')]"
+    cf = first_el(
+        root,
+        ".//*[local-name()='config' and "
+        "(translate(@key,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')="
+        "'column-filter' or @key='dataColumnFilterConfig')]",
     )
-    excludes = _collect_from_cfgs(exclude_cfgs)
+    if cf is None:
+        cf = root
 
-    return ColumnFilterSettings(excludes=_uniq_preserve(excludes))
+    includes_cfgs = cf.xpath(".//*[local-name()='config' and @key='included_names']")
+    excludes_cfgs = cf.xpath(".//*[local-name()='config' and @key='excluded_names']")
+
+    includes = _collect_from_cfgs(includes_cfgs)
+    excludes = _collect_from_cfgs(excludes_cfgs)
+
+    enforce = first(cf, ".//*[local-name()='entry' and @key='enforce_option']/@value")
+    enforce = (enforce or "").strip().lower()
+    if enforce == "enforceexclusion":
+        mode = "exclude"
+    else:
+        mode = "include"
+
+    return ColumnFilterSettings(
+        includes=_uniq_preserve(includes),
+        excludes=_uniq_preserve(excludes),
+        mode=mode,
+    )
 
 
 # ---------------------------------------------------------------------
@@ -156,22 +166,28 @@ HUB_URL = (
 
 def _emit_filter_code(settings: ColumnFilterSettings) -> List[str]:
     """
-    Return python lines that transform `df` into `out_df` by DROPPING excludes only.
-
-    Args:
-        settings (ColumnFilterSettings): The settings containing the excluded column names.
+    Return python lines that transform `df` into `out_df` according to include/exclude mode.
 
     Returns:
         List[str]: A list of Python code lines for dropping the excluded columns.
     """
     lines: List[str] = []
     lines.append("out_df = df")
-    if settings.excludes:
-        exc_list = ", ".join(repr(c) for c in settings.excludes)
-        lines.append(f"exclude_cols = [{exc_list}]")
-        lines.append("out_df = out_df.drop(columns=[c for c in exclude_cols if c in out_df.columns], errors='ignore')")
+    if settings.mode == "exclude":
+        if settings.excludes:
+            exc_list = ", ".join(repr(c) for c in settings.excludes)
+            lines.append(f"exclude_cols = [{exc_list}]")
+            lines.append("out_df = out_df.drop(columns=[c for c in exclude_cols if c in out_df.columns], errors='ignore')")
+        else:
+            lines.append("# Enforce exclusion requested but no columns listed; passthrough.")
     else:
-        lines.append("# No excludes found; passthrough.")
+        if settings.includes:
+            inc_list = ", ".join(repr(c) for c in settings.includes)
+            lines.append(f"include_cols = [{inc_list}]")
+            lines.append("present = [c for c in include_cols if c in out_df.columns]")
+            lines.append("out_df = out_df.loc[:, present]")
+        else:
+            lines.append("# Enforce inclusion requested but no columns listed; passthrough.")
     return lines
 
 
