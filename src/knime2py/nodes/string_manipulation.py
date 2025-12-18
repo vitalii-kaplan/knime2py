@@ -63,7 +63,9 @@ def _translate_expression(expr: str) -> str:
         "length(": "_length(",
         "trim(": "_trim(",
         "replace(": "_replace(",
+        "regexReplace(": "_regex_replace(",
         "indexOf(": "_index_of(",
+        "count(": "_count_occurrences(",
     }
     for src, dst in replacements.items():
         s = s.replace(src, dst)
@@ -103,7 +105,7 @@ def parse_string_manip_settings(node_dir: Optional[Path]) -> StringManipSettings
 
 
 def generate_imports() -> List[str]:
-    return ["import pandas as pd"]
+    return ["import pandas as pd", "import re"]
 
 
 def generate_py_body(
@@ -168,6 +170,9 @@ def generate_py_body(
         "def _replace(series, old, new):",
         "    return _as_series(series).astype('string').str.replace(str(old), str(new), regex=False)",
         "",
+        "def _regex_replace(series, pattern, repl, flags=0):",
+        "    return _as_series(series).astype('string').str.replace(str(pattern), str(repl), regex=True)",
+        "",
         "def _index_of(series, needle, occurrence=None):",
         "    s = _as_series(series).astype('string')",
         "    needle_series = _broadcast(needle, s.index)",
@@ -199,6 +204,10 @@ def generate_py_body(
         "        _nth(val, tgt, occ_val)",
         "        for val, tgt, occ_val in zip(s, needle_series, occ_series)",
         "    ), index=s.index)",
+        "",
+        "def _count_occurrences(series, needle):",
+        "    pat = re.escape(str(needle))",
+        "    return _as_series(series).astype('string').str.count(pat)",
         "",
     ]
 

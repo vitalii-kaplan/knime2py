@@ -137,3 +137,81 @@ def test_string_manipulation_handles_examples(tmp_path: Path, expression: str, r
 
     assert_series_equal(result_df["Cabin"], df["Cabin"], check_names=False)
     assert_series_equal(result_df[replaced_column].astype("string"), expected_series, check_names=False)
+
+
+@pytest.mark.parametrize(
+    ("expression", "replaced_column", "source_col", "expected"),
+    [
+        ("regexReplace($Ticket$, &quot;[^a-zA-Z0-9]&quot;,&quot;&quot;)", "ClearedTicket", "Ticket", ["ABC123", "456789"]),
+        ("count($Name$, &quot;Mr.&quot;)", "Mr", "Name", [1, 0]),
+    ],
+)
+def test_string_manipulation_regex_and_count(tmp_path: Path, expression: str, replaced_column: str, source_col: str, expected):
+    node_dir = tmp_path / "StringManipExtra"
+    node_dir.mkdir()
+    node_dir.joinpath("settings.xml").write_text(
+        SETTINGS_TEMPLATE.format(expression=expression, replaced_column=replaced_column),
+        encoding="utf-8",
+    )
+
+    df = pd.DataFrame(
+        {
+            "Ticket": ["ABC-123", "456-789"],
+            "Name": ["Mr. Smith", "Jane Doe"],
+        }
+    )
+
+    incoming = [("SRC", SimpleNamespace(source_port="1"))]
+    outgoing = [("OUT", SimpleNamespace(source_port="1"))]
+
+    imports, body = string_manipulation.handle(
+        "org.knime.base.node.preproc.stringmanipulation.StringManipulationNodeFactory",
+        "NODE_EXTRA",
+        str(node_dir),
+        incoming,
+        outgoing,
+    )
+    code = "\n".join(imports + body)
+    env = {"context": {"SRC:1": df.copy()}, "pd": pd}
+    exec(code, env, env)
+
+    result_df = env["context"]["NODE_EXTRA:1"]
+    assert result_df[replaced_column].tolist() == expected
+
+
+def test_string_manipulation_count_literal(tmp_path: Path):
+    expression = 'count($Name$, &quot;Mr.&quot;)'
+    replaced_column = "MrCount"
+    node_dir = tmp_path / "StringManipCount"
+    node_dir.mkdir()
+    node_dir.joinpath("settings.xml").write_text(
+        SETTINGS_TEMPLATE.format(expression=expression, replaced_column=replaced_column),
+        encoding="utf-8",
+    )
+
+    df = pd.DataFrame(
+        {
+            "Name": [
+                'Romaine, Mr. Charles Hallace ("Mr C Rolmane")',
+                "Mr. Smith",
+                'Mr Charles "Mr" Doe',
+            ]
+        }
+    )
+
+    incoming = [("SRC", SimpleNamespace(source_port="1"))]
+    outgoing = [("OUT", SimpleNamespace(source_port="1"))]
+
+    imports, body = string_manipulation.handle(
+        "org.knime.base.node.preproc.stringmanipulation.StringManipulationNodeFactory",
+        "NODE_COUNT",
+        str(node_dir),
+        incoming,
+        outgoing,
+    )
+    code = "\n".join(imports + body)
+    env = {"context": {"SRC:1": df.copy()}, "pd": pd}
+    exec(code, env, env)
+
+    result_df = env["context"]["NODE_COUNT:1"]
+    assert result_df[replaced_column].tolist() == [1, 1, 0]
