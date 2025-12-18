@@ -139,3 +139,34 @@ def test_missing_value_block_imputes_integers_to_zero(node_csv_reader_dir: Path)
 
     # 3) It should impute missing integers with 0 (FixedIntegerValueMissingCellHandlerFactory -> 0)
     assert re.search(r"\.fillna\(\s*0\s*\)", code), "Expected integer NA imputation to 0"
+
+
+def test_missing_value_block_emits_pmml_and_column_overrides(node_csv_reader_dir: Path):
+    node_missing_value_dir = repo_root / "tests" / "data" / "Node_missing_value_column_override"
+    assert node_missing_value_dir.joinpath("settings.xml").exists(), "Missing column override settings.xml"
+
+    reader_id = "1393"
+    mv_id = "3001"
+    reader_type = "org.knime.base.node.io.filehandling.csv.reader.CSVTableReaderNodeFactory"
+    mv_type = "org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory"
+
+    g = WorkflowGraph(
+        workflow_id="test_missing_value_override",
+        workflow_path=str((repo_root / "tests" / "data" / "dummy" / "workflow.knime").resolve()),
+        nodes={
+            reader_id: Node(id=reader_id, name="CSV Reader", type=reader_type, path=str(node_csv_reader_dir)),
+            mv_id: Node(id=mv_id, name="Missing Value", type=mv_type, path=str(node_missing_value_dir)),
+        },
+        edges=[Edge(source=reader_id, target=mv_id, source_port="1", target_port="1")],
+    )
+
+    blocks, _ = build_workbook_blocks(g)
+    mv_block = next((b for b in blocks if b.nid == mv_id), None)
+    assert mv_block is not None, "Missing Value NodeBlock not found"
+
+    code = "\n".join(mv_block.code_lines)
+
+    assert "override_cols" in code
+    assert "CabinLetter" in code
+    assert "missing_value_metadata" in code
+    assert "<PMML" in code

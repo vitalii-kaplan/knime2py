@@ -72,6 +72,7 @@ org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFacto
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
@@ -93,8 +94,16 @@ class TypePolicy:
     value: Optional[str] = None  # fixed value as string
 
 @dataclass
+class ColumnPolicy:
+    column: str
+    strategy: str
+    value: Optional[str] = None
+    dtype: Optional[str] = None
+
+@dataclass
 class MissingValueSettings:
     by_dtype: List[TypePolicy] = field(default_factory=list)
+    by_column: List[ColumnPolicy] = field(default_factory=list)
 
 _CELL_TO_DTYPE = {
     "org.knime.core.data.def.IntCell": "int",
@@ -103,6 +112,20 @@ _CELL_TO_DTYPE = {
     "org.knime.core.data.def.StringCell": "string",
     "org.knime.core.data.def.BooleanCell": "boolean",
 }
+
+def _dtype_from_factory(factory_id: Optional[str]) -> Optional[str]:
+    if not factory_id:
+        return None
+    fid = factory_id.lower()
+    if "string" in fid:
+        return "string"
+    if any(tok in fid for tok in ("integer", "long", "int")):
+        return "int"
+    if any(tok in fid for tok in ("double", "float")):
+        return "float"
+    if "boolean" in fid or "bool" in fid:
+        return "boolean"
+    return None
 
 def _strategy_from_factory(factory_id: str) -> str:
     """Determine the fill strategy based on the factory ID."""
@@ -137,12 +160,50 @@ def parse_missing_value_settings(node_dir: Optional[Path]) -> MissingValueSettin
         return MissingValueSettings()
 
     root = ET.parse(str(sp), parser=XML_PARSER).getroot()
-    dts = root.xpath(
-        ".//*[local-name()='config' and @key='model']"
-        "/*[local-name()='config' and @key='dataTypeSettings']"
-    )
-    if not dts:
+    model_cfgs = root.xpath(".//*[local-name()='config' and @key='model']")
+    if not model_cfgs:
         return MissingValueSettings()
+    model_cfg = model_cfgs[0]
+
+    # Column overrides
+    by_column: List[ColumnPolicy] = []
+    column_sections = model_cfg.xpath("./*[local-name()='config' and @key='columnSettings']")
+    if column_sections:
+        for cfg in column_sections[0].xpath("./*[local-name()='config']"):
+            names_cfg = first_el(cfg, "./*[local-name()='config' and @key='colNames']")
+            columns: List[str] = []
+            if names_cfg is not None:
+                for key, value in iter_entries(names_cfg):
+                    if key.isdigit() and value:
+                        columns.append(value)
+            if not columns:
+                continue
+
+            settings_cfg = first_el(cfg, "./*[local-name()='config' and @key='settings']")
+            if settings_cfg is None:
+                continue
+            factory_id = None
+            for key, value in iter_entries(settings_cfg):
+                if key == "factoryID":
+                    factory_id = value
+                    break
+            inner_settings = first_el(settings_cfg, "./*[local-name()='config' and @key='settings']")
+            fixed_val = _first_present_value(inner_settings) if inner_settings is not None else None
+            strategy = _strategy_from_factory(factory_id or "")
+            dtype = _dtype_from_factory(factory_id)
+            for col in columns:
+                by_column.append(
+                    ColumnPolicy(
+                        column=col,
+                        strategy=strategy,
+                        value=fixed_val,
+                        dtype=dtype,
+                    )
+                )
+
+    dts = model_cfg.xpath("./*[local-name()='config' and @key='dataTypeSettings']")
+    if not dts:
+        return MissingValueSettings(by_column=by_column)
 
     by_dtype: List[TypePolicy] = []
     for cfg in dts[0].xpath("./*[local-name()='config']"):
@@ -169,7 +230,7 @@ def parse_missing_value_settings(node_dir: Optional[Path]) -> MissingValueSettin
 
         by_dtype.append(TypePolicy(dtype=dtype, strategy=strategy, value=fixed_val))
 
-    return MissingValueSettings(by_dtype=by_dtype)
+    return MissingValueSettings(by_dtype=by_dtype, by_column=by_column)
 
 # ---------------------------------------------------------------------
 # Code generators
@@ -188,6 +249,71 @@ def _emit_fill_code(settings: MissingValueSettings) -> List[str]:
     """Generate the code to fill missing values based on the provided settings."""
     lines: List[str] = []
     lines.append("out_df = df.copy()")
+    override_names = sorted({pol.column for pol in settings.by_column if pol.column})
+    if override_names:
+        literal = ", ".join(repr(name) for name in override_names)
+        lines.append(f"override_cols = {{{literal}}}")
+    else:
+        lines.append("override_cols = set()")
+
+    def _literal_for_value(value: Optional[str], dtype: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        s = str(value).strip()
+        if dtype == "int":
+            return s if s and s.lstrip('+-').isdigit() else f"int({repr(value)})"
+        if dtype == "float":
+            try:
+                float(s)
+                return s
+            except Exception:
+                return f"float({repr(value)})"
+        if dtype == "boolean":
+            v = s.lower()
+            return "True" if v in {"true", "1", "t", "y", "yes"} else "False"
+        return repr(value)
+
+    def _assign_line(col_repr: str, expr: str, dtype: Optional[str], indent: str = "    ", round_int: bool = False) -> str:
+        target = expr
+        if dtype == "int":
+            target = f"({expr}).round().astype('Int64')" if round_int else f"({expr}).astype('Int64')"
+        elif dtype == "boolean":
+            target = f"({expr}).astype('boolean')"
+        return f"{indent}out_df[{col_repr}] = {target}"
+
+    for pol in settings.by_column:
+        col_repr = repr(pol.column)
+        dtype = (pol.dtype or "").lower() or None
+        strategy = (pol.strategy or "").lower()
+        lines.append(f"if {col_repr} in out_df.columns:")
+        if strategy == "fixed":
+            literal = _literal_for_value(pol.value, dtype)
+            if literal is None:
+                lines.append("    pass  # No fixed value configured for this column; skipping")
+            else:
+                expr = f"out_df[{col_repr}].fillna({literal})"
+                lines.append(_assign_line(col_repr, expr, dtype))
+        elif strategy in ("mean", "median"):
+            fn = "mean" if strategy == "mean" else "median"
+            lines.append(f"    stat = out_df[{col_repr}].{fn}()")
+            lines.append("    if not pd.isna(stat):")
+            expr = f"out_df[{col_repr}].fillna(stat)"
+            lines.append(_assign_line(col_repr, expr, dtype, indent="        ", round_int=dtype == "int"))
+        elif strategy == "mode":
+            lines.append(f"    mode = out_df[{col_repr}].mode()")
+            lines.append("    if not mode.empty:")
+            expr = f"out_df[{col_repr}].fillna(mode.iloc[0])"
+            lines.append(_assign_line(col_repr, expr, dtype, indent="        "))
+        elif strategy == "ffill":
+            expr = f"out_df[{col_repr}].ffill()"
+            lines.append(_assign_line(col_repr, expr, dtype))
+        elif strategy == "bfill":
+            expr = f"out_df[{col_repr}].bfill()"
+            lines.append(_assign_line(col_repr, expr, dtype))
+        elif strategy == "drop":
+            lines.append(f"    out_df = out_df.dropna(subset=[{col_repr}])")
+        else:
+            lines.append(f"    pass  # Unsupported column strategy '{pol.strategy}'")
 
     ints: List[TypePolicy] = [p for p in settings.by_dtype if p.dtype == "int"]
     floats: List[TypePolicy] = [p for p in settings.by_dtype if p.dtype == "float"]
@@ -195,7 +321,7 @@ def _emit_fill_code(settings: MissingValueSettings) -> List[str]:
     booleans: List[TypePolicy] = [p for p in settings.by_dtype if p.dtype == "boolean"]
 
     def _emit_int(pol: TypePolicy):
-        lines.append("int_cols = out_df.select_dtypes(include=['Int64','Int32','Int16','int64','int32','int16']).columns")
+        lines.append("int_cols = [c for c in out_df.select_dtypes(include=['Int64','Int32','Int16','int64','int32','int16']).columns if c not in override_cols]")
         lines.append("if len(int_cols) > 0:")
         if pol.strategy == "fixed":
             if pol.value is not None:
@@ -206,7 +332,6 @@ def _emit_fill_code(settings: MissingValueSettings) -> List[str]:
                 lines.append("    pass  # No fixed value configured for ints; skipping")
         elif pol.strategy in ("mean", "median"):
             fn = "mean" if pol.strategy == "mean" else "median"
-            # Per-column: fill with stat if available, round, cast to Int64
             lines.append(f"    out_df[int_cols] = out_df[int_cols].apply(lambda s: (s if pd.isna(s.{fn}()) else s.fillna(s.{fn}()).round()).astype('Int64'))")
         elif pol.strategy == "mode":
             lines.append("    out_df[int_cols] = out_df[int_cols].apply(lambda s: (s.fillna(s.mode().iloc[0]) if not s.mode().empty else s).astype('Int64'))")
@@ -220,7 +345,7 @@ def _emit_fill_code(settings: MissingValueSettings) -> List[str]:
             lines.append(f"    pass  # Unsupported int strategy '{pol.strategy}'")
 
     def _emit_float(pol: TypePolicy):
-        lines.append("float_cols = out_df.select_dtypes(include=['float64','float32']).columns")
+        lines.append("float_cols = [c for c in out_df.select_dtypes(include=['float64','float32']).columns if c not in override_cols]")
         lines.append("if len(float_cols) > 0:")
         if pol.strategy == "fixed":
             if pol.value is not None:
@@ -248,7 +373,7 @@ def _emit_fill_code(settings: MissingValueSettings) -> List[str]:
             lines.append(f"    pass  # Unsupported float strategy '{pol.strategy}'")
 
     def _emit_string(pol: TypePolicy):
-        lines.append("str_cols = out_df.select_dtypes(include=['string','object']).columns")
+        lines.append("str_cols = [c for c in out_df.select_dtypes(include=['string','object']).columns if c not in override_cols]")
         lines.append("if len(str_cols) > 0:")
         if pol.strategy == "fixed":
             if pol.value is not None:
@@ -267,7 +392,7 @@ def _emit_fill_code(settings: MissingValueSettings) -> List[str]:
             lines.append(f"    pass  # Unsupported string strategy '{pol.strategy}'")
 
     def _emit_boolean(pol: TypePolicy):
-        lines.append("bool_cols = out_df.select_dtypes(include=['boolean','bool']).columns")
+        lines.append("bool_cols = [c for c in out_df.select_dtypes(include=['boolean','bool']).columns if c not in override_cols]")
         lines.append("if len(bool_cols) > 0:")
         if pol.strategy == "fixed":
             if pol.value is not None:
@@ -296,7 +421,7 @@ def _emit_fill_code(settings: MissingValueSettings) -> List[str]:
     if booleans:
         _emit_boolean(booleans[0])
 
-    if not settings.by_dtype:
+    if not settings.by_dtype and not settings.by_column:
         lines.append("# No missing-value policies found; passthrough.")
         lines.append("out_df = df")
 
@@ -320,29 +445,34 @@ def generate_py_body(
     lines.append(f"df = context['{src_id}:{in_port}']  # input table")
 
     lines.extend(_emit_fill_code(settings))
-
-    bundle_lines = [
-        "bundle = {",
-        "    'strategies': [",
-    ]
-    for pol in settings.by_dtype:
-        bundle_lines.append(
-            "        {"
-            f"'dtype': {repr(pol.dtype)}, "
-            f"'strategy': {repr(pol.strategy)}, "
-            f"'value': {repr(pol.value)}"
-            "},"
-        )
-    bundle_lines += [
-        "    ]",
-        "}",
-    ]
-    if not settings.by_dtype:
-        bundle_lines = ["bundle = {'strategies': []}"]
-    lines.extend(bundle_lines)
+    metadata = {
+        "type_strategies": [
+            {"dtype": pol.dtype, "strategy": pol.strategy, "value": pol.value}
+            for pol in settings.by_dtype
+        ],
+        "column_strategies": [
+            {
+                "column": pol.column,
+                "dtype": pol.dtype,
+                "strategy": pol.strategy,
+                "value": pol.value,
+            }
+            for pol in settings.by_column
+        ],
+    }
+    payload = json.dumps(metadata, ensure_ascii=False)
+    pmml_literal = (
+        "<?xml version='1.0' encoding='UTF-8'?>\n"
+        "<PMML version='4.4' xmlns='http://www.dmg.org/PMML-4_4'>\n"
+        "  <Extension name='missing_value_metadata' extender='knime2py'><![CDATA["
+        + payload
+        + "]]></Extension>\n"
+        "</PMML>"
+    )
+    lines.append(f"pmml_text = {pmml_literal!r}")
 
     ports = out_ports or ["1"]
-    port_map = {"1": "out_df", "2": "bundle"}
+    port_map = {"1": "out_df", "2": "pmml_text"}
     for p in sorted({(p or '1') for p in ports}):
         target = port_map.get(p, "out_df")
         lines.append(f"context['{node_id}:{p}'] = {target}")
