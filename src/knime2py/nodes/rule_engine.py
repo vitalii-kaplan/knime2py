@@ -114,15 +114,15 @@ class RuleEngineSettings:
 # ---- Parsers for the simple rule subset ----
 
 _RULE_COMMENT = re.compile(r"^\s*//")
-_RE_TRUE = re.compile(r'^\s*TRUE\s*=>\s*"(?P<out>.*)"\s*$', re.I)
+_RE_TRUE = re.compile(r'^\s*TRUE\s*=>\s*(?P<out>".*?"|\S+)\s*$', re.I)
 _RE_COMPARE = re.compile(
     r'^\s*\$(?P<col>[^$]+)\$\s*'
     r'(?P<op>>=|<=|==|=|!=|>|<)\s*'
-    r'(?P<val>".*?"|\S+)\s*=>\s*"(?P<out>.*)"\s*$',
+    r'(?P<val>".*?"|\S+)\s*=>\s*(?P<out>".*?"|\S+)\s*$',
     re.I,
 )
 _RE_LIKE = re.compile(
-    r'^\s*\$(?P<col>[^$]+)\$\s+LIKE\s+"(?P<pat>.*)"\s*=>\s*"(?P<out>.*)"\s*$',
+    r'^\s*\$(?P<col>[^$]+)\$\s+LIKE\s+"(?P<pat>.*)"\s*=>\s*(?P<out>".*?"|\S+)\s*$',
     re.I,
 )
 
@@ -143,12 +143,17 @@ def _parse_one_rule(line: str) -> Optional[Rule]:
         col = m.group("col").strip()
         op = m.group("op")
         vraw = m.group("val").strip()
-        val = _strip_quotes(vraw) if (vraw[:1] in "'\"" and vraw[-1:] in "'\"") else vraw
+        val = _strip_quotes(vraw)
         return Rule(kind="compare", col=col, op=op, value=val, outcome=_strip_quotes(m.group("out")))
     m = _RE_LIKE.match(s)
     if m:
-        return Rule(kind="like", col=m.group("col").strip(), op=None,
-                    value=m.group("pat"), outcome=_strip_quotes(m.group("out")))
+        return Rule(
+            kind="like",
+            col=m.group("col").strip(),
+            op=None,
+            value=m.group("pat"),
+            outcome=_strip_quotes(m.group("out")),
+        )
     return None
 
 def parse_rule_engine_settings(node_dir: Optional[Path]) -> RuleEngineSettings:
@@ -243,20 +248,20 @@ def _emit_rule_code(settings: RuleEngineSettings) -> List[str]:
             cond = f"cond{idx}"
             pyop = "==" if r.op == "=" else r.op
             lines.append(f"{cond} = (out_df[{repr(r.col)}] {pyop} {_literal_py(r.value)})")
-            lines.append(f"res = res.mask({cond}, {repr(r.outcome)})")
+            lines.append(f"res = res.mask({cond}, {_literal_py(r.outcome)})")
             idx += 1
             continue
         if r.kind == "like" and r.col and (r.value is not None):
             cond = f"cond{idx}"
             regex = _wildcard_to_regex(r.value)
             lines.append(f"{cond} = out_df[{repr(r.col)}].astype('string').str.contains({repr(regex)}, regex=True, na=False)")
-            lines.append(f"res = res.mask({cond}, {repr(r.outcome)})")
+            lines.append(f"res = res.mask({cond}, {_literal_py(r.outcome)})")
             idx += 1
             continue
         lines.append(f"# TODO: unsupported rule skipped: {r}")
 
     if default_outcome is not None:
-        lines.append(f"res = res.fillna({repr(default_outcome)})")
+        lines.append(f"res = res.fillna({_literal_py(default_outcome)})")
 
     target = settings.new_col if settings.append else settings.replace_col
     lines.append(f"out_df[{repr(target or 'RuleResult')}] = res")

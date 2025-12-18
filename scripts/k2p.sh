@@ -36,8 +36,9 @@ fi
 # "${RUNNER[@]}" ../../harbour/KNIME/HW-Churn --out "$OUT" --workbook py --graph off
 # "${RUNNER[@]}" ../../harbour/KNIME/Kaggle_SS_Titanic_test --out "$OUT" --graph off --workbook ipynb
 # "${RUNNER[@]}" tests/data/Kaggle_SS_Titanic_test --out "$OUT" --graph off --workbook ipynb
-"${RUNNER[@]}" tests/data/ISU_Master_test_preparation --out "$OUT" --graph off --workbook ipynb
+# "${RUNNER[@]}" tests/data/ISU_Master_test_preparation --out "$OUT" --graph off --workbook ipynb
 # "${RUNNER[@]}" tests/data/HW_Churn_test --out "$OUT" --graph off --workbook ipynb
 # "${RUNNER[@]}" tests/data/KNIME_traverse_order --out "$OUT"
 # "${RUNNER[@]}" tests/data/KNIME_PP_2022_LR --out "tests/data/!output" --graph off
-# "${RUNNER[@]}" ../../harbour/KNIME/Churn_prediction_GBT --out "$OUT" --graph off
+# "${RUNNER[@]}" ../../harbour/KNIME/Churn_prediction_GBT --out "$OUT" --graph off 
+"${RUNNER[@]}" ../../harbour/KNIME/Kaggle_Titanic_writer_test --out "$OUT" --graph off --workbook ipynb

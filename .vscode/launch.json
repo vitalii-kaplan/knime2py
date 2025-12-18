@@ -34,7 +34,7 @@
         "type": "debugpy",
         "request": "launch",
         "module": "pytest",
-        "args": ["tests/test_HW_Churn_test.py::test_roundtrip_hw_churn_test"],
+        "args": ["tests/test_nodes_normalizer.py::test_normalizer_matches_expected_output"],
         "cwd": "${workspaceFolder}",
         "console": "integratedTerminal",
         "justMyCode": true,
