@@ -261,7 +261,9 @@ def _emit_rule_code(settings: RuleEngineSettings) -> List[str]:
         lines.append(f"# TODO: unsupported rule skipped: {r}")
 
     if default_outcome is not None:
-        lines.append(f"res = res.fillna({_literal_py(default_outcome)})")
+        literal = _literal_py(default_outcome)
+        lines.append(f"res = res.where(res.notna(), {literal})")
+        lines.append("res = res.infer_objects()")
 
     target = settings.new_col if settings.append else settings.replace_col
     lines.append(f"out_df[{repr(target or 'RuleResult')}] = res")

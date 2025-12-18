@@ -129,9 +129,9 @@ def test_rule_engine_generates_compare_and_default(node_csv_reader_dir: Path):
     assert re.search(r"res\s*=\s*res\.mask\(\s*cond\d+\s*,\s*['\"]yes['\"]\s*\)", code), \
         "Expected mask to set 'yes' when condition holds"
 
-    # 4) Default TRUE => "no" via fillna('no')
-    assert re.search(r"res\s*=\s*res\.fillna\(\s*['\"]no['\"]\s*\)", code), \
-        "Expected default outcome fillna('no')"
+    # 4) Default TRUE => "no" via where(..., 'no') fallback
+    assert re.search(r"res\s*=\s*res\.where\(\s*res\.notna\(\)\s*,\s*['\"]no['\"]\s*\)", code), \
+        "Expected default outcome to be applied via res.where(..., 'no')"
 
     # 5) Target column should be 'Dependent' (append-column = true, new-column-name = Dependent)
     assert re.search(r"out_df\[['\"]Dependent['\"]\]\s*=\s*res", code), \
