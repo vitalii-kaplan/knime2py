@@ -91,5 +91,6 @@ def test_gbt_pmml_exporter_wraps_bundle(tmp_path: Path):
     env = {"context": {"SRC:1": bundle}}
     exec(code, env, env)
     pmml = env["context"]["NODE_GBT_PMML:1"]
+    assert "<TreeModel" in pmml
     assert "gbt_metadata" in pmml
-    assert "gbt_pickle" in pmml
+    assert "gbt_bundle_json" in pmml
