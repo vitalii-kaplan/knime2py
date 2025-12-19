@@ -18,14 +18,16 @@ from .normalizer_utils import (
     emit_normalize_code,
     parse_normalizer_settings,
 )
+from .pmml_utils import emit_normalizer_pmml_builder
 
 FACTORY = "org.knime.base.node.preproc.pmml.normalize.NormalizerPMMLNodeFactory2"
 
+_PMML_HELPER_LINES = emit_normalizer_pmml_builder()
 
 def generate_imports() -> List[str]:
     return [
         "import pandas as pd",
-        "from knime2py.nodes.pmml_utils import build_normalizer_pmml",
+        "import xml.etree.ElementTree as ET",
     ]
 
 
@@ -50,11 +52,12 @@ def generate_py_body(
     src_id, in_port = normalize_in_ports(in_ports)[0]
     lines.append(f"df = context['{src_id}:{in_port}']")
 
+    lines.extend(_PMML_HELPER_LINES)
     lines.extend(emit_normalize_code(cfg))
     lines.append("cols_for_pmml = bundle.get('columns', [])")
     lines.append("stats_for_pmml = bundle.get('stats', {})")
     lines.append("mode_for_pmml = bundle.get('mode', 'MINMAX')")
-    lines.append("pmml_model = build_normalizer_pmml(")
+    lines.append("pmml_model = _build_normalizer_pmml(")
     lines.append("    cols_for_pmml,")
     lines.append("    stats_for_pmml,")
     lines.append("    mode_for_pmml,")

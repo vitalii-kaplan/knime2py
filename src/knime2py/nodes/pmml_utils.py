@@ -6,7 +6,7 @@ Utilities for building PMML documents used by generated code.
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, Optional
+from typing import Dict, Iterable, List, Optional
 import xml.etree.ElementTree as ET
 
 PMML_NS = "http://www.dmg.org/PMML-4_4"
@@ -15,6 +15,7 @@ __all__ = [
     "build_pmml_document",
     "pmml_to_string",
     "build_normalizer_pmml",
+    "emit_normalizer_pmml_builder",
 ]
 
 
@@ -100,3 +101,59 @@ def build_normalizer_pmml(
             const_sd.text = str(sd)
 
     return pmml_to_string(root)
+
+
+def emit_normalizer_pmml_builder(fn_name: str = "_build_normalizer_pmml") -> List[str]:
+    """
+    Return Python source lines that define a runtime helper for building Normalizer PMML.
+    The emitted code only depends on xml.etree.ElementTree.
+    """
+    lines = [
+        f"def {fn_name}(columns, stats, mode, new_min, new_max):",
+        "    cols = [c for c in (columns or []) if c]",
+        "    root = ET.Element('PMML', version='4.4', xmlns='http://www.dmg.org/PMML-4_4')",
+        "    header = ET.SubElement(root, 'Header')",
+        "    ET.SubElement(header, 'Application', name='knime2py', version='1.0')",
+        "    if not cols:",
+        "        return ET.tostring(root, encoding='utf-8', xml_declaration=True).decode('utf-8')",
+        "    trans = ET.SubElement(root, 'TransformationDictionary')",
+        "    upper_mode = (mode or 'MINMAX').upper()",
+        "    for col in cols:",
+        "        info = stats.get(col) or {}",
+        "        if upper_mode == 'MINMAX':",
+        "            mn = info.get('min')",
+        "            mx = info.get('max')",
+        "            if mn is None or mx is None:",
+        "                continue",
+        "            derived = ET.SubElement(",
+        "                trans,",
+        "                'DerivedField',",
+        "                name=f\"{col}_norm\",",
+        "                optype='continuous',",
+        "                dataType='double',",
+        "            )",
+        "            norm = ET.SubElement(derived, 'NormContinuous', origField=str(col))",
+        "            ET.SubElement(norm, 'LinearNorm', orig=str(mn), norm=str(new_min))",
+        "            ET.SubElement(norm, 'LinearNorm', orig=str(mx), norm=str(new_max))",
+        "        else:",
+        "            mu = info.get('mean')",
+        "            sd = info.get('std')",
+        "            if sd in (None, 0):",
+        "                continue",
+        "            derived = ET.SubElement(",
+        "                trans,",
+        "                'DerivedField',",
+        "                name=f\"{col}_z\",",
+        "                optype='continuous',",
+        "                dataType='double',",
+        "            )",
+        "            apply_div = ET.SubElement(derived, 'Apply', function='/')",
+        "            apply_sub = ET.SubElement(apply_div, 'Apply', function='-')",
+        "            ET.SubElement(apply_sub, 'FieldRef', field=str(col))",
+        "            const_mu = ET.SubElement(apply_sub, 'Constant', dataType='double')",
+        "            const_mu.text = '0.0' if mu is None else str(mu)",
+        "            const_sd = ET.SubElement(apply_div, 'Constant', dataType='double')",
+        "            const_sd.text = str(sd)",
+        "    return ET.tostring(root, encoding='utf-8', xml_declaration=True).decode('utf-8')",
+    ]
+    return lines
