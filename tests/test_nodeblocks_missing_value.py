@@ -168,5 +168,6 @@ def test_missing_value_block_emits_pmml_and_column_overrides(node_csv_reader_dir
 
     assert "override_cols" in code
     assert "CabinLetter" in code
-    assert "missing_value_metadata" in code
-    assert "<PMML" in code
+    assert "_mv_collect_bundle" in code
+    assert "model_bundle" in code
+    assert "dtype_policies" in code

@@ -18,16 +18,12 @@ from .normalizer_utils import (
     emit_normalize_code,
     parse_normalizer_settings,
 )
-from .pmml_utils import emit_normalizer_pmml_builder
 
 FACTORY = "org.knime.base.node.preproc.pmml.normalize.NormalizerPMMLNodeFactory2"
-
-_PMML_HELPER_LINES = emit_normalizer_pmml_builder()
 
 def generate_imports() -> List[str]:
     return [
         "import pandas as pd",
-        "import xml.etree.ElementTree as ET",
     ]
 
 
@@ -52,18 +48,17 @@ def generate_py_body(
     src_id, in_port = normalize_in_ports(in_ports)[0]
     lines.append(f"df = context['{src_id}:{in_port}']")
 
-    lines.extend(_PMML_HELPER_LINES)
     lines.extend(emit_normalize_code(cfg))
-    lines.append("cols_for_pmml = bundle.get('columns', [])")
-    lines.append("stats_for_pmml = bundle.get('stats', {})")
-    lines.append("mode_for_pmml = bundle.get('mode', 'MINMAX')")
-    lines.append("pmml_model = _build_normalizer_pmml(")
-    lines.append("    cols_for_pmml,")
-    lines.append("    stats_for_pmml,")
-    lines.append("    mode_for_pmml,")
-    lines.append("    bundle.get('new_min', 0.0),")
-    lines.append("    bundle.get('new_max', 1.0),")
-    lines.append(")")
+    lines.append("pmml_model = {")
+    lines.append("    'model_type': 'normalizer',")
+    lines.append("    'version': '4.2',")
+    lines.append("    'application': {'name': 'knime2py', 'version': '1.0'},")
+    lines.append("    'mode': bundle.get('mode', 'MINMAX'),")
+    lines.append("    'new_min': bundle.get('new_min', 0.0),")
+    lines.append("    'new_max': bundle.get('new_max', 1.0),")
+    lines.append("    'columns': list(bundle.get('columns', [])),")
+    lines.append("    'stats': dict(bundle.get('stats', {})),")
+    lines.append("}")
 
     ports = out_ports or ["1", "2"]
     port_map = {"1": "out_df", "2": "pmml_model"}

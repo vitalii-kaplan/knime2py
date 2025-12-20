@@ -31,6 +31,13 @@ SETTINGS = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
+def _build_env(code: str, payload, out_path: Path):
+    env = {"context": {"SRC:1": payload}}
+    exec(code, env, env)
+    assert out_path.exists()
+    return out_path.read_text(encoding="utf-8")
+
+
 def test_pmml_writer_exports_file(tmp_path: Path):
     workflow = tmp_path / "workflow"
     node_dir = workflow / "PMML Writer (#1)"
@@ -49,13 +56,42 @@ def test_pmml_writer_exports_file(tmp_path: Path):
     )
 
     code = "\n".join(imports + body)
-    pmml_text = "<PMML version='4.4'></PMML>"
-
-    env = {"context": {"SRC:1": pmml_text}}
-    exec(code, env, env)
-
     settings = pmml_writer.parse_pmml_writer_settings(node_dir)
     assert settings.path is not None
     out_path = Path(settings.path)
-    assert out_path.exists()
-    assert out_path.read_text(encoding="utf-8") == pmml_text
+
+    pmml_text = "<PMML version='4.4'></PMML>"
+    written = _build_env(code, pmml_text, out_path)
+    assert written == pmml_text
+
+    bundle = {
+        "model_type": "missing_value",
+        "version": "4.2",
+        "application": {"name": "knime2py", "version": "1.0"},
+        "data_dictionary": [
+            {"name": "Age", "optype": "continuous", "dataType": "double", "interval": [0.0, 80.0]},
+            {"name": "CabinLetter", "optype": "categorical", "dataType": "string", "values": ["A", "B"]},
+        ],
+        "transformations": [
+            {"column": "Age", "derived_name": "Age*", "const": "29.7", "const_dtype": "double", "optype": "continuous"},
+        ],
+        "strategies": [],
+        "column_strategies": [],
+    }
+    written_bundle = _build_env(code, bundle, out_path)
+    assert "<DataDictionary" in written_bundle
+    assert "<TransformationDictionary" in written_bundle
+
+    norm_bundle = {
+        "model_type": "normalizer",
+        "version": "4.2",
+        "application": {"name": "knime2py", "version": "1.0"},
+        "mode": "MINMAX",
+        "new_min": 0.0,
+        "new_max": 1.0,
+        "columns": ["Age"],
+        "stats": {"Age": {"min": 10.0, "max": 30.0}},
+    }
+    written_norm = _build_env(code, norm_bundle, out_path)
+    assert "<DataDictionary" in written_norm
+    assert "<NormContinuous" in written_norm

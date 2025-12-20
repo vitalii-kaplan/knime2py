@@ -72,7 +72,6 @@ org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFacto
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
@@ -80,6 +79,7 @@ from typing import List, Optional
 from lxml import etree as ET
 from ..xml_utils import XML_PARSER
 from .node_utils import *  # iter_entries, first_el, first, collect_module_imports, split_out_imports, normalize_in_ports
+from .pmml_utils import emit_missing_value_bundle_builder
 
 FACTORY = "org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory"
 
@@ -244,6 +244,8 @@ HUB_URL = (
     "https://hub.knime.com/knime/extensions/org.knime.features.base/latest/"
     "org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory"
 )
+
+MV_HELPER_LINES = emit_missing_value_bundle_builder()
 
 def _emit_fill_code(settings: MissingValueSettings) -> List[str]:
     """Generate the code to fill missing values based on the provided settings."""
@@ -443,36 +445,30 @@ def generate_py_body(
     pairs = normalize_in_ports(in_ports)
     src_id, in_port = pairs[0]
     lines.append(f"df = context['{src_id}:{in_port}']  # input table")
+    lines.extend(MV_HELPER_LINES)
 
     lines.extend(_emit_fill_code(settings))
-    metadata = {
-        "type_strategies": [
-            {"dtype": pol.dtype, "strategy": pol.strategy, "value": pol.value}
-            for pol in settings.by_dtype
-        ],
-        "column_strategies": [
-            {
-                "column": pol.column,
-                "dtype": pol.dtype,
-                "strategy": pol.strategy,
-                "value": pol.value,
-            }
-            for pol in settings.by_column
-        ],
-    }
-    payload = json.dumps(metadata, ensure_ascii=False)
-    pmml_literal = (
-        "<?xml version='1.0' encoding='UTF-8'?>\n"
-        "<PMML version='4.4' xmlns='http://www.dmg.org/PMML-4_4'>\n"
-        "  <Extension name='missing_value_metadata' extender='knime2py'><![CDATA["
-        + payload
-        + "]]></Extension>\n"
-        "</PMML>"
-    )
-    lines.append(f"pmml_text = {pmml_literal!r}")
+    dtype_literal = [
+        {"dtype": pol.dtype, "strategy": pol.strategy, "value": pol.value}
+        for pol in settings.by_dtype
+    ]
+    col_literal = [
+        {
+            "column": pol.column,
+            "dtype": pol.dtype,
+            "strategy": pol.strategy,
+            "value": pol.value,
+        }
+        for pol in settings.by_column
+    ]
+    lines.append(f"dtype_policies = {dtype_literal!r}")
+    lines.append(f"column_policies = {col_literal!r}")
+    lines.append("model_bundle = _mv_collect_bundle(df, column_policies, dtype_policies)")
+    lines.append("model_bundle['strategies'] = dtype_policies")
+    lines.append("model_bundle['column_strategies'] = column_policies")
 
     ports = out_ports or ["1"]
-    port_map = {"1": "out_df", "2": "pmml_text"}
+    port_map = {"1": "out_df", "2": "model_bundle"}
     for p in sorted({(p or '1') for p in ports}):
         target = port_map.get(p, "out_df")
         lines.append(f"context['{node_id}:{p}'] = {target}")

@@ -61,9 +61,11 @@ def test_normalizer_pmml_generates_pmml(tmp_path: Path):
     expected["Fare"] = (expected["Fare"] - 5.0) / (15.0 - 5.0)
     assert_frame_equal(result_df[["Age", "Fare"]], expected[["Age", "Fare"]])
 
-    assert "TransformationDictionary" in pmml
-    assert "<DerivedField" in pmml
-    assert "<NormContinuous" in pmml
+    assert isinstance(pmml, dict)
+    assert pmml.get("model_type") == "normalizer"
+    assert pmml.get("mode") == "MINMAX"
+    assert pmml.get("columns") == ["Age", "Fare"]
+    assert "stats" in pmml
 
 
 def test_gbt_pmml_exporter_wraps_bundle(tmp_path: Path):

@@ -16,7 +16,7 @@ if str(repo_root) not in sys.path:
 from knime2py.nodes import missing_value  # noqa: E402
 
 
-def _run_missing_value(node_dir: Path, input_df: pd.DataFrame) -> pd.DataFrame:
+def _run_missing_value(node_dir: Path, input_df: pd.DataFrame) -> tuple[pd.DataFrame, object]:
     incoming = [("SRC", SimpleNamespace(source_port="1"))]
     outgoing = [
         ("DST", SimpleNamespace(source_port="1")),
@@ -35,7 +35,7 @@ def _run_missing_value(node_dir: Path, input_df: pd.DataFrame) -> pd.DataFrame:
         "pd": pd,
     }
     exec(code, env, env)
-    return env["context"]["NODE5:1"]
+    return env["context"]["NODE5:1"], env["context"].get("NODE5:2")
 
 
 def test_missing_value_matches_expected_output(tmp_path: Path):
@@ -50,10 +50,14 @@ def test_missing_value_matches_expected_output(tmp_path: Path):
     input_df = pd.read_csv(input_path)
     expected_df = pd.read_csv(expected_path)
 
-    result_df = _run_missing_value(node_dir, input_df)
+    result_df, model_bundle = _run_missing_value(node_dir, input_df)
 
     # Keep column order and index for stable comparison.
     result_df = result_df[expected_df.columns].reset_index(drop=True)
     expected_df = expected_df.reset_index(drop=True)
 
     assert_frame_equal(result_df, expected_df, check_dtype=False)
+    assert isinstance(model_bundle, dict)
+    assert model_bundle.get("model_type") == "missing_value"
+    assert "data_dictionary" in model_bundle
+    assert "transformations" in model_bundle

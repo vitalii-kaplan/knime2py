@@ -30,6 +30,126 @@ HUB_URL = (
     "org.knime.base.node.io.filehandling.pmml.writer.PMMLWriterNodeFactory2"
 )
 
+PMML_HELPER_LINES = [
+    "def _pmml_from_missing_value_bundle(bundle):",
+    "    version = str(bundle.get('version') or '4.2')",
+    "    ns = 'http://www.dmg.org/PMML-4_2'",
+    "    root = ET.Element('PMML', version=version, xmlns=ns)",
+    "    header = ET.SubElement(root, 'Header')",
+    "    app = bundle.get('application') or {}",
+    "    ET.SubElement(header, 'Application', name=str(app.get('name', 'knime2py')), version=str(app.get('version', '1.0')))",
+    "    data_entries = bundle.get('data_dictionary') or []",
+    "    data_dict = ET.SubElement(root, 'DataDictionary', numberOfFields=str(len(data_entries)))",
+    "    for entry in data_entries:",
+    "        name = str(entry.get('name', 'field'))",
+    "        optype = str(entry.get('optype', 'continuous'))",
+    "        dtype = str(entry.get('dataType', 'string'))",
+    "        field = ET.SubElement(data_dict, 'DataField', name=name, optype=optype, dataType=dtype)",
+    "        values = entry.get('values') or []",
+    "        for val in values[:256]:",
+    "            ET.SubElement(field, 'Value', value=str(val))",
+    "        interval = entry.get('interval')",
+    "        if isinstance(interval, (list, tuple)) and len(interval) == 2:",
+    "            ET.SubElement(field, 'Interval', closure='closedClosed', leftMargin=str(interval[0]), rightMargin=str(interval[1]))",
+    "    trans_dict = ET.SubElement(root, 'TransformationDictionary')",
+    "    for info in bundle.get('transformations') or []:",
+    "        column = str(info.get('column', 'field'))",
+    "        derived_name = str(info.get('derived_name') or f\"{column}*\")",
+    "        optype = str(info.get('optype', 'continuous'))",
+    "        dtype = str(info.get('const_dtype', 'string'))",
+    "        derived = ET.SubElement(trans_dict, 'DerivedField', name=derived_name, displayName=column, optype=optype, dataType=dtype)",
+    "        apply_if = ET.SubElement(derived, 'Apply', function='if')",
+    "        apply_missing = ET.SubElement(apply_if, 'Apply', function='isMissing')",
+    "        ET.SubElement(apply_missing, 'FieldRef', field=column)",
+    "        const_el = ET.SubElement(apply_if, 'Constant', dataType=dtype)",
+    "        const_el.text = str(info.get('const', ''))",
+    "        ET.SubElement(apply_if, 'FieldRef', field=column)",
+    "    return ET.tostring(root, encoding='utf-8', xml_declaration=True).decode('utf-8')",
+    "",
+    "def _pmml_from_normalizer_bundle(bundle):",
+    "    version = str(bundle.get('version') or '4.2')",
+    "    ns = 'http://www.dmg.org/PMML-4_2'",
+    "    root = ET.Element('PMML', version=version, xmlns=ns)",
+    "    header = ET.SubElement(root, 'Header')",
+    "    app = bundle.get('application') or {}",
+    "    ET.SubElement(header, 'Application', name=str(app.get('name', 'knime2py')), version=str(app.get('version', '1.0')))",
+    "    cols = [c for c in (bundle.get('columns') or []) if c]",
+    "    stats = bundle.get('stats') or {}",
+    "    mode = str(bundle.get('mode', 'MINMAX')).upper()",
+    "    new_min = bundle.get('new_min', 0.0)",
+    "    new_max = bundle.get('new_max', 1.0)",
+    "    data_dict = ET.SubElement(root, 'DataDictionary', numberOfFields=str(len(cols)))",
+    "    for col in cols:",
+    "        field = ET.SubElement(",
+    "            data_dict,",
+    "            'DataField',",
+    "            name=str(col),",
+    "            optype='continuous',",
+    "            dataType='double',",
+    "        )",
+    "        info = stats.get(col) or {}",
+    "        if 'min' in info and 'max' in info and info.get('min') is not None and info.get('max') is not None:",
+    "            ET.SubElement(",
+    "                field,",
+    "                'Interval',",
+    "                closure='closedClosed',",
+    "                leftMargin=str(info.get('min')),",
+    "                rightMargin=str(info.get('max')),",
+    "            )",
+    "        elif 'mean' in info and 'std' in info and info.get('std') not in (None, 0):",
+    "            mu = float(info.get('mean') or 0.0)",
+    "            sd = abs(float(info.get('std')))",
+    "            left = mu - 3 * sd",
+    "            right = mu + 3 * sd",
+    "            ET.SubElement(",
+    "                field,",
+    "                'Interval',",
+    "                closure='closedClosed',",
+    "                leftMargin=str(left),",
+    "                rightMargin=str(right),",
+    "            )",
+    "    if not cols:",
+    "        return ET.tostring(root, encoding='utf-8', xml_declaration=True).decode('utf-8')",
+    "    trans = ET.SubElement(root, 'TransformationDictionary')",
+    "    for col in cols:",
+    "        info = stats.get(col) or {}",
+    "        if mode == 'MINMAX':",
+    "            mn = info.get('min')",
+    "            mx = info.get('max')",
+    "            if mn is None or mx is None:",
+    "                continue",
+    "            derived = ET.SubElement(",
+    "                trans,",
+    "                'DerivedField',",
+    "                name=f\"{col}_norm\",",
+    "                optype='continuous',",
+    "                dataType='double',",
+    "            )",
+    "            norm = ET.SubElement(derived, 'NormContinuous', origField=str(col))",
+    "            ET.SubElement(norm, 'LinearNorm', orig=str(mn), norm=str(new_min))",
+    "            ET.SubElement(norm, 'LinearNorm', orig=str(mx), norm=str(new_max))",
+    "        else:",
+    "            mu = info.get('mean')",
+    "            sd = info.get('std')",
+    "            if sd in (None, 0):",
+    "                continue",
+    "            derived = ET.SubElement(",
+    "                trans,",
+    "                'DerivedField',",
+    "                name=f\"{col}_z\",",
+    "                optype='continuous',",
+    "                dataType='double',",
+    "            )",
+    "            apply_div = ET.SubElement(derived, 'Apply', function='/')",
+    "            apply_sub = ET.SubElement(apply_div, 'Apply', function='-')",
+    "            ET.SubElement(apply_sub, 'FieldRef', field=str(col))",
+    "            const_mu = ET.SubElement(apply_sub, 'Constant', dataType='double')",
+    "            const_mu.text = '0.0' if mu is None else str(mu)",
+    "            const_sd = ET.SubElement(apply_div, 'Constant', dataType='double')",
+    "            const_sd.text = str(sd)",
+    "    return ET.tostring(root, encoding='utf-8', xml_declaration=True).decode('utf-8')",
+]
+
 
 @dataclass
 class PMMLWriterSettings:
@@ -67,9 +187,7 @@ def parse_pmml_writer_settings(node_dir: Optional[Path]) -> PMMLWriterSettings:
 
 
 def generate_imports(settings: PMMLWriterSettings) -> List[str]:
-    imports = ["from pathlib import Path"]
-    if settings.validate:
-        imports.append("from xml.etree import ElementTree as ET")
+    imports = ["from pathlib import Path", "from xml.etree import ElementTree as ET"]
     return imports
 
 
@@ -81,9 +199,24 @@ def generate_py_body(
 
     lines: List[str] = []
     lines.append(f"# {HUB_URL}")
+    lines.extend(PMML_HELPER_LINES)
 
     src_id, in_port = normalize_in_ports(in_ports)[0]
     lines.append(f"pmml_obj = context['{src_id}:{in_port}']")
+    lines.append("pmml_text = None")
+    lines.append("if isinstance(pmml_obj, dict):")
+    lines.append("    model_type = str(pmml_obj.get('model_type', '')).lower()")
+    lines.append("    if model_type == 'missing_value':")
+    lines.append("        pmml_text = _pmml_from_missing_value_bundle(pmml_obj)")
+    lines.append("    elif model_type == 'normalizer':")
+    lines.append("        pmml_text = _pmml_from_normalizer_bundle(pmml_obj)")
+    lines.append("    else:")
+    lines.append("        pmml_text = str(pmml_obj)")
+    lines.append("elif isinstance(pmml_obj, (bytes, bytearray)):")
+    lines.append("    pmml_text = pmml_obj.decode('utf-8')")
+    lines.append("else:")
+    lines.append("    pmml_text = str(pmml_obj)")
+    lines.append("pmml_text = pmml_text or ''")
 
     if settings.path:
         lines.append(f"out_path = Path(r\"{settings.path}\")")
@@ -95,11 +228,6 @@ def generate_py_body(
         lines.append("out_path.parent.mkdir(parents=True, exist_ok=True)")
     else:
         lines.append("out_path.parent.mkdir(parents=True, exist_ok=True)  # ensure directory exists")
-
-    lines.append("if isinstance(pmml_obj, (bytes, bytearray)):")
-    lines.append("    pmml_text = pmml_obj.decode('utf-8')")
-    lines.append("else:")
-    lines.append("    pmml_text = str(pmml_obj)")
 
     if settings.validate:
         lines.append("try:")
