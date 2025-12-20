@@ -95,3 +95,15 @@ def test_pmml_writer_exports_file(tmp_path: Path):
     written_norm = _build_env(code, norm_bundle, out_path)
     assert "<DataDictionary" in written_norm
     assert "<NormContinuous" in written_norm
+
+    decimal_bundle = {
+        "model_type": "normalizer",
+        "version": "4.2",
+        "application": {"name": "knime2py", "version": "1.0"},
+        "mode": "DECIMALSCALING",
+        "columns": ["Fare"],
+        "stats": {"Fare": {"scale": 2}},
+    }
+    written_dec = _build_env(code, decimal_bundle, out_path)
+    assert "Fare_dec" in written_dec
+    assert "<Apply function=\"/\"" in written_dec

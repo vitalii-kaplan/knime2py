@@ -24,6 +24,7 @@ FACTORY = "org.knime.base.node.preproc.pmml.normalize.NormalizerPMMLNodeFactory2
 def generate_imports() -> List[str]:
     return [
         "import pandas as pd",
+        "import math",
     ]
 
 

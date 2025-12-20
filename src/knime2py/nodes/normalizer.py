@@ -97,7 +97,7 @@ FACTORY = "org.knime.base.node.preproc.normalize3.Normalizer3NodeFactory"
 
 def generate_imports():
     """Generate the necessary imports for the normalization process."""
-    return ["import pandas as pd"]
+    return ["import pandas as pd", "import math"]
 
 HUB_URL = (
     "https://hub.knime.com/knime/extensions/org.knime.features.base/latest/"

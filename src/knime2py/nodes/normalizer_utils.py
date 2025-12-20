@@ -14,6 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
+import math
 
 from lxml import etree as ET
 
@@ -29,7 +30,7 @@ __all__ = [
 
 @dataclass
 class NormalizerSettings:
-    mode: str = "MINMAX"        # "MINMAX" or "ZSCORE"
+    mode: str = "MINMAX"        # "MINMAX", "ZSCORE", or "DECIMALSCALING"
     new_min: float = 0.0        # only for MINMAX
     new_max: float = 1.0        # only for MINMAX
     excludes: List[str] = field(default_factory=list)  # excluded columns
@@ -81,10 +82,19 @@ def parse_normalizer_settings(node_dir: Optional[Path]) -> NormalizerSettings:
         )
 
     raw_mode = (norm_mode or "MINMAX").strip()
-    mode = raw_mode.upper()
-    if mode not in {"MINMAX", "ZSCORE"}:
-        if raw_mode in {"0", "1"}:
-            mode = "ZSCORE"
+    normalized = raw_mode.upper().replace("-", "").replace("_", "")
+    mode = normalized
+    allowed_modes = {"MINMAX", "ZSCORE", "DECIMALSCALING"}
+    if mode not in allowed_modes:
+        numeric_map = {
+            "0": "ZSCORE",
+            "1": "MINMAX",
+            "2": "ZSCORE",
+            "3": "DECIMALSCALING",
+        }
+        mapped = numeric_map.get(raw_mode.strip())
+        if mapped:
+            mode = mapped
         else:
             mode = "MINMAX"
 
@@ -237,6 +247,37 @@ def emit_normalize_code(cfg: NormalizerSettings, bundle_var: str = "bundle") -> 
         lines.append("            return pd.Series([0.0] * len(s), index=s.index)")
         lines.append("        return ((s - mu) / sd).astype(float)")
         lines.append("    out_df[norm_cols] = out_df[norm_cols].apply(_zscore_col)")
+    elif mode == "DECIMALSCALING":
+        lines.append("    _col_absmax = out_df[norm_cols].abs().max(axis=0, skipna=True)")
+        lines.append("    stats = {}")
+        lines.append("    for col in norm_cols:")
+        lines.append("        abs_max = _col_absmax.get(col)")
+        lines.append("        if abs_max is None or pd.isna(abs_max):")
+        lines.append("            scale = 0")
+        lines.append("        else:")
+        lines.append("            abs_val = abs(float(abs_max))")
+        lines.append("            if abs_val < 1:")
+        lines.append("                scale = 0")
+        lines.append("            else:")
+        lines.append("                scale = int(math.floor(math.log10(abs_val)) + 1)")
+        lines.append("        stats[col] = {'scale': scale}")
+        lines.append(f"    {bundle_var}['stats'] = stats")
+        lines.append("    def _decimal_scale_col(s):")
+        lines.append("        abs_max = _col_absmax.get(s.name)")
+        lines.append("        if abs_max is None or pd.isna(abs_max):")
+        lines.append("            return s.astype(float)")
+        lines.append("        abs_val = abs(float(abs_max))")
+        lines.append("        if abs_val < 1:")
+        lines.append("            scale = 0")
+        lines.append("        elif abs_val == 0:")
+        lines.append("            scale = 0")
+        lines.append("        else:")
+        lines.append("            scale = int(math.floor(math.log10(abs_val)) + 1)")
+        lines.append("        if scale <= 0:")
+        lines.append("            return s.astype(float)")
+        lines.append("        factor = float(10 ** scale)")
+        lines.append("        return (s / factor).astype(float)")
+        lines.append("    out_df[norm_cols] = out_df[norm_cols].apply(_decimal_scale_col)")
     else:
         lines.append(f"    # Unsupported Normalizer mode '{cfg.mode}'; leaving columns unchanged")
 
