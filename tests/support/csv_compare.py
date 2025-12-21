@@ -76,6 +76,21 @@ RTOL: float = 1e-3  # 0.1%
 # Zero tolerance: any finite |value| < ZERO_TOL is treated as 0.0 (in both tables)
 ZERO_TOL: float = 1e-6
 
+
+def _sort_columns(rows: List[List[str]]) -> List[List[str]]:
+    """Return rows with columns sorted alphabetically by header."""
+    if not rows:
+        return rows
+    header = rows[0]
+    order = sorted(range(len(header)), key=lambda i: header[i])
+    if order == list(range(len(header))):
+        return rows
+    sorted_rows: List[List[str]] = []
+    for row in rows:
+        sorted_row = [row[i] if i < len(row) else "" for i in order]
+        sorted_rows.append(sorted_row)
+    return sorted_rows
+
 def read_csv_rows(path: Path) -> List[List[str]]:
     """Read a CSV file and return its rows as a list of lists of trimmed strings.
     
@@ -166,7 +181,13 @@ def cells_equal(a: str, b: str, *, rtol: float) -> bool:
         return math.isclose(avz, bvz, rel_tol=rtol, abs_tol=0.0)
     return (a or "").strip() == (b or "").strip()
 
-def compare_csv(got_path: Path, exp_path: Path, *, rtol: float = RTOL) -> None:
+def compare_csv(
+    got_path: Path,
+    exp_path: Path,
+    *,
+    rtol: float = RTOL,
+    sort_columns: bool = False,
+) -> None:
     """Compare two CSV files for equality, allowing for relative tolerance in numeric cells.
     
     This function asserts that the two CSVs have the same number of rows and that their headers match.
@@ -176,12 +197,18 @@ def compare_csv(got_path: Path, exp_path: Path, *, rtol: float = RTOL) -> None:
         got_path (Path): The path to the actual output CSV file.
         exp_path (Path): The path to the expected output CSV file.
         rtol (float, optional): The relative tolerance for numeric comparisons. Defaults to RTOL.
+        sort_columns (bool, optional): If True, columns are reordered alphabetically
+            prior to comparison for both tables.
     
     Raises:
         AssertionError: If the CSV files differ in row count, header, or any cell values.
     """
     got = read_csv_rows(got_path)
     exp = read_csv_rows(exp_path)
+
+    if sort_columns:
+        got = _sort_columns(got)
+        exp = _sort_columns(exp)
 
     assert len(got) == len(exp), f"Row count differs: got={len(got)}, exp={len(exp)}"
     assert len(got) > 0, "Empty CSV (no header)"

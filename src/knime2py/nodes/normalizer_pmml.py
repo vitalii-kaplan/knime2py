@@ -18,8 +18,10 @@ from .normalizer_utils import (
     emit_normalize_code,
     parse_normalizer_settings,
 )
+from .pmml_utils import emit_data_dictionary_helper
 
 FACTORY = "org.knime.base.node.preproc.pmml.normalize.NormalizerPMMLNodeFactory2"
+DATA_DICT_HELPER_LINES = emit_data_dictionary_helper("_norm_dtype_key", "_collect_norm_data_dictionary")
 
 def generate_imports() -> List[str]:
     return [
@@ -49,7 +51,9 @@ def generate_py_body(
     src_id, in_port = normalize_in_ports(in_ports)[0]
     lines.append(f"df = context['{src_id}:{in_port}']")
 
+    lines.extend(DATA_DICT_HELPER_LINES)
     lines.extend(emit_normalize_code(cfg))
+    lines.append("data_dictionary = _collect_norm_data_dictionary(df)")
     lines.append("pmml_model = {")
     lines.append("    'model_type': 'normalizer',")
     lines.append("    'version': '4.2',")
@@ -59,6 +63,7 @@ def generate_py_body(
     lines.append("    'new_max': bundle.get('new_max', 1.0),")
     lines.append("    'columns': list(bundle.get('columns', [])),")
     lines.append("    'stats': dict(bundle.get('stats', {})),")
+    lines.append("    'data_dictionary': data_dictionary,")
     lines.append("}")
 
     ports = out_ports or ["1", "2"]

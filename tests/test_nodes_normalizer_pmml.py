@@ -101,6 +101,7 @@ def test_normalizer_pmml_minmax(tmp_path: Path):
     assert isinstance(pmml, dict)
     assert pmml.get("model_type") == "normalizer"
     assert pmml.get("mode") == "MINMAX"
+    assert len(pmml.get("data_dictionary", [])) == df.shape[1]
     assert pmml.get("mode") == "MINMAX"
     assert "stats" in pmml
 
@@ -112,6 +113,7 @@ def test_normalizer_pmml_zscore(tmp_path: Path):
     assert pmml.get("mode") == "ZSCORE"
     stats = pmml.get("stats", {})
     assert "Age" in stats and "mean" in stats["Age"] and "std" in stats["Age"]
+    assert len(pmml.get("data_dictionary", [])) == df.shape[1]
 
 
 def test_normalizer_pmml_decimal_scaling(tmp_path: Path):
@@ -124,6 +126,7 @@ def test_normalizer_pmml_decimal_scaling(tmp_path: Path):
     stats = bundle.get("stats", {})
     assert stats.get("Age", {}).get("scale") == 2
     assert stats.get("Fare", {}).get("scale") == 1
+    assert len(bundle.get("data_dictionary", [])) == df.shape[1]
 
 
 def test_gbt_pmml_exporter_wraps_bundle(tmp_path: Path):

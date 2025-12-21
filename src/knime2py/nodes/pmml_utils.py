@@ -17,6 +17,7 @@ __all__ = [
     "build_normalizer_pmml",
     "emit_normalizer_pmml_builder",
     "emit_missing_value_bundle_builder",
+    "emit_data_dictionary_helper",
 ]
 
 
@@ -266,4 +267,46 @@ def emit_missing_value_bundle_builder(
         "        'data_dictionary': data_entries,",
         "        'transformations': transforms,",
         "    }",
+    ]
+
+
+def emit_data_dictionary_helper(
+    dtype_fn: str = "_dd_dtype_key",
+    collect_fn: str = "_collect_data_dictionary",
+) -> List[str]:
+    """Emit helper functions to collect DataDictionary entries from a DataFrame."""
+    return [
+        f"def {dtype_fn}(series):",
+        "    import pandas as pd",
+        "    if pd.api.types.is_integer_dtype(series):",
+        "        return 'int'",
+        "    if pd.api.types.is_float_dtype(series):",
+        "        return 'float'",
+        "    if pd.api.types.is_bool_dtype(series):",
+        "        return 'boolean'",
+        "    return 'string'",
+        "",
+        f"def {collect_fn}(df):",
+        "    entries = []",
+        "    for col in df.columns:",
+        "        series = df[col]",
+        f"        dtype_key = {dtype_fn}(series)",
+        "        entry = {'name': str(col)}",
+        "        if dtype_key == 'string':",
+        "            entry['optype'] = 'categorical'",
+        "            entry['dataType'] = 'string'",
+        "            values = series.dropna().astype(str).unique().tolist()",
+        "            if values:",
+        "                entry['values'] = [str(v) for v in values[:256]]",
+        "        else:",
+        "            entry['optype'] = 'continuous'",
+        "            entry['dataType'] = 'double' if dtype_key == 'float' else 'integer'",
+        "            non_missing = series.dropna()",
+        "            if not non_missing.empty:",
+        "                try:",
+        "                    entry['interval'] = [float(non_missing.min()), float(non_missing.max())]",
+        "                except Exception:",
+        "                    pass",
+        "        entries.append(entry)",
+        "    return entries",
     ]
