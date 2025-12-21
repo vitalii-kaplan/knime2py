@@ -169,6 +169,19 @@ PMML_HELPER_LINES = [
     "        else:",
     "            continue",
     "    return ET.tostring(root, encoding='utf-8', xml_declaration=True).decode('utf-8')",
+    "",
+    "def _pmml_pretty_print(xml_text):",
+    "    try:",
+    "        minidom = __import__('xml.dom.minidom', fromlist=['minidom'])",
+    "    except Exception:",
+    "        return xml_text",
+    "    try:",
+    "        parsed = minidom.parseString(xml_text.encode('utf-8'))",
+    "    except Exception:",
+    "        return xml_text",
+    "    pretty = parsed.toprettyxml(indent='  ', encoding='UTF-8')",
+    "    lines = [line for line in pretty.decode('utf-8').splitlines() if line.strip()]",
+    "    return '\\n'.join(lines)",
 ]
 
 
@@ -233,6 +246,7 @@ def generate_py_body(
     lines.append("        pmml_text = _pmml_from_normalizer_bundle(pmml_obj)")
     lines.append("    else:")
     lines.append("        pmml_text = str(pmml_obj)")
+    lines.append("    pmml_text = _pmml_pretty_print(pmml_text)")
     lines.append("elif isinstance(pmml_obj, (bytes, bytearray)):")
     lines.append("    pmml_text = pmml_obj.decode('utf-8')")
     lines.append("else:")
