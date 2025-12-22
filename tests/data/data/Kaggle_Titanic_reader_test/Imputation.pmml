@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PMML xmlns="http://www.dmg.org/PMML-4_2" version="4.2">
+  <Header>
+    <Application name="knime2py" version="1.0"/>
+  </Header>
+  <DataDictionary numberOfFields="13">
+    <DataField name="Survived" optype="categorical" dataType="string">
+      <Value value="no"/>
+      <Value value="yes"/>
+    </DataField>
+    <DataField name="Pclass" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="1.0" rightMargin="3.0"/>
+    </DataField>
+    <DataField name="Sex" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="1.0"/>
+    </DataField>
+    <DataField name="Age" optype="continuous" dataType="double">
+      <Interval closure="closedClosed" leftMargin="0.42" rightMargin="80.0"/>
+    </DataField>
+    <DataField name="SibSp" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="8.0"/>
+    </DataField>
+    <DataField name="Parch" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="6.0"/>
+    </DataField>
+    <DataField name="Fare" optype="continuous" dataType="double">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="512.3292"/>
+    </DataField>
+    <DataField name="Embarked" optype="categorical" dataType="string">
+      <Value value="S"/>
+      <Value value="C"/>
+      <Value value="Q"/>
+    </DataField>
+    <DataField name="Mr" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="1.0"/>
+    </DataField>
+    <DataField name="Mrs" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="1.0"/>
+    </DataField>
+    <DataField name="Miss" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="1.0"/>
+    </DataField>
+    <DataField name="Master" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="1.0"/>
+    </DataField>
+    <DataField name="TicketNumbers" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="3.0" rightMargin="23101294.0"/>
+    </DataField>
+  </DataDictionary>
+  <TransformationDictionary>
+    <DerivedField name="Survived*" displayName="Survived" optype="categorical" dataType="string">
+      <Apply function="if">
+        <Apply function="isMissing">
+          <FieldRef field="Survived"/>
+        </Apply>
+        <Constant dataType="string">no</Constant>
+        <FieldRef field="Survived"/>
+      </Apply>
+    </DerivedField>
+    <DerivedField name="Pclass*" displayName="Pclass" optype="continuous" dataType="integer">
+      <Apply function="if">
+        <Apply function="isMissing">
+          <FieldRef field="Pclass"/>
+        </Apply>
+        <Constant dataType="integer">0</Constant>
+        <FieldRef field="Pclass"/>
+      </Apply>
+    </DerivedField>
+    <DerivedField name="Sex*" displayName="Sex" optype="continuous" dataType="integer">
+      <Apply function="if">
+        <Apply function="isMissing">
+          <FieldRef field="Sex"/>
+        </Apply>
+        <Constant dataType="integer">0</Constant>
+        <FieldRef field="Sex"/>
+      </Apply>
+    </DerivedField>
+    <DerivedField name="Age*" displayName="Age" optype="continuous" dataType="double">
+      <Apply function="if">
+        <Apply function="isMissing">
+          <FieldRef field="Age"/>
+        </Apply>
+        <Constant dataType="double">29.69911764705882</Constant>
+        <FieldRef field="Age"/>
+      </Apply>
+    </DerivedField>
+    <DerivedField name="SibSp*" displayName="SibSp" optype="continuous" dataType="integer">
+      <Apply function="if">
+        <Apply function="isMissing">
+          <FieldRef field="SibSp"/>
+        </Apply>
+        <Constant dataType="integer">0</Constant>
+        <FieldRef field="SibSp"/>
+      </Apply>
+    </DerivedField>
+    <DerivedField name="Parch*" displayName="Parch" optype="continuous" dataType="integer">
+      <Apply function="if">
+        <Apply function="isMissing">
+          <FieldRef field="Parch"/>
+        </Apply>
+        <Constant dataType="integer">0</Constant>
+        <FieldRef field="Parch"/>
+      </Apply>
+    </DerivedField>
+    <DerivedField name="Fare*" displayName="Fare" optype="continuous" dataType="double">
+      <Apply function="if">
+        <Apply function="isMissing">
+          <FieldRef field="Fare"/>
+        </Apply>
+        <Constant dataType="double">32.204207968574636</Constant>
+        <FieldRef field="Fare"/>
+      </Apply>
+    </DerivedField>
+    <DerivedField name="Embarked*" displayName="Embarked" optype="categorical" dataType="string">
+      <Apply function="if">
+        <Apply function="isMissing">
+          <FieldRef field="Embarked"/>
+        </Apply>
+        <Constant dataType="string">S</Constant>
+        <FieldRef field="Embarked"/>
+      </Apply>
+    </DerivedField>
+    <DerivedField name="Mr*" displayName="Mr" optype="continuous" dataType="integer">
+      <Apply function="if">
+        <Apply function="isMissing">
+          <FieldRef field="Mr"/>
+        </Apply>
+        <Constant dataType="integer">0</Constant>
+        <FieldRef field="Mr"/>
+      </Apply>
+    </DerivedField>
+    <DerivedField name="Mrs*" displayName="Mrs" optype="continuous" dataType="integer">
+      <Apply function="if">
+        <Apply function="isMissing">
+          <FieldRef field="Mrs"/>
+        </Apply>
+        <Constant dataType="integer">0</Constant>
+        <FieldRef field="Mrs"/>
+      </Apply>
+    </DerivedField>
+    <DerivedField name="Miss*" displayName="Miss" optype="continuous" dataType="integer">
+      <Apply function="if">
+        <Apply function="isMissing">
+          <FieldRef field="Miss"/>
+        </Apply>
+        <Constant dataType="integer">0</Constant>
+        <FieldRef field="Miss"/>
+      </Apply>
+    </DerivedField>
+    <DerivedField name="Master*" displayName="Master" optype="continuous" dataType="integer">
+      <Apply function="if">
+        <Apply function="isMissing">
+          <FieldRef field="Master"/>
+        </Apply>
+        <Constant dataType="integer">0</Constant>
+        <FieldRef field="Master"/>
+      </Apply>
+    </DerivedField>
+    <DerivedField name="TicketNumbers*" displayName="TicketNumbers" optype="continuous" dataType="integer">
+      <Apply function="if">
+        <Apply function="isMissing">
+          <FieldRef field="TicketNumbers"/>
+        </Apply>
+        <Constant dataType="integer">0</Constant>
+        <FieldRef field="TicketNumbers"/>
+      </Apply>
+    </DerivedField>
+  </TransformationDictionary>
+</PMML>

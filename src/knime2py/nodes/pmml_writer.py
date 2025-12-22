@@ -249,8 +249,7 @@ def parse_pmml_writer_settings(node_dir: Optional[Path]) -> PMMLWriterSettings:
 
 
 def generate_imports(settings: PMMLWriterSettings) -> List[str]:
-    imports = ["from pathlib import Path", "from xml.etree import ElementTree as ET"]
-    return imports
+    return ["from pathlib import Path", "from xml.etree import ElementTree as ET"]
 
 
 def generate_py_body(

@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PMML xmlns="http://www.dmg.org/PMML-4_2" version="4.2">
+  <Header>
+    <Application name="knime2py" version="1.0"/>
+  </Header>
+  <DataDictionary numberOfFields="13">
+    <DataField name="Survived" optype="categorical" dataType="string">
+      <Value value="no"/>
+      <Value value="yes"/>
+    </DataField>
+    <DataField name="Pclass" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="1.0" rightMargin="3.0"/>
+    </DataField>
+    <DataField name="Sex" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="1.0"/>
+    </DataField>
+    <DataField name="Age" optype="continuous" dataType="double">
+      <Interval closure="closedClosed" leftMargin="0.42" rightMargin="80.0"/>
+    </DataField>
+    <DataField name="SibSp" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="8.0"/>
+    </DataField>
+    <DataField name="Parch" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="6.0"/>
+    </DataField>
+    <DataField name="Fare" optype="continuous" dataType="double">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="512.3292"/>
+    </DataField>
+    <DataField name="Embarked" optype="categorical" dataType="string">
+      <Value value="S"/>
+      <Value value="C"/>
+      <Value value="Q"/>
+    </DataField>
+    <DataField name="Mr" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="1.0"/>
+    </DataField>
+    <DataField name="Mrs" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="1.0"/>
+    </DataField>
+    <DataField name="Miss" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="1.0"/>
+    </DataField>
+    <DataField name="Master" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="1.0"/>
+    </DataField>
+    <DataField name="TicketNumbers" optype="continuous" dataType="integer">
+      <Interval closure="closedClosed" leftMargin="0.0" rightMargin="23101294.0"/>
+    </DataField>
+  </DataDictionary>
+  <TransformationDictionary>
+    <DerivedField name="Age_norm" optype="continuous" dataType="double">
+      <NormContinuous field="Age">
+        <LinearNorm orig="0.42" norm="0.0"/>
+        <LinearNorm orig="80.0" norm="1.0"/>
+      </NormContinuous>
+      <Extension name="summary" extender="knime2py" value="Min/Max (0.0, 1.0) normalization on 11 column(s)"/>
+    </DerivedField>
+    <DerivedField name="Pclass_norm" optype="continuous" dataType="double">
+      <NormContinuous field="Pclass">
+        <LinearNorm orig="1.0" norm="0.0"/>
+        <LinearNorm orig="3.0" norm="1.0"/>
+      </NormContinuous>
+      <Extension name="summary" extender="knime2py" value="Min/Max (0.0, 1.0) normalization on 11 column(s)"/>
+    </DerivedField>
+    <DerivedField name="Sex_norm" optype="continuous" dataType="double">
+      <NormContinuous field="Sex">
+        <LinearNorm orig="0.0" norm="0.0"/>
+        <LinearNorm orig="1.0" norm="1.0"/>
+      </NormContinuous>
+      <Extension name="summary" extender="knime2py" value="Min/Max (0.0, 1.0) normalization on 11 column(s)"/>
+    </DerivedField>
+    <DerivedField name="SibSp_norm" optype="continuous" dataType="double">
+      <NormContinuous field="SibSp">
+        <LinearNorm orig="0.0" norm="0.0"/>
+        <LinearNorm orig="8.0" norm="1.0"/>
+      </NormContinuous>
+      <Extension name="summary" extender="knime2py" value="Min/Max (0.0, 1.0) normalization on 11 column(s)"/>
+    </DerivedField>
+    <DerivedField name="Parch_norm" optype="continuous" dataType="double">
+      <NormContinuous field="Parch">
+        <LinearNorm orig="0.0" norm="0.0"/>
+        <LinearNorm orig="6.0" norm="1.0"/>
+      </NormContinuous>
+      <Extension name="summary" extender="knime2py" value="Min/Max (0.0, 1.0) normalization on 11 column(s)"/>
+    </DerivedField>
+    <DerivedField name="Fare_norm" optype="continuous" dataType="double">
+      <NormContinuous field="Fare">
+        <LinearNorm orig="0.0" norm="0.0"/>
+        <LinearNorm orig="512.3292" norm="1.0"/>
+      </NormContinuous>
+      <Extension name="summary" extender="knime2py" value="Min/Max (0.0, 1.0) normalization on 11 column(s)"/>
+    </DerivedField>
+    <DerivedField name="Mr_norm" optype="continuous" dataType="double">
+      <NormContinuous field="Mr">
+        <LinearNorm orig="0.0" norm="0.0"/>
+        <LinearNorm orig="1.0" norm="1.0"/>
+      </NormContinuous>
+      <Extension name="summary" extender="knime2py" value="Min/Max (0.0, 1.0) normalization on 11 column(s)"/>
+    </DerivedField>
+    <DerivedField name="Mrs_norm" optype="continuous" dataType="double">
+      <NormContinuous field="Mrs">
+        <LinearNorm orig="0.0" norm="0.0"/>
+        <LinearNorm orig="1.0" norm="1.0"/>
+      </NormContinuous>
+      <Extension name="summary" extender="knime2py" value="Min/Max (0.0, 1.0) normalization on 11 column(s)"/>
+    </DerivedField>
+    <DerivedField name="Miss_norm" optype="continuous" dataType="double">
+      <NormContinuous field="Miss">
+        <LinearNorm orig="0.0" norm="0.0"/>
+        <LinearNorm orig="1.0" norm="1.0"/>
+      </NormContinuous>
+      <Extension name="summary" extender="knime2py" value="Min/Max (0.0, 1.0) normalization on 11 column(s)"/>
+    </DerivedField>
+    <DerivedField name="Master_norm" optype="continuous" dataType="double">
+      <NormContinuous field="Master">
+        <LinearNorm orig="0.0" norm="0.0"/>
+        <LinearNorm orig="1.0" norm="1.0"/>
+      </NormContinuous>
+      <Extension name="summary" extender="knime2py" value="Min/Max (0.0, 1.0) normalization on 11 column(s)"/>
+    </DerivedField>
+    <DerivedField name="TicketNumbers_norm" optype="continuous" dataType="double">
+      <NormContinuous field="TicketNumbers">
+        <LinearNorm orig="0.0" norm="0.0"/>
+        <LinearNorm orig="23101294.0" norm="1.0"/>
+      </NormContinuous>
+      <Extension name="summary" extender="knime2py" value="Min/Max (0.0, 1.0) normalization on 11 column(s)"/>
+    </DerivedField>
+  </TransformationDictionary>
+</PMML>
