@@ -632,5 +632,5 @@ def write_workbook_ipynb(
         "nbformat": 4,
         "nbformat_minor": 5,
     }
-    fp.write_text(json.dumps(nb, indent=2, ensure_ascii=False))
+    fp.write_text(json.dumps(nb, indent=2, ensure_ascii=False), encoding="utf-8")
     return fp
