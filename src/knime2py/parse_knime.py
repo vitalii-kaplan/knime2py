@@ -73,11 +73,20 @@ from typing import Dict, List, Literal, Optional, Set, Tuple, cast
 
 from lxml import etree as ET
 
-from .xml_utils import XML_PARSER, parse_settings_xml
+from .xml_utils import XML_PARSER, XML_PARSER_STRICT, parse_settings_xml
 
 # Node names that mark a subgraph as non-exportable when encountered as a start node.
 NON_EXPORTABLE_NODE_NAMES = ["KNIME2PY"]
 STATE_VALUES: Set[str] = {"EXECUTED", "CONFIGURED", "IDLE"}
+
+
+class WorkflowParseError(Exception):
+    """Typed parse error with a stable code for CLI callers."""
+
+    def __init__(self, code: str, message: str, details: Optional[object] = None) -> None:
+        super().__init__(message)
+        self.code = code
+        self.details = details
 
 
 @dataclass
@@ -151,7 +160,12 @@ def _read_state_and_annotation_from_settings(
 
 
 def _parse_knime5_structure(
-    root: ET._Element, workflow_file: Path
+    root: ET._Element,
+    workflow_file: Path,
+    *,
+    strict: bool = False,
+    missing_settings: Optional[List[Dict[str, Optional[str]]]] = None,
+    invalid_settings: Optional[List[Dict[str, Optional[str]]]] = None,
 ) -> Tuple[Dict[str, Node], List[Edge]]:
     """Parse the structure of a KNIME 5 workflow and extract nodes and edges."""
     nodes: Dict[str, Node] = {}
@@ -210,7 +224,25 @@ def _parse_knime5_structure(
                 rel = Path(settings_file)
                 name = rel.parent.name or name
                 abs_settings = workflow_file.parent / rel
-                if abs_settings.exists():
+                workflow_root = workflow_file.parent.resolve()
+                if not abs_settings.resolve().is_relative_to(workflow_root):
+                    if strict and missing_settings is not None:
+                        missing_settings.append(
+                            {"node_id": node_id, "path": str(rel)}
+                        )
+                elif not abs_settings.exists() or not abs_settings.is_file():
+                    if strict and missing_settings is not None:
+                        missing_settings.append(
+                            {"node_id": node_id, "path": str(rel)}
+                        )
+                else:
+                    if strict and invalid_settings is not None:
+                        try:
+                            ET.parse(str(abs_settings), parser=XML_PARSER_STRICT).getroot()
+                        except ET.XMLSyntaxError as exc:
+                            invalid_settings.append(
+                                {"node_id": node_id, "path": str(rel), "error": str(exc)}
+                            )
                     node_path = str(abs_settings.parent)
                     parsed_name, parsed_type = parse_settings_xml(abs_settings.parent)
                     name = parsed_name or name
@@ -218,6 +250,9 @@ def _parse_knime5_structure(
                     state, comments = _read_state_and_annotation_from_settings(
                         abs_settings
                     )
+            else:
+                if strict and missing_settings is not None:
+                    missing_settings.append({"node_id": node_id, "path": None})
 
             nodes[node_id] = Node(
                 id=node_id,
@@ -312,7 +347,10 @@ def _parse_legacy_structure(
     root: ET._Element, workflow_file: Path
 ) -> Tuple[Dict[str, Node], List[Edge]]:
     """Raise on unsupported/legacy formats (placeholder to extend if needed)."""
-    raise ValueError(f"Unsupported/legacy workflow format. File: {workflow_file}")
+    raise WorkflowParseError(
+        "unsupported_workflow",
+        f"Unsupported/legacy workflow format: {workflow_file}",
+    )
 
 
 def _weakly_connected_components(
@@ -416,33 +454,105 @@ def _split_into_subgraphs(
     return subgraphs
 
 
-def parse_workflow_components(workflow_file: Path) -> List[WorkflowGraph]:
+def parse_workflow_components(
+    workflow_file: Path,
+    *,
+    strict: bool = False,
+    workflow_id: Optional[str] = None,
+    workflow_path: Optional[str] = None,
+) -> List[WorkflowGraph]:
     """Parse a single workflow.knime file and return one graph per weakly connected component."""
-    root = ET.parse(str(workflow_file), parser=XML_PARSER).getroot()
-    nodes, edges = _parse_knime5_structure(root, workflow_file)
+    parser = XML_PARSER_STRICT if strict else XML_PARSER
+    try:
+        root = ET.parse(str(workflow_file), parser=parser).getroot()
+    except ET.XMLSyntaxError as exc:
+        raise WorkflowParseError(
+            "invalid_xml",
+            f"Invalid workflow XML: {workflow_file}",
+            details=str(exc),
+        ) from exc
+
+    missing_settings: List[Dict[str, Optional[str]]] = []
+    invalid_settings: List[Dict[str, Optional[str]]] = []
+    nodes, edges = _parse_knime5_structure(
+        root,
+        workflow_file,
+        strict=strict,
+        missing_settings=missing_settings,
+        invalid_settings=invalid_settings,
+    )
+    if strict and invalid_settings:
+        raise WorkflowParseError(
+            "invalid_xml",
+            "Invalid settings.xml detected.",
+            details=invalid_settings,
+        )
+    if strict and missing_settings:
+        raise WorkflowParseError(
+            "missing_settings",
+            "Missing referenced settings.xml.",
+            details=missing_settings,
+        )
     if not nodes and not edges:
         nodes, edges = _parse_legacy_structure(root, workflow_file)
 
-    base_id = (
+    base_id = workflow_id or (
         workflow_file.parent.name or workflow_file.parent.as_posix().replace("/", "_")
     )
-    return _split_into_subgraphs(base_id, str(workflow_file), nodes, edges)
+    wf_path = workflow_path or str(workflow_file)
+    return _split_into_subgraphs(base_id, wf_path, nodes, edges)
 
 
-def parse_workflow(workflow_file: Path) -> WorkflowGraph:
+def parse_workflow(
+    workflow_file: Path,
+    *,
+    strict: bool = False,
+    workflow_id: Optional[str] = None,
+    workflow_path: Optional[str] = None,
+) -> WorkflowGraph:
     """Backward-compatible parser that returns the combined graph for the workflow."""
-    root = ET.parse(str(workflow_file), parser=XML_PARSER).getroot()
-    nodes, edges = _parse_knime5_structure(root, workflow_file)
+    parser = XML_PARSER_STRICT if strict else XML_PARSER
+    try:
+        root = ET.parse(str(workflow_file), parser=parser).getroot()
+    except ET.XMLSyntaxError as exc:
+        raise WorkflowParseError(
+            "invalid_xml",
+            f"Invalid workflow XML: {workflow_file}",
+            details=str(exc),
+        ) from exc
+
+    missing_settings: List[Dict[str, Optional[str]]] = []
+    invalid_settings: List[Dict[str, Optional[str]]] = []
+    nodes, edges = _parse_knime5_structure(
+        root,
+        workflow_file,
+        strict=strict,
+        missing_settings=missing_settings,
+        invalid_settings=invalid_settings,
+    )
+    if strict and invalid_settings:
+        raise WorkflowParseError(
+            "invalid_xml",
+            "Invalid settings.xml detected.",
+            details=invalid_settings,
+        )
+    if strict and missing_settings:
+        raise WorkflowParseError(
+            "missing_settings",
+            "Missing referenced settings.xml.",
+            details=missing_settings,
+        )
     if not nodes and not edges:
         nodes, edges = _parse_legacy_structure(root, workflow_file)
 
-    workflow_id = (
+    resolved_id = workflow_id or (
         workflow_file.parent.name or workflow_file.parent.as_posix().replace("/", "_")
     )
+    resolved_path = workflow_path or str(workflow_file)
     exportable = _compute_exportable_flag(nodes, edges)
     return WorkflowGraph(
-        workflow_id=workflow_id,
-        workflow_path=str(workflow_file),
+        workflow_id=resolved_id,
+        workflow_path=resolved_path,
         nodes=nodes,
         edges=edges,
         exportable=exportable,

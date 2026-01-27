@@ -206,7 +206,7 @@ def write_graph_json(g, out_dir: Path) -> Path:
         "nodes": {nid: asdict(n) for nid, n in g.nodes.items()},
         "edges": [asdict(e) for e in g.edges],
     }
-    fp.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
+    fp.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     return fp
 
 
@@ -257,7 +257,7 @@ def write_graph_dot(g, out_dir: Path) -> Path:
         lines.append(f'  "{e.source}" -> "{e.target}"{attr_str};')
 
     lines.append("}")
-    fp.write_text("\n".join(lines))
+    fp.write_text("\n".join(lines), encoding="utf-8")
     return fp
 
 
@@ -488,7 +488,7 @@ def write_workbook_py(
             lines.extend(b.code_lines)
         lines.append("")
 
-    fp.write_text("\n".join(lines))
+    fp.write_text("\n".join(lines), encoding="utf-8")
     return fp
 
 

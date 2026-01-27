@@ -43,7 +43,7 @@ https://vitalii-kaplan.github.io/knime2py/quickstart/
 ## CLI reference
 
 ```
-usage: k2p [-h] [--out OUT] [--workbook {py,ipynb}] [--graph {dot,json,off}] path
+usage: k2p [-h] [--out OUT] [--workbook {py,ipynb}] [--graph {dot,json,off}] [--in-zip IN_ZIP] [path]
 
 positional arguments:
   path                  Path to a workflow.knime file OR a directory containing exactly one workflow.knime
@@ -54,7 +54,33 @@ options:
   --workbook {py,ipynb} Workbook format to generate. Omit to generate both.
   --graph {dot,json,off}
                         Which graph file(s) to emit. Omit to generate both; use "off" to skip.
+  --in-zip IN_ZIP       Input bundle.zip containing workflow.knime at the archive root.
 ```
+
+---
+
+## k2p-web CLI contract
+
+Input layout:
+* A workflow directory containing `workflow.knime` at the root plus per-node `settings.xml` files.
+* Optional `--in-zip bundle.zip` with the same layout at the archive root (no nested folder).
+
+Output layout under `--out` (deterministic filenames):
+* Graphs: `<workflow_id>__gXX.json` and `<workflow_id>__gXX.dot`
+* Workbooks: `<workflow_id>__gXX_workbook.py` and (optionally) `<workflow_id>__gXX_workbook.ipynb`
+* `workflow_id` is the workflow directory name or the zip filename stem.
+
+Error behavior:
+* Errors are emitted to stderr as a single JSON line: `{"error":{"code":"...","message":"...","details":...}}`
+* Exit codes are stable:
+  - `2`: missing `workflow.knime` / invalid input path
+  - `5`: missing referenced `settings.xml`
+  - `6`: invalid XML (workflow or settings)
+  - `7`: unsupported workflow/constructs
+  - `1`: general failure
+
+Container/runtime constraints:
+* Runs as non-root, no network access, and writes only under `--out` (plus optional `--in-zip` extraction under `$TMPDIR`).
 
 ---
 

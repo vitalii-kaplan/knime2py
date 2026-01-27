@@ -68,7 +68,7 @@ For more information, refer to the KNIME documentation and the
 HUB_URL constant for additional resources.
 """
 
-__all__ = ["XML_PARSER", "parse_settings_xml"]
+__all__ = ["XML_PARSER", "XML_PARSER_STRICT", "parse_settings_xml"]
 
 XML_PARSER = ET.XMLParser(
     remove_comments=True,
@@ -76,6 +76,14 @@ XML_PARSER = ET.XMLParser(
     no_network=True,
     ns_clean=True,
     recover=True,
+)
+
+XML_PARSER_STRICT = ET.XMLParser(
+    remove_comments=True,
+    resolve_entities=False,
+    no_network=True,
+    ns_clean=True,
+    recover=False,
 )
 
 def _findall_any(parent, names: Tuple[str, ...]):
