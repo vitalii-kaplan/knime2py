@@ -9,6 +9,11 @@ from pathlib import Path
 from knime2py.cli import run_cli
 
 
+def _assert_single_error_line(err: str) -> None:
+    lines = [ln for ln in err.strip().splitlines() if ln.strip()]
+    assert len(lines) == 1
+
+
 def _bundle_from_dir(src_dir: Path, zip_path: Path) -> None:
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for file_path in src_dir.rglob("*"):
@@ -91,6 +96,7 @@ def test_cli_missing_settings_is_hard_error(tmp_path: Path, workflow, capsys):
     assert code == 5
 
     err = capsys.readouterr().err
+    _assert_single_error_line(err)
     assert "\"code\": \"missing_settings\"" in err
 
 
@@ -105,6 +111,7 @@ def test_cli_zip_rejects_path_traversal(tmp_path: Path, workflow, capsys):
     code = run_cli(["--in-zip", str(zip_path), "--out", str(out_dir)])
     assert code == 1
     err = capsys.readouterr().err
+    _assert_single_error_line(err)
     assert "\"code\": \"general_failure\"" in err
 
 
@@ -121,6 +128,7 @@ def test_cli_zip_rejects_symlink_entry(tmp_path: Path, workflow, capsys):
     code = run_cli(["--in-zip", str(zip_path), "--out", str(out_dir)])
     assert code == 1
     err = capsys.readouterr().err
+    _assert_single_error_line(err)
     assert "\"code\": \"general_failure\"" in err
 
 
@@ -128,6 +136,12 @@ def test_cli_settings_path_escape_is_rejected(tmp_path: Path, workflow, capsys):
     wf = workflow("KNIME_single_csv")
     work_dir = tmp_path / "escape_settings"
     work_dir.mkdir(parents=True, exist_ok=True)
+    escape_dir = tmp_path / "escape"
+    escape_dir.mkdir(parents=True, exist_ok=True)
+    escape_dir.joinpath("settings.xml").write_text(
+        "<config key='settings.xml'/>",
+        encoding="utf-8",
+    )
 
     workflow_text = wf.read_text(encoding="utf-8")
     workflow_text = workflow_text.replace(
@@ -140,4 +154,37 @@ def test_cli_settings_path_escape_is_rejected(tmp_path: Path, workflow, capsys):
     code = run_cli([str(work_dir), "--out", str(out_dir)])
     assert code == 5
     err = capsys.readouterr().err
+    _assert_single_error_line(err)
     assert "\"code\": \"missing_settings\"" in err
+
+
+def test_cli_in_zip_requires_root_workflow(tmp_path: Path, workflow, capsys):
+    wf = workflow("KNIME_io_csv")
+    zip_path = tmp_path / "nested.zip"
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for file_path in wf.parent.rglob("*"):
+            if file_path.is_file():
+                arcname = Path("MyWorkflow") / file_path.relative_to(wf.parent)
+                zf.write(file_path, arcname=arcname.as_posix())
+
+    out_dir = tmp_path / "out_nested"
+    code = run_cli(["--in-zip", str(zip_path), "--out", str(out_dir)])
+    assert code == 2
+    err = capsys.readouterr().err
+    _assert_single_error_line(err)
+    assert "\"code\": \"missing_workflow\"" in err
+
+
+def test_cli_zip_rejects_high_compression_ratio(tmp_path: Path, workflow, capsys):
+    wf = workflow("KNIME_io_csv")
+    zip_path = tmp_path / "ratio.zip"
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("workflow.knime", wf.read_text(encoding="utf-8"))
+        zf.writestr("big.txt", "A" * 20000)
+
+    out_dir = tmp_path / "out_ratio"
+    code = run_cli(["--in-zip", str(zip_path), "--out", str(out_dir)])
+    assert code == 1
+    err = capsys.readouterr().err
+    _assert_single_error_line(err)
+    assert "\"code\": \"general_failure\"" in err
