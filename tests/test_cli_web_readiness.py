@@ -188,3 +188,17 @@ def test_cli_zip_rejects_high_compression_ratio(tmp_path: Path, workflow, capsys
     err = capsys.readouterr().err
     _assert_single_error_line(err)
     assert "\"code\": \"general_failure\"" in err
+
+
+def test_cli_get_handlers_prints_mapping(capsys):
+    code = run_cli(["--get-handlers"])
+    assert code == 0
+
+    out = capsys.readouterr().out
+    lines = [ln for ln in out.splitlines() if ln.strip()]
+    assert lines
+    assert any("," in ln for ln in lines)
+    first_col, second_col = lines[0].split(",", 1)
+    assert "." not in first_col
+    assert "_" not in first_col
+    assert second_col.startswith("org.knime.")

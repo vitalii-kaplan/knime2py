@@ -281,8 +281,26 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
         action="store_true",
         help="Show full traceback on errors.",
     )
+    parser.add_argument(
+        "--get-handlers",
+        action="store_true",
+        help="Print the handlers dictionary discovered by knime2py.nodes.registry.get_handlers() and exit.",
+    )
 
     args = parser.parse_args(argv)
+
+    if args.get_handlers:
+        from .nodes.registry import get_handlers
+
+        handlers = get_handlers()
+        for factory, module in sorted(handlers.items(), key=lambda x: (getattr(x[1], "__name__", ""), x[0])):
+            module_name = getattr(module, "__name__", str(module))
+            if module_name == "knime2py.nodes.not_implemented":
+                continue
+            short_name = module_name.rsplit(".", 1)[-1]
+            display_name = " ".join(word.capitalize() for word in short_name.split("_"))
+            print(f"{display_name},{factory}")
+        return 0
 
     if args.in_zip and args.path:
         _emit_error(
