@@ -433,6 +433,12 @@ def generate_py_body(
     return lines
 
 
+
+def get_name() -> str:
+    """Return human-readable handler name."""
+    return "Row Filter"
+
+
 def handle(ntype, nid, npath, incoming, outgoing):
     """
     Handle the processing of the row filter node.

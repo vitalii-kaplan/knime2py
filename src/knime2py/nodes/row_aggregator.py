@@ -315,6 +315,12 @@ def generate_py_body(
     return lines
 
 
+
+def get_name() -> str:
+    """Return human-readable handler name."""
+    return "Row Aggregator"
+
+
 def handle(ntype, nid, npath, incoming, outgoing):
     """
     Entry for emitters:

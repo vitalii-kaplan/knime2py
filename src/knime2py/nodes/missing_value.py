@@ -475,6 +475,12 @@ def generate_py_body(
     return lines
 
 
+
+def get_name() -> str:
+    """Return human-readable handler name."""
+    return "Missing Value"
+
+
 def handle(ntype, nid, npath, incoming, outgoing):
     """Handle the node processing, generating imports and body code."""
     explicit_imports = collect_module_imports(generate_imports)

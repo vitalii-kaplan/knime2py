@@ -368,6 +368,12 @@ def generate_py_body(
     return lines
 
 
+
+def get_name() -> str:
+    """Return human-readable handler name."""
+    return "SVM Learner"
+
+
 def handle(ntype, nid, npath, incoming, outgoing):
     """
     Handle the SVM learner node, returning the necessary imports and body lines.

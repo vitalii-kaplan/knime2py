@@ -297,8 +297,12 @@ def run_cli(argv: Optional[list[str]] = None) -> int:
             module_name = getattr(module, "__name__", str(module))
             if module_name == "knime2py.nodes.not_implemented":
                 continue
-            short_name = module_name.rsplit(".", 1)[-1]
-            display_name = " ".join(word.capitalize() for word in short_name.split("_"))
+            get_name = getattr(module, "get_name", None)
+            if callable(get_name):
+                display_name = str(get_name())
+            else:
+                short_name = module_name.rsplit(".", 1)[-1]
+                display_name = " ".join(word.capitalize() for word in short_name.split("_"))
             print(f"{display_name},{factory}")
         return 0
 

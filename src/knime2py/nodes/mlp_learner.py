@@ -306,6 +306,12 @@ def generate_py_body(
     return lines
 
 
+
+def get_name() -> str:
+    """Return human-readable handler name."""
+    return "MLP Learner"
+
+
 def handle(ntype, nid, npath, incoming, outgoing):
     """Handle the processing of a node, generating imports and the body of the code."""
     explicit_imports = collect_module_imports(generate_imports)

@@ -75,3 +75,24 @@ def test_all_handlers_honor_stub_ports(tmp_path: Path):
                 failures.append(f"{module_name}: body missing incoming stub reference: {body_text}")
 
     assert not failures, "Handlers failing stub propagation:\n" + "\n".join(failures)
+
+
+def test_all_handlers_expose_get_name() -> None:
+    """Every discovered handler should expose a callable get_name() -> non-empty str."""
+    handlers = registry.get_handlers()
+    failures: list[str] = []
+
+    for _factory_id, mod in handlers.items():
+        name_fn = getattr(mod, "get_name", None)
+        if not callable(name_fn):
+            failures.append(f"{mod.__name__}: missing callable get_name()")
+            continue
+        try:
+            value = name_fn()
+        except Exception as exc:
+            failures.append(f"{mod.__name__}: get_name() raised {exc}")
+            continue
+        if not isinstance(value, str) or not value.strip():
+            failures.append(f"{mod.__name__}: get_name() returned invalid value {value!r}")
+
+    assert not failures, "Handlers failing get_name() contract:\n" + "\n".join(failures)

@@ -340,6 +340,12 @@ def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[tuple
     return lines
 
 
+
+def get_name() -> str:
+    """Return human-readable handler name."""
+    return "Excel Writer"
+
+
 def handle(ntype, nid, npath, incoming, outgoing):
     """
     Handle the Excel Writer node processing.

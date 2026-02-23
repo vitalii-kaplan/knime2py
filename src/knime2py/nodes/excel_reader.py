@@ -268,6 +268,12 @@ def generate_py_body(node_id: str, node_dir: Optional[str], out_ports: List[str]
     return lines
 
 
+
+def get_name() -> str:
+    """Return human-readable handler name."""
+    return "Excel Reader"
+
+
 def handle(ntype, nid, npath, incoming, outgoing):
     """
     Returns (imports, body_lines) for Excel Reader.

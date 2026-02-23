@@ -305,6 +305,12 @@ def generate_py_body(
     return lines
 
 
+
+def get_name() -> str:
+    """Return human-readable handler name."""
+    return "PMML Writer"
+
+
 def handle(ntype, nid, npath, incoming, outgoing):
     in_ports = [(src_id, str(getattr(edge, "source_port", "") or "1")) for src_id, edge in (incoming or [])]
     settings = parse_pmml_writer_settings(Path(npath) if npath else None)

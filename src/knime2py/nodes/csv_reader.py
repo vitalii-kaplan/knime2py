@@ -252,6 +252,12 @@ def generate_py_body(node_id: str, node_dir: Optional[str], out_ports: List[str]
     return lines
 
 
+
+def get_name() -> str:
+    """Return human-readable handler name."""
+    return "Csv Reader"
+
+
 def handle(ntype, nid, npath, incoming, outgoing):
     """
     Handle the processing of a node, generating the necessary imports and body lines.

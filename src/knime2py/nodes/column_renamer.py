@@ -260,6 +260,12 @@ def generate_py_body(
     return lines
 
 
+
+def get_name() -> str:
+    """Return human-readable handler name."""
+    return "Column Renamer"
+
+
 def handle(ntype, nid, npath, incoming, outgoing):
     """
     Handles the processing of the node and returns the necessary imports and body lines.

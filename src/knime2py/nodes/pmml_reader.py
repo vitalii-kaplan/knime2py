@@ -177,6 +177,12 @@ def generate_py_body(
     return lines
 
 
+
+def get_name() -> str:
+    """Return human-readable handler name."""
+    return "PMML Reader"
+
+
 def handle(ntype, nid, npath, incoming, outgoing):
     out_ports = [str(getattr(edge, "source_port", "") or "1") for _, edge in outgoing]
     node_dir = Path(npath) if npath else None

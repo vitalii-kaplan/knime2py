@@ -324,6 +324,12 @@ def generate_py_body(
     return lines
 
 
+
+def get_name() -> str:
+    """Return human-readable handler name."""
+    return "ROC Curve"
+
+
 def handle(ntype, nid, npath, incoming, outgoing):
     """Handle the node processing by generating the necessary imports and body code."""
     explicit_imports = collect_module_imports(generate_imports)

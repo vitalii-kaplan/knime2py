@@ -238,6 +238,12 @@ def generate_py_body(
     return lines
 
 
+
+def get_name() -> str:
+    """Return human-readable handler name."""
+    return "String Manipulation"
+
+
 def handle(ntype, nid, npath, incoming, outgoing):
     explicit_imports = collect_module_imports(generate_imports)
     in_ports = [(src, str(getattr(e, "source_port", "") or "1")) for src, e in (incoming or [])]

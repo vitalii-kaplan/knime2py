@@ -312,6 +312,12 @@ def generate_py_body(
     return lines
 
 
+
+def get_name() -> str:
+    """Return human-readable handler name."""
+    return "String To Number"
+
+
 def handle(ntype, nid, npath, incoming, outgoing):
     """
     Handles the generation of imports and body lines for the String to Number node.

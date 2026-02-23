@@ -224,6 +224,12 @@ def generate_py_body(
     return lines
 
 
+
+def get_name() -> str:
+    """Return human-readable handler name."""
+    return "Equal Size Sampling"
+
+
 def handle(ntype, nid, npath, incoming, outgoing):
     """
     Entry used by emitters to handle the node type.
