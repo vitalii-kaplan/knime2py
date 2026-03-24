@@ -177,7 +177,7 @@ def generate_py_body(
 
 
 def get_name() -> str:
-    """Return human-readable handler name."""
+    """Return name of the node in KNIME workflow."""
     return "Concatenate"
 
 

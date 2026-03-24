@@ -342,7 +342,7 @@ def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[tuple
 
 
 def get_name() -> str:
-    """Return human-readable handler name."""
+    """Return name of the node in KNIME workflow."""
     return "Excel Writer"
 
 

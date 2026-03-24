@@ -333,8 +333,8 @@ def generate_py_body(
 
 
 def get_name() -> str:
-    """Return human-readable handler name."""
-    return "Smote"
+    """Return name of the node in KNIME workflow."""
+    return "SMOTE"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):

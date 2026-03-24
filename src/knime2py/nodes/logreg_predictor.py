@@ -305,8 +305,8 @@ def generate_py_body(
 
 
 def get_name() -> str:
-    """Return human-readable handler name."""
-    return "LogReg Predictor"
+    """Return name of the node in KNIME workflow."""
+    return "Logistic Regression Predictor"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):

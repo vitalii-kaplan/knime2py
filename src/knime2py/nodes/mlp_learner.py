@@ -308,8 +308,8 @@ def generate_py_body(
 
 
 def get_name() -> str:
-    """Return human-readable handler name."""
-    return "MLP Learner"
+    """Return name of the node in KNIME workflow."""
+    return "RProp MLP Learner"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):

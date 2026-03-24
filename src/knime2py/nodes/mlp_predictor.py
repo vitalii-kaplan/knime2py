@@ -292,8 +292,8 @@ def generate_py_body(
 
 
 def get_name() -> str:
-    """Return human-readable handler name."""
-    return "MLP Predictor"
+    """Return name of the node in KNIME workflow."""
+    return "MultiLayerPerceptron Predictor"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):

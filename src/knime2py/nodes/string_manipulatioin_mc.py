@@ -402,8 +402,8 @@ def generate_py_body(
 
 
 def get_name() -> str:
-    """Return human-readable handler name."""
-    return "String Manipulatioin MC"
+    """Return name of the node in KNIME workflow."""
+    return "String Manipulation _Multi Column_"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):

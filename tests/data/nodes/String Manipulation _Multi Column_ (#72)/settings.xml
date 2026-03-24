@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model">
+        <config key="column_selection">
+            <entry key="filter-type" type="xstring" value="STANDARD"/>
+            <config key="included_names">
+                <entry key="array-size" type="xint" value="17"/>
+                <entry key="0" type="xstring" value="CustID"/>
+                <entry key="1" type="xstring" value="Callcard"/>
+                <entry key="2" type="xstring" value="Callid"/>
+                <entry key="3" type="xstring" value="Callwait"/>
+                <entry key="4" type="xstring" value="Confer"/>
+                <entry key="5" type="xstring" value="Ebill"/>
+                <entry key="6" type="xstring" value="Equip"/>
+                <entry key="7" type="xstring" value="Forward"/>
+                <entry key="8" type="xstring" value="Internet"/>
+                <entry key="9" type="xstring" value="Marital"/>
+                <entry key="10" type="xstring" value="Multline"/>
+                <entry key="11" type="xstring" value="Pager"/>
+                <entry key="12" type="xstring" value="Retire"/>
+                <entry key="13" type="xstring" value="Tollfree"/>
+                <entry key="14" type="xstring" value="Voice"/>
+                <entry key="15" type="xstring" value="Wireless"/>
+                <entry key="16" type="xstring" value="Churn (Y/N)"/>
+            </config>
+            <config key="excluded_names">
+                <entry key="array-size" type="xint" value="22"/>
+                <entry key="0" type="xstring" value="Address"/>
+                <entry key="1" type="xstring" value="Age"/>
+                <entry key="2" type="xstring" value="Cardmon"/>
+                <entry key="3" type="xstring" value="Cardten"/>
+                <entry key="4" type="xstring" value="Custcat"/>
+                <entry key="5" type="xstring" value="Education"/>
+                <entry key="6" type="xstring" value="Employ"/>
+                <entry key="7" type="xstring" value="Equipmon"/>
+                <entry key="8" type="xstring" value="Equipten"/>
+                <entry key="9" type="xstring" value="GeFemaleder"/>
+                <entry key="10" type="xstring" value="Income"/>
+                <entry key="11" type="xstring" value="lnInc"/>
+                <entry key="12" type="xstring" value="LogLong"/>
+                <entry key="13" type="xstring" value="LongMon"/>
+                <entry key="14" type="xstring" value="LongTen"/>
+                <entry key="15" type="xstring" value="Region"/>
+                <entry key="16" type="xstring" value="Reside"/>
+                <entry key="17" type="xstring" value="Tenure"/>
+                <entry key="18" type="xstring" value="Tollmon"/>
+                <entry key="19" type="xstring" value="Tollten"/>
+                <entry key="20" type="xstring" value="Wiremon"/>
+                <entry key="21" type="xstring" value="Wireten"/>
+            </config>
+            <entry key="enforce_option" type="xstring" value="EnforceExclusion"/>
+            <config key="name_pattern">
+                <entry key="pattern" type="xstring" value=""/>
+                <entry key="type" type="xstring" value="Wildcard"/>
+                <entry key="caseSensitive" type="xboolean" value="true"/>
+                <entry key="excludeMatching" type="xboolean" value="false"/>
+            </config>
+            <config key="datatype">
+                <config key="typelist">
+                    <entry key="org.knime.core.data.StringValue" type="xboolean" value="false"/>
+                    <entry key="org.knime.core.data.IntValue" type="xboolean" value="false"/>
+                    <entry key="org.knime.core.data.DoubleValue" type="xboolean" value="false"/>
+                    <entry key="org.knime.core.data.BooleanValue" type="xboolean" value="false"/>
+                    <entry key="org.knime.core.data.LongValue" type="xboolean" value="false"/>
+                    <entry key="org.knime.core.data.date.DateAndTimeValue" type="xboolean" value="false"/>
+                </config>
+            </config>
+        </config>
+        <config key="EXPRESSION_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_string"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="EXPRESSION" type="xstring" value="replace(replace($$CURRENTCOLUMN$$,&quot;Y&quot; ,&quot;1&quot; ),&quot;N&quot; ,&quot;0&quot; )"/>
+        <config key="APPEND_OR_REPLACE_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_string"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="APPEND_OR_REPLACE" type="xstring" value="REPLACE_COLUMNS"/>
+        <config key="APPEND_COLUMN_SUFFIX_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_string"/>
+            <entry key="EnabledStatus" type="xboolean" value="false"/>
+        </config>
+        <entry key="APPEND_COLUMN_SUFFIX" type="xstring" value="_transformed"/>
+        <config key="Abort execution on evaluation errors_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_boolean"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="Abort execution on evaluation errors" type="xboolean" value="true"/>
+        <config key="Insert missing values as null_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_boolean"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="Insert missing values as null" type="xboolean" value="true"/>
+    </config>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="EXECUTED"/>
+    <entry key="factory" type="xstring" value="org.knime.base.node.preproc.stringmanipulation.multicolumn.MultiColumnStringManipulationNodeFactory"/>
+    <entry key="node-name" type="xstring" value="String Manipulation (Multi Column)"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME Java Snippet Nodes"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.jsnippets"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.5.0.v202506051602"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Javasnippet"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.javasnippet.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.5.0.v202506051602"/>
+    <config key="factory_settings"/>
+    <entry key="name" type="xstring" value="String Manipulation (Multi Column)"/>
+    <entry key="hasContent" type="xboolean" value="true"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports">
+        <config key="port_1">
+            <entry key="index" type="xint" value="1"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 1000, Cols: 36"/>
+            <entry key="port_dir_location" type="xstring" value="port_1"/>
+        </config>
+    </config>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" value="7d49b4e4-a6c9-427a-893b-34a0ad739e8e"/>
+    </config>
+</config>

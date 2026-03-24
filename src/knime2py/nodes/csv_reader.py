@@ -254,8 +254,8 @@ def generate_py_body(node_id: str, node_dir: Optional[str], out_ports: List[str]
 
 
 def get_name() -> str:
-    """Return human-readable handler name."""
-    return "Csv Reader"
+    """Return name of the node in KNIME workflow."""
+    return "CSV Reader"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):

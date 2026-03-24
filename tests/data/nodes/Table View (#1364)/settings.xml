@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model"/>
+    <config key="view">
+        <config key="displayedColumns">
+            <config key="selected_Internals">
+                <entry key="array-size" type="xint" value="39"/>
+                <entry key="0" type="xstring" value="U_UTM_SOURCE"/>
+                <entry key="1" type="xstring" value="U_UTM_MEDIUM"/>
+                <entry key="2" type="xstring" value="U_TYPE"/>
+                <entry key="3" type="xstring" value="uc_count_project_work"/>
+                <entry key="4" type="xstring" value="inv_sum_amount"/>
+                <entry key="5" type="xstring" value="inv_count_payed"/>
+                <entry key="6" type="xstring" value="inv_count_start"/>
+                <entry key="7" type="xstring" value="inv_count_return"/>
+                <entry key="8" type="xstring" value="inv_max_full_paid"/>
+                <entry key="9" type="xstring" value="inv_sum_discount"/>
+                <entry key="10" type="xstring" value="inv_count_distinct_partner_campaign_id"/>
+                <entry key="11" type="xstring" value="inv_count_distinct_group_id"/>
+                <entry key="12" type="xstring" value="inv_max_is_b2b"/>
+                <entry key="13" type="xstring" value="inv_max_loyalty_applied"/>
+                <entry key="14" type="xstring" value="inv_count_distinct_promocode_id"/>
+                <entry key="15" type="xstring" value="as_count_distinct_course_id"/>
+                <entry key="16" type="xstring" value="as_min_finish_start"/>
+                <entry key="17" type="xstring" value="as_max_finish_start"/>
+                <entry key="18" type="xstring" value="as_min_result"/>
+                <entry key="19" type="xstring" value="as_max_result"/>
+                <entry key="20" type="xstring" value="as_count_partner_campaign_id"/>
+                <entry key="21" type="xstring" value="OL_count_distinct_dod_id"/>
+                <entry key="22" type="xstring" value="OL_count_distinct_source"/>
+                <entry key="23" type="xstring" value="OL_count_distinct_content_type_id"/>
+                <entry key="24" type="xstring" value="OL_count_distinct_object_id"/>
+                <entry key="25" type="xstring" value="OL_confirmed"/>
+                <entry key="26" type="xstring" value="vi_avg_M_1"/>
+                <entry key="27" type="xstring" value="vi_avg_M_2"/>
+                <entry key="28" type="xstring" value="vi_avg_M_3"/>
+                <entry key="29" type="xstring" value="vi_avg_M_4"/>
+                <entry key="30" type="xstring" value="vi_avg_M_5"/>
+                <entry key="31" type="xstring" value="su_min_speech"/>
+                <entry key="32" type="xstring" value="su_min_structure"/>
+                <entry key="33" type="xstring" value="su_max_structure"/>
+                <entry key="34" type="xstring" value="su_min_interaction"/>
+                <entry key="35" type="xstring" value="su_max_interaction"/>
+                <entry key="36" type="xstring" value="su_min_quality"/>
+                <entry key="37" type="xstring" value="su_max_quality"/>
+                <entry key="38" type="xstring" value="su_comments"/>
+            </config>
+            <entry key="mode" type="xstring" value="MANUAL"/>
+            <config key="patternFilter">
+                <entry key="pattern" type="xstring" value=""/>
+                <entry key="isCaseSensitive" type="xboolean" value="false"/>
+                <entry key="isInverted" type="xboolean" value="false"/>
+            </config>
+            <config key="manualFilter">
+                <config key="manuallySelected">
+                    <entry key="array-size" type="xint" value="39"/>
+                    <entry key="0" type="xstring" value="U_UTM_SOURCE"/>
+                    <entry key="1" type="xstring" value="U_UTM_MEDIUM"/>
+                    <entry key="2" type="xstring" value="U_TYPE"/>
+                    <entry key="3" type="xstring" value="uc_count_project_work"/>
+                    <entry key="4" type="xstring" value="inv_sum_amount"/>
+                    <entry key="5" type="xstring" value="inv_count_payed"/>
+                    <entry key="6" type="xstring" value="inv_count_start"/>
+                    <entry key="7" type="xstring" value="inv_count_return"/>
+                    <entry key="8" type="xstring" value="inv_max_full_paid"/>
+                    <entry key="9" type="xstring" value="inv_sum_discount"/>
+                    <entry key="10" type="xstring" value="inv_count_distinct_partner_campaign_id"/>
+                    <entry key="11" type="xstring" value="inv_count_distinct_group_id"/>
+                    <entry key="12" type="xstring" value="inv_max_is_b2b"/>
+                    <entry key="13" type="xstring" value="inv_max_loyalty_applied"/>
+                    <entry key="14" type="xstring" value="inv_count_distinct_promocode_id"/>
+                    <entry key="15" type="xstring" value="as_count_distinct_course_id"/>
+                    <entry key="16" type="xstring" value="as_min_finish_start"/>
+                    <entry key="17" type="xstring" value="as_max_finish_start"/>
+                    <entry key="18" type="xstring" value="as_min_result"/>
+                    <entry key="19" type="xstring" value="as_max_result"/>
+                    <entry key="20" type="xstring" value="as_count_partner_campaign_id"/>
+                    <entry key="21" type="xstring" value="OL_count_distinct_dod_id"/>
+                    <entry key="22" type="xstring" value="OL_count_distinct_source"/>
+                    <entry key="23" type="xstring" value="OL_count_distinct_content_type_id"/>
+                    <entry key="24" type="xstring" value="OL_count_distinct_object_id"/>
+                    <entry key="25" type="xstring" value="OL_confirmed"/>
+                    <entry key="26" type="xstring" value="vi_avg_M_1"/>
+                    <entry key="27" type="xstring" value="vi_avg_M_2"/>
+                    <entry key="28" type="xstring" value="vi_avg_M_3"/>
+                    <entry key="29" type="xstring" value="vi_avg_M_4"/>
+                    <entry key="30" type="xstring" value="vi_avg_M_5"/>
+                    <entry key="31" type="xstring" value="su_min_speech"/>
+                    <entry key="32" type="xstring" value="su_min_structure"/>
+                    <entry key="33" type="xstring" value="su_max_structure"/>
+                    <entry key="34" type="xstring" value="su_min_interaction"/>
+                    <entry key="35" type="xstring" value="su_max_interaction"/>
+                    <entry key="36" type="xstring" value="su_min_quality"/>
+                    <entry key="37" type="xstring" value="su_max_quality"/>
+                    <entry key="38" type="xstring" value="su_comments"/>
+                </config>
+                <config key="manuallyDeselected">
+                    <entry key="array-size" type="xint" value="0"/>
+                </config>
+                <entry key="includeUnknownColumns" type="xboolean" value="false"/>
+            </config>
+            <config key="typeFilter">
+                <config key="selectedTypes">
+                    <entry key="array-size" type="xint" value="0"/>
+                </config>
+            </config>
+        </config>
+        <entry key="showRowIndices" type="xboolean" value="false"/>
+        <entry key="showRowKeys" type="xboolean" value="true"/>
+        <entry key="title" type="xstring" value="Table View"/>
+        <entry key="showTableSize" type="xboolean" value="true"/>
+        <entry key="showColumnDataType" type="xboolean" value="true"/>
+        <entry key="enablePagination" type="xboolean" value="false"/>
+        <entry key="pageSize" type="xint" value="10"/>
+        <entry key="autoSizeColumnsToContent" type="xstring" value="FIXED"/>
+        <entry key="rowHeightMode" type="xstring" value="DEFAULT"/>
+        <entry key="customRowHeight" type="xint" value="80"/>
+        <entry key="enableGlobalSearch" type="xboolean" value="true"/>
+        <entry key="enableColumnSearch" type="xboolean" value="true"/>
+        <entry key="enableSortingByHeader" type="xboolean" value="true"/>
+        <entry key="enableRendererSelection" type="xboolean" value="true"/>
+        <entry key="enableCellCopying" type="xboolean" value="true"/>
+        <entry key="selectionMode" type="xstring" value="EDIT"/>
+        <entry key="showOnlySelectedRows" type="xboolean" value="false"/>
+        <entry key="showOnlySelectedRowsConfigurable" type="xboolean" value="true"/>
+        <entry key="skipRemainingColumns_Internals" type="xboolean" value="false"/>
+    </config>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="CONFIGURED"/>
+    <entry key="factory" type="xstring" value="org.knime.base.views.node.tableview.TableViewNodeFactory"/>
+    <entry key="node-name" type="xstring" value="Table View"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME Views"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.base.views"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.4.2.v202502121104"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Views"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.base.views.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.4.2.v202502121104"/>
+    <config key="factory_settings"/>
+    <entry key="name" type="xstring" value="Table View"/>
+    <entry key="hasContent" type="xboolean" value="false"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports"/>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" isnull="true" value=""/>
+    </config>
+</config>

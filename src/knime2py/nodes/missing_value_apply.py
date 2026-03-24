@@ -254,8 +254,8 @@ def generate_py_body(
 
 
 def get_name() -> str:
-    """Return human-readable handler name."""
-    return "Missing Value Apply"
+    """Return name of the node in KNIME workflow."""
+    return "Missing Value _Apply_"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):

@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model">
+        <config key="excel_format_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_string"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="excel_format" type="xstring" value="XLSX"/>
+        <config key="file_selection_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_WriterFileChooser"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <config key="file_selection">
+            <config key="file_system_chooser__Internals">
+                <entry key="has_fs_port" type="xboolean" value="false"/>
+                <entry key="overwritten_by_variable" type="xboolean" value="false"/>
+                <entry key="convenience_fs_category" type="xstring" value="LOCAL"/>
+                <entry key="relative_to" type="xstring" value="knime.workflow.data"/>
+                <entry key="mountpoint" type="xstring" value="LOCAL"/>
+                <entry key="spaceId" type="xstring" value=""/>
+                <entry key="spaceName" type="xstring" value=""/>
+                <entry key="custom_url_timeout" type="xint" value="10000"/>
+                <entry key="connected_fs" type="xboolean" value="true"/>
+            </config>
+            <config key="path">
+                <entry key="location_present" type="xboolean" value="true"/>
+                <entry key="file_system_type" type="xstring" value="LOCAL"/>
+                <entry key="path" type="xstring" value="/Users/vitaly/IncomePrediction_RF_results_v1.xlsx"/>
+            </config>
+            <config key="filter_mode_Internals">
+                <entry key="SettingsModelID" type="xstring" value="SMID_FilterMode"/>
+                <entry key="EnabledStatus" type="xboolean" value="true"/>
+            </config>
+            <entry key="create_missing_folders" type="xboolean" value="false"/>
+            <entry key="if_path_exists" type="xstring" value="fail"/>
+        </config>
+        <config key="sheet_names">
+            <entry key="array-size" type="xint" value="1"/>
+            <entry key="0" type="xstring" value="default_1"/>
+        </config>
+        <config key="if_sheet_exists_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_string"/>
+            <entry key="EnabledStatus" type="xboolean" value="false"/>
+        </config>
+        <entry key="if_sheet_exists" type="xstring" value="FAIL"/>
+        <config key="write_row_key_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_boolean"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="write_row_key" type="xboolean" value="true"/>
+        <config key="write_column_header_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_boolean"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="write_column_header" type="xboolean" value="true"/>
+        <config key="skip_column_header_on_append_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_boolean"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="skip_column_header_on_append" type="xboolean" value="true"/>
+        <config key="replace_missings_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_boolean"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="replace_missings" type="xboolean" value="false"/>
+        <config key="missing_value_pattern_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_string"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="missing_value_pattern" type="xstring" value=""/>
+        <config key="evaluate_formulas_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_boolean"/>
+            <entry key="EnabledStatus" type="xboolean" value="false"/>
+        </config>
+        <entry key="evaluate_formulas" type="xboolean" value="false"/>
+        <config key="autosize_columns_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_boolean"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="autosize_columns" type="xboolean" value="false"/>
+        <config key="layout_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_string"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="layout" type="xstring" value="PORTRAIT"/>
+        <config key="paper_size_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_string"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="paper_size" type="xstring" value="A4_PAPERSIZE"/>
+        <config key="open_file_after_exec_Internals_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_boolean"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <entry key="open_file_after_exec_Internals" type="xboolean" value="true"/>
+        <config key="authentication_method_Internals">
+            <entry key="SettingsModelID" type="xstring" value="SMID_authentication"/>
+            <entry key="EnabledStatus" type="xboolean" value="true"/>
+        </config>
+        <config key="authentication_method">
+            <entry key="credentials" type="xstring" isnull="true" value=""/>
+            <entry key="username" type="xstring" isnull="true" value=""/>
+            <entry key="selectedType" type="xstring" value="NONE"/>
+        </config>
+    </config>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="CONFIGURED"/>
+    <entry key="factory" type="xstring" value="org.knime.ext.poi3.node.io.filehandling.excel.writer.ExcelTableWriterNodeFactory"/>
+    <entry key="node-name" type="xstring" value="Excel Writer"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME POI (Excel) Plug-in"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.ext.poi3"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.2.2.v202403061155"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Excel Support"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.ext.poi.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.2.2.v202403061155"/>
+    <config key="factory_settings"/>
+    <config key="node_creation_config">
+        <config key="File System Connection"/>
+        <config key="Sheet Input Ports"/>
+    </config>
+    <entry key="name" type="xstring" value="Excel Writer"/>
+    <entry key="hasContent" type="xboolean" value="false"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports"/>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" isnull="true" value=""/>
+    </config>
+</config>

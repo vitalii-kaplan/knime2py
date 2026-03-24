@@ -354,8 +354,8 @@ def generate_py_body(
 
 
 def get_name() -> str:
-    """Return human-readable handler name."""
-    return "X Partitioner"
+    """Return name of the node in KNIME workflow."""
+    return "X_Partitioner"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):

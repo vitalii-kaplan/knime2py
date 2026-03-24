@@ -104,8 +104,8 @@ def generate_py_body(
 
 
 def get_name() -> str:
-    """Return human-readable handler name."""
-    return "Normalizer PMML Apply"
+    """Return name of the node in KNIME workflow."""
+    return "Normalizer Apply _PMML_"
 
 
 def handle(ntype, nid, npath, incoming, outgoing):
