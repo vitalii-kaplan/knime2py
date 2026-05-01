@@ -9,7 +9,7 @@ authors = [{ name = "Vitalii Kaplan", email = "vitalii.v.kaplan@gmail.com" }]
 
 # Only what the CLI needs at runtime.
 dependencies = [
-  "lxml>=4.9,<6",
+  "lxml>=6.1,<7",
   "jinja2>=3.1,<4",
   "networkx>=3.2,<4",
   "packaging>=23,<25",
