@@ -70,7 +70,9 @@ relevant terminology related to the KNIME ecosystem.
 
 from __future__ import annotations
 
+import html
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Optional, Union, Callable, Tuple, cast
 from lxml import etree as ET
@@ -121,6 +123,95 @@ def iter_entries(root: ET._Element):
         k = (ent.get("key") or "").strip()
         v = ent.get("value")
         yield k, (v or "").strip() if v is not None else None
+
+
+@dataclass
+class Rule:
+    kind: str
+    col: Optional[str]
+    op: Optional[str]
+    value: Optional[str]
+    outcome: str
+
+
+_RULE_COMMENT = re.compile(r"^\s*//")
+_RULE_TRUE = re.compile(r'^\s*TRUE\s*=>\s*(?P<out>".*?"|\S+)\s*$', re.I)
+_RULE_COMPARE = re.compile(
+    r'^\s*\$(?P<col>[^$]+)\$\s*'
+    r'(?P<op>>=|<=|==|=|!=|>|<)\s*'
+    r'(?P<val>".*?"|\S+)\s*=>\s*(?P<out>".*?"|\S+)\s*$',
+    re.I,
+)
+_RULE_LIKE = re.compile(
+    r'^\s*\$(?P<col>[^$]+)\$\s+LIKE\s+"(?P<pat>.*)"\s*=>\s*(?P<out>".*?"|\S+)\s*$',
+    re.I,
+)
+
+
+def strip_rule_quotes(s: str) -> str:
+    """Remove surrounding quotes from a KNIME rule token when present."""
+    return s[1:-1] if (len(s) >= 2 and s[0] == s[-1] and s[0] in "'\"") else s
+
+
+def parse_knime_rule(line: str) -> Optional[Rule]:
+    """Parse the simple KNIME Rule Engine subset shared by rule nodes."""
+    s = html.unescape(line or "").strip()
+    if not s or _RULE_COMMENT.match(s):
+        return None
+    m = _RULE_TRUE.match(s)
+    if m:
+        return Rule(kind="true", col=None, op=None, value=None, outcome=strip_rule_quotes(m.group("out")))
+    m = _RULE_COMPARE.match(s)
+    if m:
+        return Rule(
+            kind="compare",
+            col=m.group("col").strip(),
+            op=m.group("op"),
+            value=strip_rule_quotes(m.group("val").strip()),
+            outcome=strip_rule_quotes(m.group("out")),
+        )
+    m = _RULE_LIKE.match(s)
+    if m:
+        return Rule(
+            kind="like",
+            col=m.group("col").strip(),
+            op=None,
+            value=m.group("pat"),
+            outcome=strip_rule_quotes(m.group("out")),
+        )
+    return None
+
+
+def parse_knime_rules_from_config(rules_cfg: Optional[ET._Element]) -> List[Rule]:
+    """Parse numbered entries from a KNIME <config key='rules'> block."""
+    if rules_cfg is None:
+        return []
+    numbered: List[tuple[int, str]] = []
+    for k, v in iter_entries(rules_cfg):
+        if k.isdigit() and v is not None:
+            numbered.append((int(k), v))
+    rules: List[Rule] = []
+    for _, raw in sorted(numbered, key=lambda item: item[0]):
+        rule = parse_knime_rule(raw)
+        if rule:
+            rules.append(rule)
+    return rules
+
+
+def rule_literal_py(val: str) -> str:
+    """Convert a KNIME rule literal token to generated Python source."""
+    s = str(val).strip()
+    if re.fullmatch(r"[+-]?\d+", s):
+        return s
+    if re.fullmatch(r"[+-]?(\d+\.\d*|\.\d+|\d+)([eE][+-]?\d+)?", s):
+        return s
+    return repr(s)
+
+
+def rule_wildcard_to_regex(pat: str) -> str:
+    """Convert KNIME Rule Engine LIKE wildcard syntax to a regex."""
+    esc = re.escape(pat)
+    return "^" + esc.replace(r"\*", ".*") + "$"
 
 def _first_value_re(root: ET._Element, pattern: str, flags=re.I) -> Optional[str]:
     """Return the first value whose key matches the given regex pattern."""

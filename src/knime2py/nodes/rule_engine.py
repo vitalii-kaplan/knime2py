@@ -76,8 +76,6 @@ References
 
 from __future__ import annotations
 
-import html
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
@@ -97,64 +95,11 @@ FACTORY = "org.knime.base.node.rules.engine.RuleEngineNodeFactory"
 # ---------------------------------------------------------------------
 
 @dataclass
-class Rule:
-    kind: str                 # "compare" | "like" | "true"
-    col: Optional[str]        # column name (None for TRUE)
-    op: Optional[str]         # >, >=, <, <=, =, ==, != (compare only)
-    value: Optional[str]      # literal value (or LIKE pattern)
-    outcome: str              # literal outcome
-
-@dataclass
 class RuleEngineSettings:
     rules: List[Rule]
     append: bool
     new_col: Optional[str]
     replace_col: Optional[str]
-
-# ---- Parsers for the simple rule subset ----
-
-_RULE_COMMENT = re.compile(r"^\s*//")
-_RE_TRUE = re.compile(r'^\s*TRUE\s*=>\s*(?P<out>".*?"|\S+)\s*$', re.I)
-_RE_COMPARE = re.compile(
-    r'^\s*\$(?P<col>[^$]+)\$\s*'
-    r'(?P<op>>=|<=|==|=|!=|>|<)\s*'
-    r'(?P<val>".*?"|\S+)\s*=>\s*(?P<out>".*?"|\S+)\s*$',
-    re.I,
-)
-_RE_LIKE = re.compile(
-    r'^\s*\$(?P<col>[^$]+)\$\s+LIKE\s+"(?P<pat>.*)"\s*=>\s*(?P<out>".*?"|\S+)\s*$',
-    re.I,
-)
-
-def _strip_quotes(s: str) -> str:
-    """Remove surrounding quotes from a string if they are present."""
-    return s[1:-1] if (len(s) >= 2 and s[0] == s[-1] and s[0] in "'\"") else s
-
-def _parse_one_rule(line: str) -> Optional[Rule]:
-    """Parse a single rule line and return a Rule object or None if invalid."""
-    s = html.unescape(line or "").strip()
-    if not s or _RULE_COMMENT.match(s):
-        return None
-    m = _RE_TRUE.match(s)
-    if m:
-        return Rule(kind="true", col=None, op=None, value=None, outcome=_strip_quotes(m.group("out")))
-    m = _RE_COMPARE.match(s)
-    if m:
-        col = m.group("col").strip()
-        op = m.group("op")
-        vraw = m.group("val").strip()
-        val = _strip_quotes(vraw)
-        return Rule(kind="compare", col=col, op=op, value=val, outcome=_strip_quotes(m.group("out")))
-    m = _RE_LIKE.match(s)
-    if m:
-        return Rule(
-            kind="like",
-            col=m.group("col").strip(),
-            op=None,
-            value=m.group("pat"),
-            outcome=_strip_quotes(m.group("out")),
-        )
-    return None
 
 def parse_rule_engine_settings(node_dir: Optional[Path]) -> RuleEngineSettings:
     """Parse the settings.xml file and return RuleEngineSettings."""
@@ -172,20 +117,7 @@ def parse_rule_engine_settings(node_dir: Optional[Path]) -> RuleEngineSettings:
     rules_cfg = first_el(root, ".//*[local-name()='config' and @key='model']"
                               "/*[local-name()='config' and @key='rules']")
 
-    rules_raw: List[str] = []
-    if rules_cfg is not None:
-        numbered: List[tuple[int, str]] = []
-        for k, v in iter_entries(rules_cfg):
-            if k.isdigit() and v is not None:
-                numbered.append((int(k), v))
-        for _, v in sorted(numbered, key=lambda t: t[0]):
-            rules_raw.append(v)
-
-    rules: List[Rule] = []
-    for line in rules_raw:
-        r = _parse_one_rule(line)
-        if r:
-            rules.append(r)
+    rules = parse_knime_rules_from_config(rules_cfg)
 
     # column handling (append vs replace) + names
     append = True
@@ -217,20 +149,6 @@ HUB_URL = (
     "org.knime.base.node.rules.engine.RuleEngineNodeFactory"
 )
 
-def _literal_py(val: str) -> str:
-    """Convert a value to its Python literal representation."""
-    s = str(val).strip()
-    if re.fullmatch(r"[+-]?\d+", s):
-        return s
-    if re.fullmatch(r"[+-]?(\d+\.\d*|\.\d+|\d+)([eE][+-]?\d+)?", s):
-        return s
-    return repr(s)
-
-def _wildcard_to_regex(pat: str) -> str:
-    """Convert a wildcard pattern to a regex pattern."""
-    esc = re.escape(pat)
-    return "^" + esc.replace(r"\*", ".*") + "$"
-
 def _emit_rule_code(settings: RuleEngineSettings) -> List[str]:
     """Generate the code that evaluates the rules defined in RuleEngineSettings."""
     lines: List[str] = []
@@ -247,21 +165,21 @@ def _emit_rule_code(settings: RuleEngineSettings) -> List[str]:
         if r.kind == "compare" and r.col and r.op and (r.value is not None):
             cond = f"cond{idx}"
             pyop = "==" if r.op == "=" else r.op
-            lines.append(f"{cond} = (out_df[{repr(r.col)}] {pyop} {_literal_py(r.value)})")
-            lines.append(f"res = res.mask({cond}, {_literal_py(r.outcome)})")
+            lines.append(f"{cond} = (out_df[{repr(r.col)}] {pyop} {rule_literal_py(r.value)})")
+            lines.append(f"res = res.mask({cond}, {rule_literal_py(r.outcome)})")
             idx += 1
             continue
         if r.kind == "like" and r.col and (r.value is not None):
             cond = f"cond{idx}"
-            regex = _wildcard_to_regex(r.value)
+            regex = rule_wildcard_to_regex(r.value)
             lines.append(f"{cond} = out_df[{repr(r.col)}].astype('string').str.contains({repr(regex)}, regex=True, na=False)")
-            lines.append(f"res = res.mask({cond}, {_literal_py(r.outcome)})")
+            lines.append(f"res = res.mask({cond}, {rule_literal_py(r.outcome)})")
             idx += 1
             continue
         lines.append(f"# TODO: unsupported rule skipped: {r}")
 
     if default_outcome is not None:
-        literal = _literal_py(default_outcome)
+        literal = rule_literal_py(default_outcome)
         lines.append(f"res = res.where(res.notna(), {literal})")
         lines.append("res = res.infer_objects()")
 

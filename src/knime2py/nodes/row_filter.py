@@ -82,8 +82,10 @@ from .node_utils import (
     split_out_imports,
 )
 
-# KNIME factory ID
+# KNIME factory IDs
 FACTORY = "org.knime.base.node.preproc.filter.row3.RowFilterNodeFactory"
+VALUE_FILTER_LEGACY_FACTORY = "org.knime.js.base.node.quickform.filter.value.ValueFilterQuickFormNodeFactory"
+FACTORIES = [FACTORY, VALUE_FILTER_LEGACY_FACTORY]
 
 # --------------------------------------------------------------------------------
 # settings.xml → RowFilterSettings
@@ -100,6 +102,12 @@ class RowFilterSettings:
     match_and: bool = True                 # True → AND, False → OR
     output_mode: str = "MATCHING"          # MATCHING | NON_MATCHING
     predicates: List[Predicate] = field(default_factory=list)
+
+@dataclass
+class ValueFilterLegacySettings:
+    column: Optional[str] = None
+    include: List[str] = field(default_factory=list)
+    exclude: List[str] = field(default_factory=list)
 
 
 def _bool(s: Optional[str], default: bool) -> bool:
@@ -137,6 +145,21 @@ def _collect_predicate_values(p_cfg: ET._Element) -> List[str]:
     )
     vals = [str(v) for v in p_cfg.xpath(xpath)]
     return vals
+
+
+def _collect_indexed_entry_values(parent: Optional[ET._Element]) -> List[str]:
+    """
+    Extract KNIME array entries named 0, 1, 2, ... from a config element.
+    """
+    if parent is None:
+        return []
+    values: list[tuple[int, str]] = []
+    for entry in parent.xpath("./*[local-name()='entry']"):
+        key = entry.get("key")
+        if key is None or not key.isdigit():
+            continue
+        values.append((int(key), str(entry.get("value", ""))))
+    return [value for _, value in sorted(values)]
 
 
 def parse_row_filter_settings(node_dir: Optional[Path]) -> RowFilterSettings:
@@ -178,6 +201,42 @@ def parse_row_filter_settings(node_dir: Optional[Path]) -> RowFilterSettings:
             preds.append(Predicate(column=col or None, operator=op or None, values=vals))
 
     return RowFilterSettings(match_and=match_and, output_mode=output_mode, predicates=preds)
+
+
+def parse_value_filter_legacy_settings(node_dir: Optional[Path]) -> ValueFilterLegacySettings:
+    """
+    Parse the legacy Quick Form Value Filter.
+
+    The interactive KNIME node lets a user choose values at execution time. Generated
+    Python is non-interactive, so it uses the configured default selected values.
+    """
+    if not node_dir:
+        return ValueFilterLegacySettings()
+    settings_path = node_dir / "settings.xml"
+    if not settings_path.exists():
+        return ValueFilterLegacySettings()
+
+    root = ET.parse(str(settings_path), parser=XML_PARSER).getroot()
+    model_el = first_el(root, ".//*[local-name()='config' and @key='model']")
+    if model_el is None:
+        return ValueFilterLegacySettings()
+
+    default_el = first_el(model_el, "./*[local-name()='config' and @key='defaultValue']")
+    column = first(default_el, "./*[local-name()='entry' and @key='column']/@value") if default_el is not None else None
+    values_el = first_el(default_el, "./*[local-name()='config' and @key='values']") if default_el is not None else None
+    include = _collect_indexed_entry_values(values_el)
+
+    possible_values: list[str] = []
+    if column:
+        col_values_el = first_el(
+            model_el,
+            f"./*[local-name()='config' and @key='colValues']/*[local-name()='config' and @key={repr(column)}]",
+        )
+        possible_values = _collect_indexed_entry_values(col_values_el)
+
+    include_set = set(include)
+    exclude = [value for value in possible_values if value not in include_set]
+    return ValueFilterLegacySettings(column=column or None, include=include, exclude=exclude)
 
 
 # --------------------------------------------------------------------------------
@@ -393,6 +452,48 @@ def _emit_filter_code(cfg: RowFilterSettings) -> List[str]:
     return lines
 
 
+def _emit_value_filter_legacy_code(cfg: ValueFilterLegacySettings) -> List[str]:
+    """
+    Build pandas code for legacy Quick Form Value Filter defaults.
+    """
+    lines: List[str] = []
+    column = cfg.column or ""
+
+    lines += [
+        f"exclude = {repr(cfg.exclude)}",
+        f"include = {repr(cfg.include)}",
+        "",
+        "def _rf_norm_name(s):",
+        "    return _re.sub(r'[^a-z0-9]+', '', str(s).lower())",
+        "_RF_LCMAP = {c.lower(): c for c in df.columns}",
+        "_RF_NORMMAP = {_rf_norm_name(c): c for c in df.columns}",
+        "",
+        "def _rf_resolve(name):",
+        "    if name in df.columns:",
+        "        return name",
+        "    if name is None:",
+        "        return None",
+        "    c = _RF_LCMAP.get(str(name).lower())",
+        "    if c is not None:",
+        "        return c",
+        "    return _RF_NORMMAP.get(_rf_norm_name(name))",
+        "",
+        f"_value_filter_column = _rf_resolve({repr(column)})",
+        "if _value_filter_column is None:",
+        "    out_df = df.copy()",
+        "else:",
+        "    _series = df[_value_filter_column].astype('string')",
+        "    if include:",
+        "        _mask = _series.isin([str(v) for v in include]).fillna(False)",
+        "    else:",
+        "        _mask = pd.Series(True, index=df.index)",
+        "    if exclude:",
+        "        _mask = _mask & ~_series.isin([str(v) for v in exclude]).fillna(False)",
+        "    out_df = df[_mask].copy()",
+    ]
+    return lines
+
+
 def generate_py_body(
     node_id: str,
     node_dir: Optional[str],
@@ -433,6 +534,37 @@ def generate_py_body(
     return lines
 
 
+def generate_value_filter_legacy_py_body(
+    node_id: str,
+    node_dir: Optional[str],
+    in_ports: List[tuple[str, str]],
+    out_ports: Optional[List[str]] = None,
+) -> List[str]:
+    """
+    Generate code for Value Filter (legacy) using configured default values.
+    """
+    ndir = Path(node_dir) if node_dir else None
+    cfg = parse_value_filter_legacy_settings(ndir)
+
+    lines: List[str] = []
+    lines.append(
+        "# https://hub.knime.com/knime/extensions/org.knime.features.js.quickforms/latest/"
+        "org.knime.js.base.node.quickform.filter.value.ValueFilterQuickFormNodeFactory"
+    )
+    lines.append("# KNIME interactivity is not available here; using default selected values from settings.xml.")
+
+    pairs = normalize_in_ports(in_ports)
+    src_id, in_port = pairs[0]
+    lines.append(f"df = context['{src_id}:{in_port}']  # input table")
+    lines.extend(_emit_value_filter_legacy_code(cfg))
+
+    ports = out_ports or ["1"]
+    for p in sorted({(p or '1') for p in ports}):
+        lines.append(f"context['{node_id}:{p}'] = out_df")
+
+    return lines
+
+
 
 def get_name() -> str:
     """Return name of the node in KNIME workflow."""
@@ -458,7 +590,10 @@ def handle(ntype, nid, npath, incoming, outgoing):
     in_ports = [(src_id, str(getattr(e, "source_port", "") or "1")) for src_id, e in (incoming or [])]
     out_ports = [str(getattr(e, "source_port", "") or "1") for _, e in (outgoing or [])] or ["1"]
 
-    node_lines = generate_py_body(nid, npath, in_ports, out_ports)
+    if str(ntype or "").strip() == VALUE_FILTER_LEGACY_FACTORY:
+        node_lines = generate_value_filter_legacy_py_body(nid, npath, in_ports, out_ports)
+    else:
+        node_lines = generate_py_body(nid, npath, in_ports, out_ports)
     found_imports, body = split_out_imports(node_lines)
     imports = sorted(set(explicit_imports) | set(found_imports))
     return imports, body

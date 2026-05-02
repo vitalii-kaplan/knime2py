@@ -235,23 +235,24 @@ def test_roundtrip_{slug}(output_dir: Path):
     expected_csvs = sorted(expected_dir.glob("*output.csv"))
     assert expected_csvs, f"No expected '*output.csv' files found in {{expected_dir}}. Contents: {{[p.name for p in expected_dir.iterdir()]}}"
 
-    # 1) Generate Python workbook(s) only, no graphs
+    # 1) Generate Python and notebook workbook(s), no graphs
     cmd = [
         sys.executable, "-m", "knime2py",
         str(knime_proj),
         "--out", str(out_dir),
         "--graph", "off",
-        "--workbook", "py",
     ]
     env = os.environ.copy()
     env["PYTHONPATH"] = str(repo_root / "src") + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
     gen = subprocess.run(cmd, capture_output=True, text=True, cwd=str(repo_root), env=env)
     assert gen.returncode == 0, f"CLI failed\\nSTDOUT:\\n{{gen.stdout}}\\nSTDERR:\\n{{gen.stderr}}"
 
-    # 2) Locate a generated workbook script
-    candidates = sorted(out_dir.glob("*_workbook.py"))
-    assert candidates, f"No *_workbook.py generated in {{out_dir}}. Contents: {{[p.name for p in out_dir.iterdir()]}}"
-    script = candidates[0]
+    # 2) Locate generated workbook files
+    py_candidates = sorted(out_dir.glob("*_workbook.py"))
+    assert py_candidates, f"No *_workbook.py generated in {{out_dir}}. Contents: {{[p.name for p in out_dir.iterdir()]}}"
+    ipynb_candidates = sorted(out_dir.glob("*_workbook.ipynb"))
+    assert ipynb_candidates, f"No *_workbook.ipynb generated in {{out_dir}}. Contents: {{[p.name for p in out_dir.iterdir()]}}"
+    script = py_candidates[0]
 
     # 3) Run the generated workbook (cwd=out_dir so relative paths like ../!output/*.csv resolve correctly)
     run = subprocess.run([sys.executable, str(script)], cwd=str(out_dir), capture_output=True, text=True, env=env)
