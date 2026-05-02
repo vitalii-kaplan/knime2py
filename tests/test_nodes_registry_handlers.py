@@ -32,7 +32,15 @@ def test_all_handlers_honor_stub_ports(tmp_path: Path):
     handlers = registry.get_handlers()
     fake_node_id = "HANDLER_STUB"
 
-    modules_without_inputs = {"csv_reader", "db_connector", "excel_reader", "pmml_reader", "model_reader", "not_implemented"}
+    modules_without_inputs = {
+        "csv_reader",
+        "db_connector",
+        "excel_reader",
+        "pmml_reader",
+        "model_reader",
+        "not_implemented",
+        "postgresql_connector",
+    }
     modules_without_outputs = {"csv_writer", "excel_writer", "table_view", "roc_curve", "not_implemented"}
 
     failures: list[str] = []
