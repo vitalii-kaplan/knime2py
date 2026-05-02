@@ -10,7 +10,7 @@ set -euo pipefail
 #####################################
 
 # Option A: Clean a project by NAME located under tests/data/<NAME>
-WORKFLOW_NAME="Kaggle_Titanic_Issue21"   # e.g., "KNIME_io_csv" or "KNIME_PP_2022_LR"
+WORKFLOW_NAME="Kaggle_Titanic_Issue22"   # e.g., "KNIME_io_csv" or "KNIME_PP_2022_LR"
 DATA_DIR="tests/data"           # change if your tests data dir differs
 
 # Option B: Clean an explicit KNIME project directory (absolute or relative)
