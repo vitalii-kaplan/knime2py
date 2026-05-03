@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model">
+        <entry key="firstColumnSelection" type="xstring" value="as_time"/>
+        <entry key="secondDateTimeValueType" type="xstring" value="COLUMN"/>
+        <entry key="secondColumnSelection" type="xstring" value="uc_created"/>
+        <entry key="localDateFixed" type="xstring" value="2026-05-03"/>
+        <entry key="localTimeFixed" type="xstring" value="11:24:56.163796"/>
+        <entry key="localDateTimeFixed" type="xstring" value="2026-05-03T11:24:56.163801"/>
+        <entry key="zonedDateTimeFixed" type="xstring" value="2026-05-03T11:24:56.163814+03:00[Europe/Istanbul]"/>
+        <entry key="mode" type="xstring" value="SECOND_MINUS_FIRST"/>
+        <entry key="outputType" type="xstring" value="DURATION_OR_PERIOD"/>
+        <entry key="granularity" type="xstring" value="YEAR"/>
+        <entry key="outputNumberType" type="xstring" value="NO_DECIMALS"/>
+        <entry key="outputColumnName" type="xstring" value="Date&amp;Time Difference"/>
+    </config>
+    <config key="variables"/>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="EXECUTED"/>
+    <entry key="factory" type="xstring" value="org.knime.time.node.calculate.datetimedifference.DateTimeDifferenceNodeFactory2"/>
+    <entry key="node-name" type="xstring" value="Date&amp;Time Difference"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME Date and Time Handling"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.time"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.8.0.v202510011917"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Base nodes"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.base.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.8.3.v202603112120"/>
+    <config key="factory_settings"/>
+    <entry key="name" type="xstring" value="Date&amp;Time Difference"/>
+    <entry key="hasContent" type="xboolean" value="true"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports">
+        <config key="port_1">
+            <entry key="index" type="xint" value="1"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 5341, Cols: 3"/>
+            <entry key="port_dir_location" type="xstring" value="port_1"/>
+        </config>
+    </config>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" value="0e24a092-4adc-4dab-83e2-225607f1f738"/>
+    </config>
+</config>

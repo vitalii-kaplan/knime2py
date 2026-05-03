@@ -1,0 +1,5 @@
+"RowIDs","ColumnNames","ColumnValues","Student"
+"Row0","Math+Mean(Result)",90,"Alice"
+"Row0","Physics+Mean(Result)",80,"Alice"
+"Row1","Math+Mean(Result)",70,"Bob"
+"Row1","Physics+Mean(Result)",85,"Bob"

@@ -91,6 +91,8 @@ class CSVWriterSettings:
     encoding: Optional[str] = "utf-8"
     na_rep: Optional[str] = None   # representation for NaN, e.g. "" or "null"
     include_index: bool = False    # pandas index to file?
+    quote_mode: str = "MINIMAL"
+    keep_trailing_zero_in_decimals: bool = True
 
 
 # ----------------------------
@@ -142,6 +144,12 @@ def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
     include_index = extract_csv_include_index(root)
     if include_index is None:
         include_index = False
+    quote_mode = first(root, ".//*[local-name()='entry' and @key='quote_mode']/@value") or "MINIMAL"
+    keep_trailing_zero = bool_from_value(
+        first(root, ".//*[local-name()='entry' and @key='keep_trailing_zero_in_decimals']/@value")
+    )
+    if keep_trailing_zero is None:
+        keep_trailing_zero = True
 
     return CSVWriterSettings(
         path=out_path,
@@ -151,6 +159,8 @@ def parse_csv_writer_settings(node_dir: Optional[Path]) -> CSVWriterSettings:
         encoding=enc,
         na_rep=na_rep,
         include_index=include_index,
+        quote_mode=quote_mode,
+        keep_trailing_zero_in_decimals=keep_trailing_zero,
     )
 
 
@@ -166,7 +176,7 @@ def generate_imports():
     Returns:
         List[str]: A list of import statements.
     """
-    return ["from pathlib import Path", "import pandas as pd"]
+    return ["from pathlib import Path", "import csv", "import pandas as pd"]
 
 def _fmt_kw(key: str, val) -> Optional[str]:
     """
@@ -217,7 +227,62 @@ def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[tuple
         lines.append("# WARNING: output CSV path not found in settings.xml. Please set manually:")
         lines.append("out_path = Path('path/to/output.csv')")
 
+    lines.extend(
+        [
+            "df = df.copy()",
+            "for _col in df.select_dtypes(include=['datetime', 'datetimetz']).columns:",
+            "    df[_col] = df[_col].dt.strftime('%Y-%m-%dT%H:%M')",
+            "def _k2p_format_timedelta(_value):",
+            "    if pd.isna(_value):",
+            "        return pd.NA",
+            "    _total_minutes = int(pd.Timedelta(_value).total_seconds() // 60)",
+            "    if _total_minutes == 0:",
+            "        return 'PT0S'",
+            "    _sign = -1 if _total_minutes < 0 else 1",
+            "    _hours, _minutes = divmod(abs(_total_minutes), 60)",
+            "    if _sign < 0:",
+            "        if _hours and _minutes:",
+            "            return f'PT-{_hours}H-{_minutes}M'",
+            "        if _hours:",
+            "            return f'PT-{_hours}H'",
+            "        return f'PT-{_minutes}M'",
+            "    if _hours and _minutes:",
+            "        return f'PT{_hours}H{_minutes}M'",
+            "    if _hours:",
+            "        return f'PT{_hours}H'",
+            "    return f'PT{_minutes}M'",
+            "for _col in df.select_dtypes(include=['timedelta']).columns:",
+            "    df[_col] = df[_col].map(_k2p_format_timedelta)",
+        ]
+    )
+
+    if not settings.keep_trailing_zero_in_decimals:
+        lines.extend(
+            [
+                "for _col in df.select_dtypes(include=['float']).columns:",
+                "    _series = df[_col].dropna()",
+                "    if not _series.empty and ((_series % 1) == 0).all():",
+                "        df[_col] = df[_col].astype('Int64')",
+            ]
+        )
+
     # Build to_csv kwargs
+    quote_mode = (settings.quote_mode or "MINIMAL").strip().upper()
+    use_missing_sentinel = quote_mode == "STRINGS_ONLY" and (settings.na_rep is None or settings.na_rep == "")
+    if use_missing_sentinel:
+        lines.extend(
+            [
+                "_k2p_missing_sentinel = '__K2P_MISSING_FIELD_9b1f6f7c__'",
+                "df = df.astype('object').mask(df.isna(), _k2p_missing_sentinel)",
+            ]
+        )
+
+    quoting = {
+        "STRINGS_ONLY": "csv.QUOTE_NONNUMERIC",
+        "ALL": "csv.QUOTE_ALL",
+        "NONE": "csv.QUOTE_NONE",
+        "MINIMAL": "csv.QUOTE_MINIMAL",
+    }.get(quote_mode)
     kw_parts = [
         _fmt_kw("sep", settings.sep or ","),
         _fmt_kw("quotechar", settings.quotechar or '"'),
@@ -226,9 +291,20 @@ def generate_py_body(node_id: str, node_dir: Optional[str], in_ports: List[tuple
         _fmt_kw("na_rep", settings.na_rep),          # may be '' (empty string)
         _fmt_kw("index", bool(settings.include_index)),
     ]
+    if quoting:
+        kw_parts.append(f"quoting={quoting}")
     kw_str = ", ".join(p for p in kw_parts if p is not None)
 
     lines.append(f"df.to_csv(out_path, {kw_str})")
+    if use_missing_sentinel:
+        encoding = settings.encoding or "utf-8"
+        lines.extend(
+            [
+                f"_k2p_csv_text = out_path.read_text(encoding={encoding!r})",
+                "_k2p_csv_text = _k2p_csv_text.replace('\"' + _k2p_missing_sentinel + '\"', '')",
+                f"out_path.write_text(_k2p_csv_text, encoding={encoding!r})",
+            ]
+        )
     return lines
 
 

@@ -40,6 +40,7 @@ def test_all_handlers_honor_stub_ports(tmp_path: Path):
         "model_reader",
         "not_implemented",
         "postgresql_connector",
+        "table_creator",
     }
     modules_without_outputs = {"csv_writer", "excel_writer", "table_view", "roc_curve", "not_implemented"}
 

@@ -323,33 +323,36 @@ def build_workbook_blocks(g) -> tuple[list["NodeBlock"], list[str]]:
 
         code_lines: List[str] = []
 
-        if state == "IDLE":
-            # Still show the Hub URL and a stub; node may still be counted as implemented if exporter exists
-            if factory:
-                hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{factory}"
-                code_lines.append(f"# {hub_url}")
-            else:
-                code_lines.append("# Factory class unavailable")
-            code_lines.append("# The node is IDLE. Codegen is not possible. Implement this node manually or run the node in KNIME.")
-            code_lines.append("pass")
-        else:
-            # Prefer dedicated handler; otherwise fall back to default for codegen convenience
-            mod = specific_mod or default_mod
-            res = None
-            if mod is not None:
-                try:
-                    res = mod.handle(factory, nid, n.path, incoming, outgoing)
-                except Exception as e:
-                    import sys as _sys
-                    print(f"[emitters] Handler {getattr(mod, '__name__', mod)} failed on node {nid}: {e}", file=_sys.stderr)
-                    res = None
+        # Prefer dedicated handler; otherwise fall back to default for codegen convenience.
+        # IDLE nodes can still have complete settings.xml files, so emit code for them
+        # when a dedicated exporter exists. If no exporter exists, keep the IDLE warning.
+        mod = specific_mod or (default_mod if state != "IDLE" else None)
+        res = None
+        if mod is not None:
+            try:
+                res = mod.handle(factory, nid, n.path, incoming, outgoing)
+            except Exception as e:
+                import sys as _sys
+                print(f"[emitters] Handler {getattr(mod, '__name__', mod)} failed on node {nid}: {e}", file=_sys.stderr)
+                res = None
 
-            if res:
-                found_imports, body = res
-                if found_imports:
-                    aggregated_imports.update(found_imports)
-                if body:
-                    code_lines.extend(body)
+        if res:
+            found_imports, body = res
+            if found_imports:
+                aggregated_imports.update(found_imports)
+            if body:
+                code_lines.extend(body)
+        else:
+            if state == "IDLE":
+                if factory:
+                    hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{factory}"
+                    code_lines.append(f"# {hub_url}")
+                else:
+                    code_lines.append("# Factory class unavailable")
+                code_lines.append(
+                    "# The node is IDLE and has no automatic exporter. Implement this node manually or run the node in KNIME."
+                )
+                code_lines.append("pass")
             else:
                 if factory:
                     hub_url = f"https://hub.knime.com/knime/extensions/org.knime.features.base/latest/{factory}"
