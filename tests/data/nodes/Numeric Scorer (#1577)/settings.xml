@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config key="settings.xml">
+  <config key="model">
+    <config key="reference">
+      <entry key="useRowID" type="xboolean" value="false"/>
+      <entry key="columnName" type="xstring" value="Approval rate"/>
+    </config>
+    <config key="predicted">
+      <entry key="useRowID" type="xboolean" value="false"/>
+      <entry key="columnName" type="xstring" value="Prediction (Approval rate)"/>
+    </config>
+    <entry key="override default output name" type="xboolean" value="false"/>
+    <entry key="output column" type="xstring" value="Prediction (Approval rate)"/>
+    <entry key="number_of_predictors" type="xint" value="0"/>
+  </config>
+  <entry key="factory" type="xstring" value="org.knime.base.node.mine.scorer.numeric2.NumericScorer2NodeFactory"/>
+  <entry key="node-name" type="xstring" value="Numeric Scorer"/>
+</config>

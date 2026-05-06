@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config key="settings.xml">
+  <config key="model">
+    <entry key="target" type="xstring" value="Approval rate"/>
+    <config key="column_filter">
+      <config key="included_names">
+        <entry key="array-size" type="xint" value="3"/>
+        <entry key="0" type="xstring" value="GDP_per_capita_current_USD"/>
+        <entry key="1" type="xstring" value="WB_FY2026_Income_Group"/>
+        <entry key="2" type="xstring" value="UN M49"/>
+      </config>
+      <config key="excluded_names">
+        <entry key="array-size" type="xint" value="1"/>
+        <entry key="0" type="xstring" value="Country"/>
+      </config>
+    </config>
+    <entry key="include_constant" type="xboolean" value="true"/>
+    <entry key="missing_value_handling" type="xstring" value="fail"/>
+  </config>
+  <entry key="factory" type="xstring" value="org.knime.base.node.mine.regression.linear2.learner.LinReg2LearnerNodeFactory2"/>
+  <entry key="node-name" type="xstring" value="Linear Regression Learner"/>
+</config>

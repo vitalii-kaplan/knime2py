@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config key="settings.xml">
+  <config key="model">
+    <entry key="has_custom_predicition_name" type="xboolean" value="false"/>
+    <entry key="custom_prediction_name" type="xstring" isnull="true" value=""/>
+  </config>
+  <entry key="factory" type="xstring" value="org.knime.base.node.mine.regression.predict3.RegressionPredictorNodeFactory2"/>
+  <entry key="node-name" type="xstring" value="Regression Predictor"/>
+</config>
