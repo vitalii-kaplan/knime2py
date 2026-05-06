@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model">
+        <config key="column-filter">
+            <entry key="filter-type" type="xstring" value="STANDARD"/>
+            <config key="included_names">
+                <entry key="array-size" type="xint" value="20"/>
+                <entry key="0" type="xstring" value="World Bank"/>
+                <entry key="1" type="xstring" value="Total applications"/>
+                <entry key="2" type="xstring" value="Number_Log"/>
+                <entry key="3" type="xstring" value="Population_Total"/>
+                <entry key="4" type="xstring" value="WHO_Healthy_Life_Expectancy_at_Birth_years"/>
+                <entry key="5" type="xstring" value="Country"/>
+                <entry key="6" type="xstring" value="Approval rate"/>
+                <entry key="7" type="xstring" value="Applications_log10"/>
+                <entry key="8" type="xstring" value="WHO_Under5_Mortality_per_1000_live_births"/>
+                <entry key="9" type="xstring" value="WHO_Maternal_Mortality_per_100000_live_births"/>
+                <entry key="10" type="xstring" value="WHO_Physician_Density_per_10000_population"/>
+                <entry key="11" type="xstring" value="WHO_DTP3_Immunization_Coverage_pct"/>
+                <entry key="12" type="xstring" value="Region"/>
+                <entry key="13" type="xstring" value="WB_FY2026_Income_Group"/>
+                <entry key="14" type="xstring" value="WB_FY2026_Lending_Category"/>
+                <entry key="15" type="xstring" value="GDP_per_capita_current_USD"/>
+                <entry key="16" type="xstring" value="Life_expectancy_at_birth_years"/>
+                <entry key="17" type="xstring" value="Internet_users_pct_population"/>
+                <entry key="18" type="xstring" value="Urban_population_pct"/>
+                <entry key="19" type="xstring" value="GNI_per_capita_Atlas_current_USD"/>
+            </config>
+            <config key="excluded_names">
+                <entry key="array-size" type="xint" value="2"/>
+                <entry key="0" type="xstring" value="WHO_Life_Expectancy_at_Birth_years"/>
+                <entry key="1" type="xstring" value="Approval rate (#1)"/>
+            </config>
+            <entry key="enforce_option" type="xstring" value="EnforceExclusion"/>
+            <config key="name_pattern">
+                <entry key="pattern" type="xstring" value=""/>
+                <entry key="caseSensitive" type="xboolean" value="true"/>
+                <entry key="excludeMatching" type="xboolean" value="false"/>
+                <entry key="type" type="xstring" value="Wildcard"/>
+            </config>
+            <config key="datatype">
+                <config key="typelist"/>
+            </config>
+        </config>
+    </config>
+    <config key="variables"/>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="EXECUTED"/>
+    <entry key="factory" type="xstring" value="org.knime.base.node.preproc.filter.column.DataColumnSpecFilterNodeFactory"/>
+    <entry key="node-name" type="xstring" value="Column Filter"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME Base Nodes"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.base"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.8.3.v202603112120"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Base nodes"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.base.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.8.3.v202603112120"/>
+    <config key="factory_settings"/>
+    <entry key="name" type="xstring" value="Column Filter"/>
+    <entry key="hasContent" type="xboolean" value="true"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports">
+        <config key="port_1">
+            <entry key="index" type="xint" value="1"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 165, Cols: 17"/>
+            <entry key="port_dir_location" type="xstring" value="port_1"/>
+        </config>
+    </config>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" value="fe6596f6-dc02-4c00-93eb-85b9caf7f104"/>
+    </config>
+</config>

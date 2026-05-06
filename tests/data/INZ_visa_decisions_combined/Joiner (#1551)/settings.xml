@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.knime.org/2008/09/XMLConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.knime.org/2008/09/XMLConfig http://www.knime.org/XMLConfig_2008_09.xsd" key="settings.xml">
+    <entry key="node_file" type="xstring" value="settings.xml"/>
+    <config key="flow_stack"/>
+    <config key="internal_node_subsettings">
+        <entry key="memory_policy" type="xstring" value="CacheSmallInMemory"/>
+    </config>
+    <config key="model">
+        <entry key="compositionMode" type="xstring" value="MATCH_ALL"/>
+        <config key="matchingCriteria">
+            <config key="0">
+                <config key="leftTableColumnV2">
+                    <entry key="regularChoice" type="xstring" value="Country"/>
+                    <entry key="specialChoice_Internals" type="xstring" isnull="true" value=""/>
+                </config>
+                <config key="rightTableColumnV2">
+                    <entry key="regularChoice" type="xstring" value="Country"/>
+                    <entry key="specialChoice_Internals" type="xstring" isnull="true" value=""/>
+                </config>
+            </config>
+        </config>
+        <entry key="dataCellComparisonMode" type="xstring" value="STRICT"/>
+        <entry key="includeMatchesInOutput" type="xboolean" value="true"/>
+        <entry key="includeLeftUnmatchedInOutput" type="xboolean" value="false"/>
+        <entry key="includeRightUnmatchedInOutput" type="xboolean" value="false"/>
+        <config key="leftColumnSelectionConfigV2">
+            <entry key="mode" type="xstring" value="MANUAL"/>
+            <config key="patternFilter">
+                <entry key="pattern" type="xstring" value=""/>
+                <entry key="isCaseSensitive" type="xboolean" value="false"/>
+                <entry key="isInverted" type="xboolean" value="false"/>
+            </config>
+            <config key="manualFilter">
+                <config key="manuallySelected">
+                    <entry key="array-size" type="xint" value="1"/>
+                    <entry key="0" type="xstring" value="Approval rate"/>
+                </config>
+                <config key="manuallyDeselected">
+                    <entry key="array-size" type="xint" value="5"/>
+                    <entry key="0" type="xstring" value="Country"/>
+                    <entry key="1" type="xstring" value="Number approved"/>
+                    <entry key="2" type="xstring" value="Number declined"/>
+                    <entry key="3" type="xstring" value="Total applications"/>
+                    <entry key="4" type="xstring" value="Applications_log10"/>
+                </config>
+                <entry key="includeUnknownColumns" type="xboolean" value="true"/>
+            </config>
+            <config key="typeFilter">
+                <config key="selectedTypes">
+                    <entry key="array-size" type="xint" value="0"/>
+                </config>
+            </config>
+        </config>
+        <config key="rightColumnSelectionConfigV2">
+            <entry key="mode" type="xstring" value="MANUAL"/>
+            <config key="patternFilter">
+                <entry key="pattern" type="xstring" value=""/>
+                <entry key="isCaseSensitive" type="xboolean" value="false"/>
+                <entry key="isInverted" type="xboolean" value="false"/>
+            </config>
+            <config key="manualFilter">
+                <config key="manuallySelected">
+                    <entry key="array-size" type="xint" value="11"/>
+                    <entry key="0" type="xstring" value="Region"/>
+                    <entry key="1" type="xstring" value="UN M49"/>
+                    <entry key="2" type="xstring" value="World Bank"/>
+                    <entry key="3" type="xstring" value="WB_FY2026_Region"/>
+                    <entry key="4" type="xstring" value="WB_FY2026_Income_Group"/>
+                    <entry key="5" type="xstring" value="WB_FY2026_Lending_Category"/>
+                    <entry key="6" type="xstring" value="GDP_per_capita_current_USD"/>
+                    <entry key="7" type="xstring" value="Life_expectancy_at_birth_years"/>
+                    <entry key="8" type="xstring" value="Internet_users_pct_population"/>
+                    <entry key="9" type="xstring" value="Urban_population_pct"/>
+                    <entry key="10" type="xstring" value="GNI_per_capita_Atlas_current_USD"/>
+                </config>
+                <config key="manuallyDeselected">
+                    <entry key="array-size" type="xint" value="11"/>
+                    <entry key="0" type="xstring" value="Country"/>
+                    <entry key="1" type="xstring" value="WB_Code"/>
+                    <entry key="2" type="xstring" value="WB_Official_Name"/>
+                    <entry key="3" type="xstring" value="Population_Total"/>
+                    <entry key="4" type="xstring" value="Population_Total_Year"/>
+                    <entry key="5" type="xstring" value="GDP_per_capita_current_USD_Year"/>
+                    <entry key="6" type="xstring" value="GNI_per_capita_Atlas_current_USD_Year"/>
+                    <entry key="7" type="xstring" value="Life_expectancy_at_birth_years_Year"/>
+                    <entry key="8" type="xstring" value="Internet_users_pct_population_Year"/>
+                    <entry key="9" type="xstring" value="Urban_population_pct_Year"/>
+                    <entry key="10" type="xstring" value="Reference"/>
+                </config>
+                <entry key="includeUnknownColumns" type="xboolean" value="true"/>
+            </config>
+            <config key="typeFilter">
+                <config key="selectedTypes">
+                    <entry key="array-size" type="xint" value="0"/>
+                </config>
+            </config>
+        </config>
+        <entry key="mergeJoinColumns" type="xboolean" value="false"/>
+        <entry key="duplicateHandling" type="xstring" value="APPEND_SUFFIX"/>
+        <entry key="suffix" type="xstring" value=" (Right)"/>
+        <entry key="outputUnmatchedRowsToSeparatePorts" type="xboolean" value="false"/>
+        <entry key="rowKeyFactory" type="xstring" value="SEQUENTIAL"/>
+        <entry key="rowKeySeparator" type="xstring" value="_"/>
+        <entry key="outputRowOrder" type="xstring" value="LEFT_RIGHT"/>
+        <entry key="maxOpenFiles" type="xint" value="200"/>
+        <entry key="enableHiliting" type="xboolean" value="false"/>
+    </config>
+    <config key="variables"/>
+    <entry key="customDescription" type="xstring" isnull="true" value=""/>
+    <entry key="state" type="xstring" value="EXECUTED"/>
+    <entry key="factory" type="xstring" value="org.knime.base.node.preproc.joiner3.Joiner3NodeFactory"/>
+    <entry key="node-name" type="xstring" value="Joiner"/>
+    <entry key="node-bundle-name" type="xstring" value="KNIME Base Nodes"/>
+    <entry key="node-bundle-symbolic-name" type="xstring" value="org.knime.base"/>
+    <entry key="node-bundle-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-bundle-version" type="xstring" value="5.8.3.v202603112120"/>
+    <entry key="node-feature-name" type="xstring" value="KNIME Base nodes"/>
+    <entry key="node-feature-symbolic-name" type="xstring" value="org.knime.features.base.feature.group"/>
+    <entry key="node-feature-vendor" type="xstring" value="KNIME AG, Zurich, Switzerland"/>
+    <entry key="node-feature-version" type="xstring" value="5.8.3.v202603112120"/>
+    <config key="factory_settings"/>
+    <entry key="name" type="xstring" value="Joiner"/>
+    <entry key="hasContent" type="xboolean" value="true"/>
+    <entry key="isInactive" type="xboolean" value="false"/>
+    <config key="ports">
+        <config key="port_1">
+            <entry key="index" type="xint" value="1"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.data.DataTableSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.BufferedDataTable"/>
+            <entry key="port_object_summary" type="xstring" value="Rows: 179, Cols: 9"/>
+            <entry key="port_dir_location" type="xstring" value="port_1"/>
+        </config>
+        <config key="port_2">
+            <entry key="index" type="xint" value="2"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.node.port.inactive.InactiveBranchPortObjectSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.port.inactive.InactiveBranchPortObject"/>
+            <entry key="port_object_summary" type="xstring" value="Inactive Port Object"/>
+            <entry key="port_spec_location" type="xstring" value="spec/spec.zip"/>
+            <entry key="port_object_location" type="xstring" value="object/portobject.zip"/>
+            <entry key="port_dir_location" type="xstring" value="port_2"/>
+        </config>
+        <config key="port_3">
+            <entry key="index" type="xint" value="3"/>
+            <entry key="port_spec_class" type="xstring" value="org.knime.core.node.port.inactive.InactiveBranchPortObjectSpec"/>
+            <entry key="port_object_class" type="xstring" value="org.knime.core.node.port.inactive.InactiveBranchPortObject"/>
+            <entry key="port_object_summary" type="xstring" value="Inactive Port Object"/>
+            <entry key="port_spec_location" type="xstring" value="spec/spec.zip"/>
+            <entry key="port_object_location" type="xstring" value="object/portobject.zip"/>
+            <entry key="port_dir_location" type="xstring" value="port_3"/>
+        </config>
+    </config>
+    <config key="filestores">
+        <entry key="file_store_location" type="xstring" isnull="true" value=""/>
+        <entry key="file_store_id" type="xstring" value="6bba76e7-de13-494f-a819-c0ab1458762e"/>
+    </config>
+</config>

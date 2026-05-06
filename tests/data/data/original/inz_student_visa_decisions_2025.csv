@@ -1,0 +1,157 @@
+Country name,Volume of visa applications,Number approved,Approval rate,Number declined,Decline rate
+Afghanistan,16,1,6%,15,94%
+Algeria,6,3,50%,3,50%
+Angola,1,0,0%,1,100%
+Argentina,88,70,80%,18,20%
+Armenia,4,2,50%,2,50%
+Australia,2,2,100%,0,0%
+Austria,85,84,99%,0,0%
+Bahrain,1,1,100%,0,0%
+Bangladesh,1102,678,62%,414,38%
+Barbados,1,1,100%,0,0%
+Belarus,3,2,67%,1,33%
+Belgium,58,58,100%,0,0%
+Benin,3,0,0%,3,100%
+Bhutan,120,53,44%,64,53%
+Bolivia,12,10,83%,2,17%
+Brazil,666,569,85%,93,14%
+Brunei Darussalam,6,6,100%,0,0%
+Bulgaria,5,4,80%,1,20%
+Burundi,2,0,0%,2,100%
+Cambodia,199,188,94%,5,3%
+Cameroon,8,0,0%,8,100%
+Canada,274,270,99%,3,1%
+Chad,3,0,0%,3,100%
+Chile,280,232,83%,48,17%
+China,9959,9704,97%,139,1%
+Colombia,464,294,63%,167,36%
+Congo,1,0,0%,1,100%
+Costa Rica,6,5,83%,1,17%
+Croatia,1,1,100%,0,0%
+Czech Republic,43,42,98%,0,0%
+Democratic Republic of Congo,7,0,0%,6,86%
+Denmark,90,90,100%,0,0%
+Dominica,1,1,100%,0,0%
+Dominican Republic,2,2,100%,0,0%
+Ecuador,58,31,53%,27,47%
+Egypt,40,15,38%,23,58%
+El Salvador,1,1,100%,0,0%
+Eritrea,1,1,100%,0,0%
+Estonia,2,2,100%,0,0%
+Ethiopia,12,9,75%,3,25%
+Federated States of Micronesia,1,1,100%,0,0%
+Fiji,191,147,77%,40,21%
+Finland,28,28,100%,0,0%
+France,273,270,99%,2,1%
+Gambia,1,1,100%,0,0%
+Georgia,1,1,100%,0,0%
+Germany,1965,1956,100%,5,0%
+Ghana,29,11,38%,18,62%
+Great Britain,217,213,98%,3,1%
+Greece,1,1,100%,0,0%
+Grenada,1,1,100%,0,0%
+Guatemala,3,2,67%,1,33%
+Guinea,1,0,0%,1,100%
+Guyana,3,3,100%,0,0%
+Haiti,4,1,25%,3,75%
+Honduras,1,0,0%,1,100%
+Hong Kong,365,360,99%,2,1%
+Hungary,20,20,100%,0,0%
+Iceland,3,3,100%,0,0%
+India,7235,4276,59%,2838,39%
+Indonesia,533,520,98%,10,2%
+Iran,167,92,55%,74,44%
+Iraq,7,4,57%,3,43%
+Ireland,32,32,100%,0,0%
+Israel,13,10,77%,3,23%
+Italy,303,299,99%,2,1%
+Jamaica,6,4,67%,0,0%
+Japan,2342,2330,99%,2,0%
+Jordan,17,9,53%,8,47%
+Kazakhstan,22,21,95%,0,0%
+Kenya,123,55,45%,68,55%
+Kiribati,29,29,100%,0,0%
+Kuwait,136,135,99%,1,1%
+Kyrgyzstan,3,3,100%,0,0%
+Laos,215,210,98%,5,2%
+Latvia,3,2,67%,1,33%
+Lebanon,5,2,40%,3,60%
+Liberia,4,0,0%,3,75%
+Liechtenstein,2,2,100%,0,0%
+Lithuania,4,4,100%,0,0%
+Luxembourg,5,5,100%,0,0%
+Macau,16,15,94%,0,0%
+Macedonia,1,1,100%,0,0%
+Malawi,1,0,0%,1,100%
+Malaysia,513,507,99%,2,0%
+Maldives,12,11,92%,1,8%
+Mali,4,3,75%,1,25%
+Marshall Islands,2,1,50%,0,0%
+Mauritius,11,10,91%,1,9%
+Mexico,140,129,92%,10,7%
+Moldova,3,2,67%,1,33%
+Mongolia,62,57,92%,5,8%
+Morocco,4,3,75%,1,25%
+Myanmar,468,226,48%,239,51%
+Namibia,3,2,67%,1,33%
+Nauru,2,2,100%,0,0%
+Nepal,1957,1024,52%,918,47%
+Netherlands,79,79,100%,0,0%
+Nigeria,193,80,41%,111,58%
+Norway,153,150,98%,1,1%
+Oman,27,26,96%,1,4%
+Pakistan,410,185,45%,216,53%
+Palau,1,1,100%,0,0%
+Palestine,3,1,33%,2,67%
+Panama,3,3,100%,0,0%
+Papua New Guinea,71,61,86%,9,13%
+Paraguay,7,6,86%,1,14%
+Peru,67,37,55%,30,45%
+Philippines,1239,1151,93%,67,5%
+Poland,17,17,100%,0,0%
+Portugal,11,11,100%,0,0%
+Romania,12,10,83%,2,17%
+Russia,113,85,75%,25,22%
+Rwanda,3,3,100%,0,0%
+Samoa,38,37,97%,1,3%
+Saudi Arabia,34,31,91%,3,9%
+Serbia,4,3,75%,1,25%
+Sierra Leone,1,0,0%,1,100%
+Singapore,230,222,97%,7,3%
+Slovakia,6,6,100%,0,0%
+Slovenia,1,1,100%,0,0%
+Solomon Islands,33,32,97%,1,3%
+South Africa,61,43,70%,17,28%
+South Korea,1190,1179,99%,6,0%
+South Sudan,1,1,100%,0,0%
+Spain,83,82,99%,1,1%
+Sri Lanka,1867,1491,80%,344,18%
+St Kitts - Nevis,2,1,50%,1,50%
+St Lucia,1,1,100%,0,0%
+Sudan,6,2,33%,4,67%
+Suriname,2,2,100%,0,0%
+Sweden,55,52,95%,2,4%
+Switzerland,155,150,97%,3,2%
+Syria,10,3,30%,7,70%
+Taiwan,365,358,98%,1,0%
+Tanzania,5,1,20%,4,80%
+Thailand,1009,979,97%,24,2%
+Timor Leste,34,34,100%,0,0%
+Tonga,78,64,82%,14,18%
+Trinidad and Tobago,3,1,33%,1,33%
+Tunisia,3,1,33%,2,67%
+Turkey,34,15,44%,19,56%
+Tuvalu,19,19,100%,0,0%
+Uganda,6,2,33%,4,67%
+Ukraine,11,9,82%,1,9%
+United Arab Emirates,8,8,100%,0,0%
+United States of America,2063,2012,98%,28,1%
+Uruguay,11,9,82%,2,18%
+Uzbekistan,5,1,20%,4,80%
+Vanuatu,24,19,79%,5,21%
+Venezuela,13,9,69%,4,31%
+Vietnam,842,711,84%,126,15%
+Yemen,7,0,0%,7,100%
+Zambia,4,2,50%,1,25%
+Zimbabwe,72,26,36%,45,63%
+Total,41951,35013,83%,6487,15%

@@ -187,14 +187,14 @@ def _translate_expression(expr: str) -> str:
     # 3) Map common functions to numpy
     #    Use word-boundary to avoid touching column names inside df['...']
     func_maps = {
-        r"\bln\(": "np.log(",
-        r"\blog10\(": "np.log10(",
-        r"\blog\(": "np.log(",
-        r"\bsqrt\(": "np.sqrt(",
-        r"\bexp\(": "np.exp(",
-        r"\bround\(": "np.round(",
-        r"\bceil\(": "np.ceil(",
-        r"\bfloor\(": "np.floor(",
+        r"(?<![\w.])ln\(": "np.log(",
+        r"(?<![\w.])log10\(": "np.log10(",
+        r"(?<![\w.])log\(": "np.log10(",
+        r"(?<![\w.])sqrt\(": "np.sqrt(",
+        r"(?<![\w.])exp\(": "np.exp(",
+        r"(?<![\w.])round\(": "np.round(",
+        r"(?<![\w.])ceil\(": "np.ceil(",
+        r"(?<![\w.])floor\(": "np.floor(",
         # pow(a,b) works in Python; keep as-is (or map to np.power if you prefer)
     }
     for pat, repl in func_maps.items():

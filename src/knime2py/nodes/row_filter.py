@@ -196,6 +196,9 @@ def parse_row_filter_settings(node_dir: Optional[Path]) -> RowFilterSettings:
         ):
             col = first(p_cfg, ".//*[local-name()='config' and @key='column']"
                                "/*[local-name()='entry' and @key='selected']/@value")
+            if not col:
+                col = first(p_cfg, ".//*[local-name()='config' and @key='columnV2']"
+                                   "/*[local-name()='entry' and @key='regularChoice']/@value")
             op = (first(p_cfg, ".//*[local-name()='entry' and @key='operator']/@value") or "").strip().upper()
             vals = _collect_predicate_values(p_cfg)
             preds.append(Predicate(column=col or None, operator=op or None, values=vals))
@@ -328,15 +331,15 @@ def _emit_filter_code(cfg: RowFilterSettings) -> List[str]:
             op = op.replace(ch, "")
         mapping = {
             # equality
-            "EQ": "EQ", "=": "EQ", "EQUAL": "EQ", "EQUALS": "EQ",
+            "EQ": "EQ", "EQ_MISS": "EQ", "=": "EQ", "EQUAL": "EQ", "EQUALS": "EQ",
             # not equal
-            "NE": "NE", "NEQ": "NE", "NOT_EQUAL": "NE", "!=": "NE", "<>": "NE",
+            "NE": "NE", "NEQ": "NE", "NEQ_MISS": "NE", "NOT_EQUAL": "NE", "!=": "NE", "<>": "NE",
             # greater / ge
             "GT": "GT", "GREATER": "GT", "GREATERTHAN": "GT", ">": "GT", "GREATER_THAN": "GT",
-            "GE": "GE", "GREATEREQUAL": "GE", "GREATER_OR_EQUAL": "GE", ">=": "GE", "GREATER_EQUALS": "GE",
+            "GE": "GE", "GTE": "GE", "GREATEREQUAL": "GE", "GREATER_OR_EQUAL": "GE", ">=": "GE", "GREATER_EQUALS": "GE",
             # less / le
             "LT": "LT", "LESS": "LT", "LESSTHAN": "LT", "<": "LT", "LESS_THAN": "LT",
-            "LE": "LE", "LESSEQUAL": "LE", "LESS_OR_EQUAL": "LE", "<=": "LE",
+            "LE": "LE", "LTE": "LE", "LESSEQUAL": "LE", "LESS_OR_EQUAL": "LE", "<=": "LE",
             # other
             "CONTAINS": "CONTAINS",
             "STARTS_WITH": "STARTS_WITH",
