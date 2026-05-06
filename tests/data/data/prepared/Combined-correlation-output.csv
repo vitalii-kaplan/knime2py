@@ -1,0 +1,46 @@
+"First column name","Second column name","Correlation value","p value","Degrees of freedom"
+"Approval rate","WHO_Under5_Mortality_per_1000_live_births",-0.7463912567244539,1.2418400468676258e-30,163
+"Approval rate","WHO_Maternal_Mortality_per_100000_live_births",-0.6810031760429005,7.970072882995082e-24,163
+"Approval rate","WHO_Physician_Density_per_10000_population",0.5518212739090576,1.5647218827604746e-14,163
+"Approval rate","WHO_DTP3_Immunization_Coverage_pct",0.371474112408076,9.000127195305025e-07,163
+"Approval rate","GDP_per_capita_current_USD",0.5007404688044491,7.422166272261006e-12,163
+"Approval rate","Life_expectancy_at_birth_years",0.714796443208049,4.187603700902599e-27,163
+"Approval rate","Internet_users_pct_population",0.632818956209226,7.624912868459698e-20,163
+"Approval rate","Urban_population_pct",0.3395668679809862,8.121312037526849e-06,163
+"Approval rate","GNI_per_capita_Atlas_current_USD",0.5200245366165628,8.175162336503807e-13,163
+"WHO_Under5_Mortality_per_1000_live_births","WHO_Maternal_Mortality_per_100000_live_births",0.8806071705250453,9.520509692551189e-55,163
+"WHO_Under5_Mortality_per_1000_live_births","WHO_Physician_Density_per_10000_population",-0.6521358784495409,2.360311849969126e-21,163
+"WHO_Under5_Mortality_per_1000_live_births","WHO_DTP3_Immunization_Coverage_pct",-0.4867263341463603,3.388928138517282e-11,163
+"WHO_Under5_Mortality_per_1000_live_births","GDP_per_capita_current_USD",-0.4875158162910001,3.1167203157791935e-11,163
+"WHO_Under5_Mortality_per_1000_live_births","Life_expectancy_at_birth_years",-0.8879031307001135,7.591469374337093e-57,163
+"WHO_Under5_Mortality_per_1000_live_births","Internet_users_pct_population",-0.7701522733634117,1.1941520892527061e-33,163
+"WHO_Under5_Mortality_per_1000_live_births","Urban_population_pct",-0.5209046217369497,7.367498596439147e-13,163
+"WHO_Under5_Mortality_per_1000_live_births","GNI_per_capita_Atlas_current_USD",-0.5039993213344501,5.162038367956766e-12,163
+"WHO_Maternal_Mortality_per_100000_live_births","WHO_Physician_Density_per_10000_population",-0.5693068111544063,1.4770294361096707e-15,163
+"WHO_Maternal_Mortality_per_100000_live_births","WHO_DTP3_Immunization_Coverage_pct",-0.45457829089950313,8.605089482534638e-10,163
+"WHO_Maternal_Mortality_per_100000_live_births","GDP_per_capita_current_USD",-0.3979116985041675,1.205798778071882e-07,163
+"WHO_Maternal_Mortality_per_100000_live_births","Life_expectancy_at_birth_years",-0.8130235375953222,3.928741396400844e-40,163
+"WHO_Maternal_Mortality_per_100000_live_births","Internet_users_pct_population",-0.7232186832469125,5.363289458323657e-28,163
+"WHO_Maternal_Mortality_per_100000_live_births","Urban_population_pct",-0.44783879705688623,1.6262820711119636e-09,163
+"WHO_Maternal_Mortality_per_100000_live_births","GNI_per_capita_Atlas_current_USD",-0.4125771456436226,3.657236027139556e-08,163
+"WHO_Physician_Density_per_10000_population","WHO_DTP3_Immunization_Coverage_pct",0.3815463383874268,4.2723771163774727e-07,163
+"WHO_Physician_Density_per_10000_population","GDP_per_capita_current_USD",0.5538361757504451,1.2004790581368443e-14,163
+"WHO_Physician_Density_per_10000_population","Life_expectancy_at_birth_years",0.7167464765798885,2.619380043941451e-27,163
+"WHO_Physician_Density_per_10000_population","Internet_users_pct_population",0.6703561164886639,7.00349992816627e-23,163
+"WHO_Physician_Density_per_10000_population","Urban_population_pct",0.5587627697500925,6.232842601513712e-15,163
+"WHO_Physician_Density_per_10000_population","GNI_per_capita_Atlas_current_USD",0.5804331946288616,3.054489291758887e-16,163
+"WHO_DTP3_Immunization_Coverage_pct","GDP_per_capita_current_USD",0.3520850849034468,3.5246970859364727e-06,163
+"WHO_DTP3_Immunization_Coverage_pct","Life_expectancy_at_birth_years",0.4995391712119455,8.47709394875366e-12,163
+"WHO_DTP3_Immunization_Coverage_pct","Internet_users_pct_population",0.5010913831719469,7.138854133484536e-12,163
+"WHO_DTP3_Immunization_Coverage_pct","Urban_population_pct",0.2843397576136117,0.00021446383126372942,163
+"WHO_DTP3_Immunization_Coverage_pct","GNI_per_capita_Atlas_current_USD",0.3634450251316013,1.6013293602292342e-06,163
+"GDP_per_capita_current_USD","Life_expectancy_at_birth_years",0.6707649244714674,6.45351770007273e-23,163
+"GDP_per_capita_current_USD","Internet_users_pct_population",0.5464041645041616,3.1625638409501176e-14,163
+"GDP_per_capita_current_USD","Urban_population_pct",0.5477030393779581,2.674637704912701e-14,163
+"GDP_per_capita_current_USD","GNI_per_capita_Atlas_current_USD",0.9797971350763501,7.407591311247734e-116,163
+"Life_expectancy_at_birth_years","Internet_users_pct_population",0.8038106479175519,1.3219233535499029e-38,163
+"Life_expectancy_at_birth_years","Urban_population_pct",0.6569424408429689,9.554691697171286e-22,163
+"Life_expectancy_at_birth_years","GNI_per_capita_Atlas_current_USD",0.6944155983451283,4.509152509249854e-25,163
+"Internet_users_pct_population","Urban_population_pct",0.7243989610032289,3.996834357910252e-28,163
+"Internet_users_pct_population","GNI_per_capita_Atlas_current_USD",0.5660136175793419,2.328492612567687e-15,163
+"Urban_population_pct","GNI_per_capita_Atlas_current_USD",0.5728960150457153,8.941571446687994e-16,163

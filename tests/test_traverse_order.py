@@ -51,9 +51,15 @@ Refer to the KNIME documentation for more information on workflow structures.
 """
 
 from pathlib import Path
+from types import SimpleNamespace
 import pytest
 import knime2py.parse_knime as k2p
-from knime2py.traverse import depth_order
+from knime2py.parse_knime import Edge
+from knime2py.traverse import (
+    X_AGGREGATOR_FACTORY,
+    X_PARTITIONER_FACTORY,
+    depth_order,
+)
 
 @pytest.fixture(scope="session")
 def node_csv_reader_dir(node_dir):
@@ -86,10 +92,10 @@ def test_depth_ready_order_for_sample():
 
     g = k2p.parse_workflow(wf)
 
-    # Expected order by numeric node IDs only (names are ignored)
+    # Expected dependency-ready order with numeric tie-breaking (names are ignored)
     expected = [
         "1", "1350", "1351", "1365", "1362", "1386",
-        "1390", "1389", "1385", "1360", "1364", "1387", "1388",
+        "1387", "1388", "1390", "1389", "1385", "1360", "1364",
     ]
 
     got = depth_order(g.nodes, g.edges)
@@ -100,3 +106,72 @@ def test_depth_ready_order_for_sample():
 
     # Exact sequence match on ids
     assert got == expected, f"Depth-ready order mismatch.\nExpected: {expected}\nGot:      {got}"
+
+
+def test_depth_order_emits_all_predecessors_before_joined_consumer():
+    """
+    Regression for a diamond graph where DFS entered one joiner before all roots
+    were visited, then emitted its consumer while that joiner was still on-stack.
+    """
+    nodes = {nid: object() for nid in ["1545", "1587", "1546", "1547", "1551", "1591", "1592", "1556"]}
+    edges = [
+        Edge("1545", "1547", "1", "2"),
+        Edge("1587", "1547", "1", "1"),
+        Edge("1546", "1551", "1", "2"),
+        Edge("1587", "1551", "1", "1"),
+        Edge("1591", "1592", "1", "2"),
+        Edge("1587", "1592", "1", "1"),
+        Edge("1547", "1556", "1", "1"),
+        Edge("1551", "1556", "1", "2"),
+        Edge("1592", "1556", "1", "3"),
+    ]
+
+    got = depth_order(nodes, edges)
+    pos = {nid: idx for idx, nid in enumerate(got)}
+
+    assert pos["1547"] < pos["1556"]
+    assert pos["1551"] < pos["1556"]
+    assert pos["1592"] < pos["1556"]
+
+
+def test_depth_order_keeps_parallel_xvalidation_regions_contiguous():
+    """
+    X-Partitioner/X-Aggregator pairs are structured control-flow regions.
+
+    A plain topological order may start the next partitioner before the current
+    aggregator, which makes the emitter nest independent Python loops.
+    """
+    nodes = {
+        "90": SimpleNamespace(type="reader"),
+        "60": SimpleNamespace(type=X_PARTITIONER_FACTORY),
+        "33": SimpleNamespace(type="sampler"),
+        "29": SimpleNamespace(type="learner"),
+        "31": SimpleNamespace(type="predictor"),
+        "62": SimpleNamespace(type=X_AGGREGATOR_FACTORY),
+        "61": SimpleNamespace(type=X_PARTITIONER_FACTORY),
+        "12": SimpleNamespace(type="sampler"),
+        "9": SimpleNamespace(type="learner"),
+        "10": SimpleNamespace(type="predictor"),
+        "66": SimpleNamespace(type=X_AGGREGATOR_FACTORY),
+    }
+    edges = [
+        Edge("90", "60", "1", "1"),
+        Edge("60", "33", "1", "1"),
+        Edge("33", "29", "1", "1"),
+        Edge("29", "31", "1", "1"),
+        Edge("60", "31", "2", "2"),
+        Edge("31", "62", "1", "1"),
+        Edge("90", "61", "1", "1"),
+        Edge("61", "12", "1", "1"),
+        Edge("12", "9", "1", "1"),
+        Edge("9", "10", "1", "1"),
+        Edge("61", "10", "2", "2"),
+        Edge("10", "66", "1", "1"),
+    ]
+
+    got = depth_order(nodes, edges)
+    pos = {nid: idx for idx, nid in enumerate(got)}
+
+    assert pos["60"] < pos["33"] < pos["29"] < pos["31"] < pos["62"]
+    assert pos["62"] < pos["61"]
+    assert pos["61"] < pos["12"] < pos["9"] < pos["10"] < pos["66"]

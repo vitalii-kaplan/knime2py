@@ -78,6 +78,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from collections import defaultdict
+from collections import deque
 from typing import Dict, Iterable, Iterator, List, Tuple
 
 
@@ -90,6 +91,48 @@ __all__ = [
 def _id_sort_key(s: str) -> Tuple[int, str]:
     """Sort numeric IDs before non-numeric, keep numeric order stable."""
     return (0, int(s)) if s.isdigit() else (1, s)
+
+
+X_PARTITIONER_FACTORY = "org.knime.base.node.meta.xvalidation.XValidatePartitionerFactory"
+X_AGGREGATOR_FACTORY = "org.knime.base.node.meta.xvalidation.AggregateOutputNodeFactory"
+
+
+def _node_type(nodes: Dict[str, object], nid: str) -> str:
+    return str(getattr(nodes[nid], "type", "") or "")
+
+
+def _is_loop_start(nodes: Dict[str, object], nid: str) -> bool:
+    return _node_type(nodes, nid) == X_PARTITIONER_FACTORY
+
+
+def _is_loop_finish(nodes: Dict[str, object], nid: str) -> bool:
+    return _node_type(nodes, nid) == X_AGGREGATOR_FACTORY
+
+
+def _loop_region(start: str, nodes: Dict[str, object], succ: dict) -> set[str]:
+    """
+    Return the structured X-validation region from a partitioner to its aggregator.
+
+    Traversal stops at X-Aggregator nodes, so scorer/writer nodes downstream of the
+    aggregator stay outside the loop body.
+    """
+    region = {start}
+    queue = deque(succ.get(start, []))
+    seen = {start}
+
+    while queue:
+        nid = queue.popleft()
+        if nid in seen or nid not in nodes:
+            continue
+        seen.add(nid)
+        region.add(nid)
+        if _is_loop_finish(nodes, nid):
+            continue
+        queue.extend(succ.get(nid, []))
+
+    if not any(_is_loop_finish(nodes, nid) for nid in region):
+        return set()
+    return region
 
 
 def _build_edge_maps(edges: Iterable) -> Tuple[dict, dict]:
@@ -117,14 +160,12 @@ def _build_edge_maps(edges: Iterable) -> Tuple[dict, dict]:
 
 def depth_order(nodes: Dict[str, object], edges: Iterable) -> List[str]:
     """
-    Perform a depth-biased traversal of nodes, emitting each node only after 
-    all of its predecessors have been visited.
-
-    This function explores as deep as possible along outgoing edges, 
-    recursively visiting unvisited predecessors first (backtracking as needed).
+    Return a deterministic dependency-ready order of nodes.
 
     - Deterministic: numeric node IDs first, then lexicographic.
-    - Safe on cycles: nodes in the current recursion stack are not re-entered.
+    - For acyclic graphs: every node is emitted after all of its predecessors.
+    - Safe on cycles: cyclic leftovers are appended deterministically after all
+      acyclic dependencies that can be satisfied.
     - Covers disconnected components.
 
     Args:
@@ -134,7 +175,7 @@ def depth_order(nodes: Dict[str, object], edges: Iterable) -> List[str]:
     Returns:
         List[str]: A list of node IDs in the order they should be processed.
     """
-    # Build predecessor/successor maps
+    # Build predecessor/successor maps.
     succ = defaultdict(list)   # u -> [v...]
     preds = defaultdict(set)   # v -> {u...}
     for e in edges:
@@ -147,48 +188,71 @@ def depth_order(nodes: Dict[str, object], edges: Iterable) -> List[str]:
         succ.setdefault(nid, [])
         preds.setdefault(nid, set())
 
-    # Sort children deterministically
+    # Sort children deterministically.
     for u in list(succ.keys()):
         succ[u].sort(key=_id_sort_key)
 
-    # Roots: no predecessors
-    roots = sorted([nid for nid in nodes if not preds[nid]], key=_id_sort_key)
-
     order: List[str] = []
-    visited = set()
-    onstack = set()  # cycle guard
+    emitted = set()
+    indegree = {nid: len(preds[nid]) for nid in nodes}
+    loop_regions = {
+        nid: _loop_region(nid, nodes, succ)
+        for nid in nodes
+        if _is_loop_start(nodes, nid)
+    }
 
-    def dfs(u: str):
-        """Depth-first search helper to visit nodes."""
-        if u in visited or u in onstack:
-            return
-        onstack.add(u)
+    ready = {nid for nid, degree in indegree.items() if degree == 0}
+    active_loop: str | None = None
 
-        # Ensure all predecessors are visited first (may recurse upstream)
-        for p in sorted(preds[u], key=_id_sort_key):
-            if p not in visited:
-                dfs(p)
+    def pop_ready() -> str:
+        nonlocal active_loop
 
-        # Now it's safe to emit u
-        if u not in visited:
-            visited.add(u)
-            order.append(u)
+        if active_loop is not None:
+            region = loop_regions.get(active_loop, set())
+            region_ready = [nid for nid in ready if nid in region and nid not in emitted]
+            if region_ready:
+                chosen = min(region_ready, key=_id_sort_key)
+                ready.remove(chosen)
+                return chosen
 
-        # Go deep along successors
+            # If a loop is open but no region node is ready, prefer ordinary
+            # prerequisite work over starting another independent loop.
+            non_loop_ready = [
+                nid for nid in ready
+                if nid not in emitted and not _is_loop_start(nodes, nid)
+            ]
+            if non_loop_ready:
+                chosen = min(non_loop_ready, key=_id_sort_key)
+                ready.remove(chosen)
+                return chosen
+
+        chosen = min(ready, key=_id_sort_key)
+        ready.remove(chosen)
+        return chosen
+
+    while ready:
+        u = pop_ready()
+        if u in emitted:
+            continue
+        emitted.add(u)
+        order.append(u)
+
+        if active_loop is None and _is_loop_start(nodes, u) and loop_regions.get(u):
+            active_loop = u
+
         for v in succ[u]:
-            if v not in visited:
-                dfs(v)
+            indegree[v] -= 1
+            if indegree[v] == 0:
+                ready.add(v)
 
-        onstack.remove(u)
+        if active_loop is not None and _is_loop_finish(nodes, u):
+            active_loop = None
 
-    # Traverse from roots
-    for r in roots:
-        dfs(r)
-
-    # Cover leftovers (cycles / disconnected)
+    # Cycles cannot have a fully dependency-ready linearization. Emit any
+    # remaining nodes deterministically so generation still covers the graph.
     for nid in sorted(nodes.keys(), key=_id_sort_key):
-        if nid not in visited:
-            dfs(nid)
+        if nid not in emitted:
+            order.append(nid)
 
     return order
 
@@ -262,4 +326,3 @@ def traverse_nodes(g) -> Iterator[dict]:
             "incoming": incoming,
             "outgoing": outgoing,
         }
-
